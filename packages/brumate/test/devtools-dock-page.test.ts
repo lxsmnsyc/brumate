@@ -44,12 +44,19 @@ describe('the Page workspace', () => {
     expect(metrics).toEqual(['Components', 'Page state', 'Handlers run', 'Open for']);
     // The page state shows its size, the bar names the component, and the largest value comes first.
     expect(body()).toContain('Rows ');
-    expect(shadow.querySelectorAll('.pg .stack span')).toHaveLength(1);
+    expect(shadow.querySelectorAll('.pg .sizes span')).toHaveLength(1);
     expect(shadow.querySelectorAll('.pg tr.large')).toHaveLength(1);
     // The environment holds the versions from the build, and the actions go to other workspaces.
     expect(shadow.querySelector('.pg .env')!.textContent).toContain('1.2.3');
     expect(shadow.querySelector('.pg .env')!.textContent).toContain('8.0.0');
     expect(shadow.querySelector('.pg .acts')!.textContent).toContain('1 issue');
+    // The values table keeps to its column: fixed layout, and every cell clips its text.
+    expect(shadow.querySelector('.pg table.values')).not.toBeNull();
+    expect(
+      [...shadow.querySelectorAll<HTMLElement>('.pg table.values td')].every(
+        (td) => td.title !== '',
+      ),
+    ).toBe(true);
     // The parts of the old panel that the prototype does not have are gone.
     expect(shadow.querySelector('[data-tab="report"]')).toBeNull();
     expect(shadow.querySelector('pre.report')).toBeNull();
@@ -73,6 +80,8 @@ describe('the Page workspace', () => {
     expect(body()).toContain('#defer2visiblewaiting');
     expect(shadow.querySelector('.pg .sec .n')).not.toBeNull();
     expect(shadow.querySelector('.pg button.tool')!.textContent).toContain('Trigger now');
+    // A block is one row: what it is, its state, and its action.
+    expect(shadow.querySelectorAll('.pg .blocks > .block-row')).toHaveLength(1);
     togglePanel(shadow, state);
   });
 });

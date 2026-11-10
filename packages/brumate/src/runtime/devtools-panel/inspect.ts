@@ -27,10 +27,10 @@ interface InspectWork {
 const INSPECT_STYLE = `
 .ins { --bg2: #161517; --line2: #36333a; --sel: #ee7a3e14; --ring: #ee7a3e47; --accent-text: #ffb48a; }
 .ins > .list { padding: 8px; gap: 1px; }
-.ins .filter { display: block; margin: 0 0 6px; }
+.ins .filter { display: block; flex: none; margin: 0 0 6px; }
 .ins .filter input { width: 100%; box-sizing: border-box; height: 30px; padding: 0 10px; border-radius: 7px; background: var(--bg2); border: 0; box-shadow: inset 0 0 0 1px var(--line); outline: none; }
 .ins .filter input:focus-visible { box-shadow: inset 0 0 0 1px var(--ring); outline: none; }
-.ins .tree-row { box-sizing: border-box; display: flex; align-items: center; justify-content: flex-start; gap: 7px; width: 100%; height: 28px; margin: 0; padding: 0 8px; border: 0; border-radius: 7px; text-align: left; white-space: nowrap; font-weight: 400; transition: background 0.12s; }
+.ins .tree-row { box-sizing: border-box; flex: none; display: flex; align-items: center; justify-content: flex-start; gap: 7px; width: 100%; height: 28px; margin: 0; padding: 0 8px; border: 0; border-radius: 7px; text-align: left; white-space: nowrap; font-weight: 400; transition: background 0.12s; }
 .ins .tree-row:hover { background: var(--hover); }
 .ins .tree-row:focus-visible { outline: none; box-shadow: inset 0 0 0 1px var(--ring); }
 .ins .tree-row[aria-current="true"] { background: var(--sel); box-shadow: inset 0 0 0 1px var(--ring); }
@@ -40,23 +40,26 @@ const INSPECT_STYLE = `
 .ins .tree-row .tw svg { transition: transform 0.12s; }
 .ins .tree-row .tw.shut svg { transform: rotate(-90deg); }
 .ins .tree-row .tw:hover { color: var(--text); }
+.ins .tree-row .name, .ins .tree-row .blk { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .ins .tree-row .name { font-weight: 500; }
+.ins .tree-row.off { opacity: .45; }
 .ins .tree-row .blk { font: 11.5px var(--mono); color: var(--purple); }
-.ins .tree-row .meta { margin-left: auto; font: 10.5px var(--mono); color: var(--faint); }
+.ins .tree-row .meta { flex: none; margin-left: auto; font: 10.5px var(--mono); color: var(--faint); }
 .ins .heat { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--yellow); opacity: 0; }
 .ins .heat.on { animation: ins-heat 1.1s ease-out; }
 @keyframes ins-heat { 0% { opacity: 1; transform: scale(1.7); } 100% { opacity: 0; } }
 .ins > .detail.gmode { display: flex; flex-direction: column; padding-bottom: 0; }
 .ins .title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.ins .title h3 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.015em; }
-.ins .title h3 .sub { font-size: 12px; font-weight: 400; color: var(--faint); }
-.ins .path { font: 11.5px var(--mono); color: var(--dim); }
-.ins .path:hover { color: var(--blue); }
-.ins .seg { display: inline-flex; gap: 2px; padding: 2px; margin-left: auto; border-radius: 8px; background: var(--bg2); box-shadow: inset 0 0 0 1px var(--line); }
-.ins .seg button { height: 24px; padding: 0 10px; border: 0; border-radius: 6px; color: var(--dim); font-size: 11.5px; font-weight: 500; transition: background 0.12s, color 0.12s; }
-.ins .seg button:hover { color: var(--text); }
-.ins .seg button[aria-pressed="true"] { background: var(--hover); color: var(--text); box-shadow: inset 0 0 0 1px var(--line2); }
-.ins .seg button:focus-visible { outline: none; box-shadow: inset 0 0 0 1px var(--ring); }
+.ins .title { min-width: 0; }
+.ins .title h3 { margin: 0; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; font-weight: 600; letter-spacing: -0.015em; text-transform: none; color: var(--text); }
+.ins .path { min-width: 0; max-width: 100%; display: inline-flex; align-items: center; gap: 4px; font: 11.5px var(--mono); color: var(--dim); }
+.ins .path .link { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit; }
+.ins .path:hover, .ins .path .link:hover { color: var(--blue); }
+.ins .views { display: inline-flex; flex: none; gap: 2px; padding: 2px; margin-left: auto; border-radius: 8px; background: var(--bg2); box-shadow: inset 0 0 0 1px var(--line); }
+.ins .views button { height: 24px; padding: 0 10px; border: 0; border-radius: 6px; color: var(--dim); font-size: 11.5px; font-weight: 500; transition: background 0.12s, color 0.12s; }
+.ins .views button:hover { color: var(--text); }
+.ins .views button[aria-pressed="true"] { background: var(--hover); color: var(--text); box-shadow: inset 0 0 0 1px var(--line2); }
+.ins .views button:focus-visible { outline: none; box-shadow: inset 0 0 0 1px var(--ring); }
 .ins .tags { display: flex; gap: 6px; margin: 10px 0 0; flex-wrap: wrap; }
 .ins .tag { font: 11px/20px var(--mono); padding: 0 7px; border-radius: 6px; background: var(--hover); color: var(--dim); }
 .ins .tag.y { color: var(--yellow); background: #ffd16618; }
@@ -68,7 +71,7 @@ const INSPECT_STYLE = `
 .ins .vals > :first-child > *, .ins .vals > .rd:nth-child(2) { border-top: 0; }
 .ins .slot .k { font: 11.5px var(--mono); color: #ffc28f; }
 .ins .slot .ty { font: 11px var(--mono); color: var(--faint); }
-.ins .slot .rd { font: 11px var(--mono); color: var(--faint); text-align: right; }
+.ins .vals > .rd { max-width: 34ch; font: 11px var(--mono); color: var(--faint); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ins .slot .value { color: var(--text); display: block; width: 100%; box-sizing: border-box; margin-left: -6px; padding: 3px 6px; border: 0; border-radius: 5px; text-align: left; font: 11.5px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: text; transition: background 0.12s, box-shadow 0.12s; }
 .ins .slot .value:hover { background: var(--bg2); }
 .ins .slot .value:focus-visible { background: var(--bg2); outline: none; box-shadow: inset 0 0 0 1px var(--ring); }
@@ -80,8 +83,9 @@ const INSPECT_STYLE = `
 .ins .slot .value.bool { color: var(--purple); }
 .ins .slot input.value { background: transparent; outline: none; }
 .ins .slot input.value:focus { background: var(--bg2); box-shadow: inset 0 0 0 1px var(--ring); }
-.ins .graph { flex: 1; min-height: 240px; margin: 14px -14px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; position: relative; overflow: hidden; }
+.ins .graph { flex: 1; min-height: 120px; margin: 14px -14px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; position: relative; overflow: hidden; }
 .ins .graph > * { flex: 1; min-height: 0; }
+.ins .graph > .gwrap { height: auto; margin-top: 0; border-top: 0; }
 `;
 
 /** A value that can be edited as text: what JSON can hold. */
@@ -144,7 +148,7 @@ function drawSlot(
     element('div', { class: 'ty' }, readType(value)),
     cell,
   );
-  const reads = element('div', { class: 'rd' }, readers.join(', '));
+  const reads = element('div', { class: 'rd', title: readers.join(', ') }, readers.join(', '));
   const canEdit = editable(value) && state.set !== undefined;
   const kinds: Record<string, string> = { string: 'str', number: 'num', boolean: 'bool' };
   const classes = ['value'];
@@ -227,13 +231,21 @@ function countOwn(scope: Scope): number {
   return count;
 }
 
-function hasOwnChildren(scope: Scope): boolean {
-  for (const child of scope.children ?? []) {
-    if (child.m === undefined) {
-      return true;
+function hasOwnChildren(group: Scope[]): boolean {
+  for (const scope of group) {
+    for (const child of scope.children ?? []) {
+      if (child.m === undefined) {
+        return true;
+      }
     }
   }
   return false;
+}
+
+/** The name of a block from the label of its scope: `body of #for (95:3)` is `#for`. */
+function readBlock(label: string | undefined): string {
+  const body = /^body of (#\w+)/.exec(label ?? '');
+  return body ? body[1]! : (label ?? 'scope');
 }
 
 /** The name of the control that has the focus inside the body, and the caret of a text field. */
@@ -300,67 +312,108 @@ async function drawInspect(ctx: DockContext, into: HTMLElement): Promise<void> {
   box.classList.add('ins');
   tree.append(element('label', { class: 'filter' }, search));
 
-  const rows: [HTMLElement, Scope][] = [];
-  function select(scope: Scope, focus?: boolean): void {
+  // A row is a component or a block. The scopes of one block (the items of a `#for`) share a row.
+  const rows: [HTMLElement, Scope[]][] = [];
+  function select(group: Scope[], focus?: boolean): void {
+    // A second click on a row with many scopes moves to the next one.
+    const at = group.indexOf(current);
+    const scope = group[at === -1 ? 0 : (at + 1) % group.length]!;
     shell.selectedScope = scope.id;
     shell.selected = findRootScope(scope).m;
     if (focus) {
-      work.focus = `row-${scope.id}`;
+      work.focus = `row-${group[0]!.id}`;
     }
     ctx.draw();
   }
-  function visit(scope: Scope, info: ComponentInfo | undefined, depth: number): void {
-    const isComponent = scope.m !== undefined;
-    const label = isComponent
-      ? (info?.name ?? scope.m!)
-      : `${info?.scopes[scope.k]?.label ?? 'scope'}${scope.h ? ' · hidden' : ''}`;
-    const nested = hasOwnChildren(scope);
-    const shut = work.closed.has(scope.id) && !trail.has(scope.id);
+  function visit(
+    group: Scope[],
+    info: ComponentInfo | undefined,
+    depth: number,
+    layout: ComponentInfo['scopes'][number] | undefined,
+  ): void {
+    const first = group[0]!;
+    const isComponent = first.m !== undefined;
+    const nested = hasOwnChildren(group);
+    let onTrail = false;
+    for (const scope of group) {
+      onTrail ||= trail.has(scope.id);
+    }
+    const shut = work.closed.has(first.id) && !onTrail;
     const chevron = element('span', { class: shut ? 'tw shut' : 'tw' });
     if (nested) {
       chevron.append(icon('close', 12));
       chevron.addEventListener('click', (event) => {
         event.stopPropagation();
-        if (work.closed.has(scope.id)) {
-          work.closed.delete(scope.id);
+        if (work.closed.has(first.id)) {
+          work.closed.delete(first.id);
         } else {
           // Folding selects the row, so the selection never hides inside it.
-          work.closed.add(scope.id);
-          shell.selectedScope = scope.id;
-          shell.selected = findRootScope(scope).m;
+          work.closed.add(first.id);
+          shell.selectedScope = first.id;
+          shell.selected = findRootScope(first).m;
         }
-        work.focus = `row-${scope.id}`;
+        work.focus = `row-${first.id}`;
         ctx.draw();
       });
     }
-    const meta = isComponent
-      ? `${countOwn(scope)} ${countOwn(scope) === 1 ? 'scope' : 'scopes'}`
-      : `#${scope.id}`;
+    let label: string;
+    let meta: string;
+    if (isComponent) {
+      label = info?.name ?? first.m!;
+      meta = `${countOwn(first)} ${countOwn(first) === 1 ? 'scope' : 'scopes'}`;
+    } else {
+      label = readBlock(layout?.label);
+      meta =
+        label === '#for'
+          ? `${group.length} ${group.length === 1 ? 'item' : 'items'}`
+          : `#${first.id}`;
+    }
+    const classes = ['tree-row'];
+    if (isComponent) {
+      classes.push('component');
+    } else if (first.h) {
+      classes.push('off');
+    }
     const button = element(
       'button',
       {
-        class: isComponent ? 'tree-row component' : 'tree-row',
-        'aria-current': String(scope === current),
-        'data-focus': `row-${scope.id}`,
+        class: classes.join(' '),
+        'aria-current': String(group.includes(current)),
+        'data-focus': `row-${first.id}`,
+        title: group.length > 1 ? 'Click again for the next scope of this block.' : label,
       },
       element('span', { class: 'ind', style: `width: ${depth * 14}px` }),
       chevron,
       element('span', { class: isComponent ? 'name' : 'blk' }, label),
-      element('span', { class: state.written.has(scope.id) ? 'heat on' : 'heat' }),
+      element('span', {
+        class: group.some((scope) => state.written.has(scope.id)) ? 'heat on' : 'heat',
+      }),
       element('span', { class: 'meta' }, meta),
     );
-    button.addEventListener('click', () => select(scope));
-    button.addEventListener('mouseenter', () => ctx.outline(scope.id));
+    button.addEventListener('click', () => select(group));
+    button.addEventListener('mouseenter', () => ctx.outline(first.id));
     button.addEventListener('mouseleave', () => ctx.outline());
-    rows.push([button, scope]);
+    rows.push([button, group]);
     tree.append(button);
     if (shut) {
       return;
     }
-    for (const child of scope.children ?? []) {
-      if (child.m === undefined) {
-        visit(child, info, depth + 1);
+    // The blocks inside, grouped by their place in the component, in the order they first appear.
+    const blocks = new Map<number, Scope[]>();
+    for (const scope of group) {
+      for (const child of scope.children ?? []) {
+        if (child.m === undefined) {
+          const same = blocks.get(child.k);
+          if (same) {
+            same.push(child);
+          } else {
+            blocks.set(child.k, [child]);
+          }
+        }
       }
+    }
+    for (const [k, inside] of blocks) {
+      visit(inside, info, depth + 1, info?.scopes[k]);
     }
   }
   const needle = shell.filter.trim().toLowerCase();
@@ -379,7 +432,7 @@ async function drawInspect(ctx: DockContext, into: HTMLElement): Promise<void> {
         continue;
       }
     }
-    visit(scope, info, 0);
+    visit([scope], info, 0, undefined);
   }
   // The arrow keys move the selection through the rows that show, and the side arrows fold.
   tree.addEventListener('keydown', (event) => {
@@ -398,6 +451,7 @@ async function drawInspect(ctx: DockContext, into: HTMLElement): Promise<void> {
       return;
     }
     const focused = rows[at]![1];
+    const firstId = focused[0]!.id;
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       const next = rows[at + (event.key === 'ArrowDown' ? 1 : -1)];
       if (next) {
@@ -406,14 +460,14 @@ async function drawInspect(ctx: DockContext, into: HTMLElement): Promise<void> {
       }
     } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       const shutNow = event.key === 'ArrowLeft';
-      if (hasOwnChildren(focused) && work.closed.has(focused.id) !== shutNow) {
+      if (hasOwnChildren(focused) && work.closed.has(firstId) !== shutNow) {
         event.preventDefault();
         if (shutNow) {
-          work.closed.add(focused.id);
+          work.closed.add(firstId);
         } else {
-          work.closed.delete(focused.id);
+          work.closed.delete(firstId);
         }
-        work.focus = `row-${focused.id}`;
+        work.focus = `row-${firstId}`;
         ctx.draw();
       }
     }
@@ -426,7 +480,7 @@ async function drawInspect(ctx: DockContext, into: HTMLElement): Promise<void> {
   if (graphing) {
     detail.classList.add('gmode');
   }
-  const views = element('span', { class: 'seg', role: 'group', 'aria-label': 'View' });
+  const views = element('span', { class: 'views', role: 'group', 'aria-label': 'View' });
   for (const mode of ['values', 'graph'] as const) {
     const button = element(
       'button',
@@ -448,6 +502,7 @@ async function drawInspect(ctx: DockContext, into: HTMLElement): Promise<void> {
     'div',
     { class: 'tags' },
     element('span', { class: 'tag' }, `scope ${current.id}`),
+    current === component ? '' : element('span', { class: 'tag' }, readBlock(plan?.label)),
     element(
       'span',
       { class: 'tag' },
@@ -459,12 +514,7 @@ async function drawInspect(ctx: DockContext, into: HTMLElement): Promise<void> {
     element(
       'div',
       { class: 'title' },
-      element(
-        'h3',
-        {},
-        info?.name ?? component.m ?? '',
-        element('span', { class: 'sub' }, ` · ${plan?.label ?? 'scope'}`),
-      ),
+      element('h3', { title: info?.name ?? component.m ?? '' }, info?.name ?? component.m ?? ''),
       element('span', { class: 'path' }, source(info)),
       views,
     ),

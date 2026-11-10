@@ -177,7 +177,7 @@ describe('the Graph view', () => {
     await expect.poll(() => shadow.querySelectorAll('svg g.node').length).toBe(5);
 
     // Arrowheads on every edge, the kind in the tooltip, and no legend or column headings.
-    const edges = [...shadow.querySelectorAll('svg path.edge')].toSorted(
+    const edges = [...shadow.querySelectorAll('svg path.gedge')].toSorted(
       (a, b) => Number(a.getAttribute('data-edge')) - Number(b.getAttribute('data-edge')),
     );
     expect(edges.length).toBe(5);
@@ -207,7 +207,7 @@ describe('the Graph view', () => {
     expect(side.textContent).toContain('Read by');
     expect(side.textContent).toContain('left');
     // `other -> save` is not on a path through `done`.
-    expect(shadow.querySelectorAll('svg path.edge.lit').length).toBe(3);
+    expect(shadow.querySelectorAll('svg path.gedge.lit').length).toBe(3);
 
     // A node that nothing reads has no Read by section: empty sections are hidden.
     nodeAt(4).dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -309,7 +309,7 @@ describe('the Graph view', () => {
     const expiry = timeouts.findLast((delay) => delay > 1000)!;
     expect(expiry).toBeGreaterThan(1500);
     expect(expiry).toBeLessThanOrEqual(280 + 1500);
-    const edge = shadow.querySelector('svg path.edge.hot-edge')!;
+    const edge = shadow.querySelector('svg path.gedge.hot-edge')!;
     expect(edge.getAttribute('style')).toContain('animation-delay');
 
     // Enter on a node selects it and keeps the focus on it.

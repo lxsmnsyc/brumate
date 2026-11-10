@@ -250,13 +250,13 @@ const GRAPH_STYLE = `
 .gwrap .node .meta.bool { fill: var(--purple); }
 .gwrap .node.selected rect.box { fill: #ee7a3e14; stroke: #ee7a3e80; }
 .gwrap .node.hot rect.box { animation: graph-mark 0.2s both; }
-.gwrap path.edge.hot-edge { animation: graph-mark-edge 0.2s both; }
+.gwrap path.gedge.hot-edge { animation: graph-mark-edge 0.2s both; }
 @keyframes graph-mark { to { fill: #ffd16624; stroke: #ffd166; } }
 @keyframes graph-mark-edge { to { stroke: #ffd166; stroke-width: 1.6; } }
 .gwrap .node.faded { opacity: 0.35; }
-.gwrap path.edge { fill: none; stroke: #4a464f; stroke-width: 1.2; transition: stroke 0.2s, opacity 0.2s; }
-.gwrap path.edge.lit { stroke: var(--accent); stroke-width: 1.6; }
-.gwrap path.edge.faded { opacity: 0.25; }
+.gwrap path.gedge { fill: none; stroke: #4a464f; stroke-width: 1.2; transition: stroke 0.2s, opacity 0.2s; }
+.gwrap path.gedge.lit { stroke: var(--accent); stroke-width: 1.6; }
+.gwrap path.gedge.faded { opacity: 0.25; }
 .gtools { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 2px; padding: 3px; border-radius: 9px; background: var(--bg); box-shadow: 0 0 0 1px #36333a, 0 8px 20px #0007; }
 .gtools button { width: 26px; height: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; }
 .graph-side { position: absolute; top: 10px; right: 10px; bottom: 10px; width: 250px; overflow: auto; padding: 14px 16px; border: 0; border-radius: 10px; background: var(--bg); box-shadow: 0 0 0 1px #36333a, 0 12px 32px #0009; cursor: default; }
@@ -472,7 +472,7 @@ function drawNodes(
   const plain: SVGElement[] = [];
   const front: SVGElement[] = [];
   for (const [index, [from, to]] of edges.entries()) {
-    const classes = ['edge'];
+    const classes = ['gedge'];
     let style = '';
     let pile = plain;
     if (hot.has(from) && hot.has(to)) {

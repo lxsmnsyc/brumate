@@ -456,16 +456,13 @@ function drawCloseIcon(): SVGElement {
   return node;
 }
 
-/** The detail pane: the module of the call detail, or what to do to get one. */
-function drawDetail(ctx: DockContext, work: ActivityWork, into: HTMLElement): void {
-  const entry = work.selected;
-  if (!entry) {
-    work.detail = undefined;
-    into.replaceChildren(
-      element('div', { class: 'empty' }, 'Select a server call to see what it sent and got back.'),
-    );
-    return;
-  }
+/** The detail pane: the module of the call detail for the selected call. */
+function drawDetail(
+  ctx: DockContext,
+  work: ActivityWork,
+  entry: DevtoolsEntry,
+  into: HTMLElement,
+): void {
   const close = element('button', { class: 'act-close', 'aria-label': 'Close' }, drawCloseIcon());
   close.title = 'Close';
   close.addEventListener('click', () => {
@@ -486,11 +483,11 @@ function drawDetail(ctx: DockContext, work: ActivityWork, into: HTMLElement): vo
 
 const ACTIVITY_STYLE = `
 .act, .act-detail { --line2: #36333a; --pink: #ff9ecf; --sel: #ee7a3e14; --ring: #ee7a3e47; }
-.split.activity > .list { width: 58%; padding: 0; gap: 0; }
-.split.activity > .detail { position: relative; }
-.panel.right .calld { width: auto; flex: 1; }
+.split.activity > .list { padding: 0; gap: 0; }
+.split.activity > .detail { position: relative; padding: 0; }
+.act-detail .calld { width: auto; }
 .act { flex: 1; display: flex; flex-direction: column; min-width: 0; height: 100%; }
-.act .tools { display: flex; align-items: center; gap: 4px; height: 38px; padding: 0 10px; border-bottom: 1px solid var(--line); flex: none; }
+.act .tools { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-height: 38px; padding: 7px 10px; border-bottom: 1px solid var(--line); flex: none; }
 .act .grow { flex: 1; }
 .act .chip { height: 24px; padding: 0 9px; border-radius: 7px; background: none; color: var(--faint); font: inherit; font-size: 11.5px; display: inline-flex; gap: 6px; align-items: center; }
 .act .chip:hover { background: var(--hover); color: var(--dim); }
@@ -541,11 +538,21 @@ function drawActivity(ctx: DockContext, into: HTMLElement): Promise<void> {
     }
     nestRows(state, rows);
     const shown = rows.slice(-MAX_ROWS);
-    const { box, first, second } = ctx.split({ key: 'activity', min: [320, 280], start: 560 });
-    box.classList.add('activity');
-    second.classList.add('act-detail');
-    first.append(drawLogColumn(ctx, work, shown));
-    drawDetail(ctx, work, second);
+    const log = drawLogColumn(ctx, work, shown);
+    let box: HTMLElement;
+    if (work.selected) {
+      // A selected call opens its detail beside the log.
+      const columns = ctx.split({ key: 'activity', min: [320, 280], start: 560 });
+      box = columns.box;
+      box.classList.add('activity');
+      columns.second.classList.add('act-detail');
+      columns.first.append(log);
+      drawDetail(ctx, work, work.selected, columns.second);
+    } else {
+      // Without a call the log takes the whole width.
+      work.detail = undefined;
+      box = element('div', { class: 'split activity solo' }, log);
+    }
     // The styles go in the shadow root once, so they are not part of the text of the body.
     if (!ctx.root.querySelector('style[data-activity]')) {
       ctx.root.append(element('style', { 'data-activity': '' }, ACTIVITY_STYLE));

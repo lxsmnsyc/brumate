@@ -121,21 +121,22 @@ describe('the Activity workspace', () => {
     expect(call.textContent).toContain('Cart save()');
     expect(call.textContent).toContain('200');
     expect(call.textContent).toMatch(/\d+ ms/);
-    // With no call selected, the detail pane shows its empty state.
-    expect(shadow.querySelector('.split.activity > .detail')!.textContent).toContain(
-      'Select a server call',
-    );
+    // With no call selected, the log has the whole width: there is no detail pane and no handle.
+    expect(shadow.querySelector('.split.activity > .detail')).toBeNull();
+    expect(shadow.querySelector('.split.activity > .handle')).toBeNull();
+    expect(shadow.querySelector('.split.activity > .act')).not.toBeNull();
+    expect(shadow.textContent).not.toContain('Select a server call');
     call.click();
     await expect
       .poll(() => shadow.querySelector('.split.activity > .detail .call-detail'))
       .not.toBeNull();
+    // The log is the first column and the detail sits beside it.
+    expect(shadow.querySelector('.split.activity > .list > .act')).not.toBeNull();
     expect(shadow.querySelector('.ent.call')!.getAttribute('aria-current')).toBe('true');
     // The same row, or the close button, closes it.
     shadow.querySelector<HTMLElement>('.act-close')!.click();
     await expect.poll(() => shadow.querySelector('.call-detail')).toBeNull();
-    expect(shadow.querySelector('.split.activity > .detail')!.textContent).toContain(
-      'Select a server call',
-    );
+    expect(shadow.querySelector('.split.activity > .detail')).toBeNull();
     togglePanel(shadow, state);
   });
 
