@@ -1,7 +1,7 @@
 ---
 id: dock-layout-fixes
 title: Dock layout fixes from a browser check
-status: active
+status: done
 priority:
 type: fix
 story: dev-dock-redesign
@@ -17,10 +17,10 @@ spike: false
 hypothesis:
 verify: pnpm --filter brumate exec vitest run test/devtools
 exclusive: []
-fulfilled_by:
+fulfilled_by: "#509"
 gate: false
 added: 2026-11-10
-spent:
+spent: 175000
 owns:
   - packages/brumate/src/runtime/devtools-panel/style.ts
   - packages/brumate/src/runtime/devtools-panel/inspect.ts

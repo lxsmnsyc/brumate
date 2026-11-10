@@ -1,7 +1,7 @@
 ---
 id: dock-docs
 title: Docs and changeset for the new dock
-status: active
+status: done
 priority:
 type: feature
 story: dev-dock-redesign
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-09
-spent:
+spent: 73000
 owns:
   - website/docs/inspect.md
   - .changeset/*.md
