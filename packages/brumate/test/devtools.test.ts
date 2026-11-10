@@ -68,7 +68,9 @@ describe('devtools', () => {
     await expect.poll(body).toContain('body of #offscreen · hidden');
     expect(body()).toContain('body of #for');
     const values = (): string[] =>
-      [...shadow.querySelectorAll('.slot')].map((line) => line.textContent!);
+      [...shadow.querySelectorAll('.slot')].map(
+        (line) => line.textContent! + (line.querySelector('input') as HTMLInputElement).value,
+      );
     expect(values()).toEqual(['countnumber2']);
     // A scope of the tree shows its slots.
     const forRow = [...shadow.querySelectorAll('.tree-row')].find((line) =>
@@ -141,14 +143,15 @@ describe('devtools', () => {
     togglePanel(shadow, state);
     const body = (): HTMLElement => shadow.querySelector('.body')!;
     (shadow.querySelector('[data-tab="scopes"]') as HTMLElement).click();
-    await expect.poll(() => shadow.querySelector('.slot .value')?.textContent).toBe('1');
+    await expect
+      .poll(() => (shadow.querySelector('.slot input') as HTMLInputElement | null)?.value)
+      .toBe('1');
 
-    // A click on a value edits it, and Enter writes it as JSON.
-    (shadow.querySelector('.slot .value') as HTMLElement).click();
+    // A value is an input; a change writes it as JSON.
     await expect.poll(() => shadow.querySelector('.slot input')).not.toBeNull();
     const input = shadow.querySelector('.slot input') as HTMLInputElement;
     input.value = '41';
-    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    input.dispatchEvent(new Event('change'));
     expect(writes).toEqual([[0, 41]]);
 
     // A write marks its node and the nodes that read it.
@@ -198,31 +201,17 @@ describe('devtools', () => {
     togglePanel(shadow, state);
   });
 
-  it('shows a picked element with its place, its handlers and what it reads', async () => {
+  it('selects the row of the component that renders a picked element', async () => {
     document.body.innerHTML =
       '<div b-b="5:0" b-on="click:prevent=Counter_3#h1"><span class="inner">hi</span> <!--t5:1-->2<!--/t--></div>';
     document.querySelector('brumate-devtools')?.remove();
-    const opened: string[] = [];
-    globalThis.fetch = (async (input: RequestInfo | URL) => {
-      if (String(input).startsWith('/__open-in-editor')) {
-        opened.push(decodeURIComponent(String(input).split('file=')[1]!));
-        return new Response(null);
-      }
-      return Response.json({
+    globalThis.fetch = (async () =>
+      Response.json({
         name: 'Counter',
         file: 'src/Counter.brm',
-        path: '/app/src/Counter.brm',
-        url: '/src/Counter.brm',
         scopes: { 0: { label: 'component', slots: ['count', 'double'] } },
-        anchors: {
-          0: {
-            0: { label: '<div>', at: '9:1', reads: ['count'] },
-            1: { label: 'insert', at: '9:30', reads: ['double'] },
-          },
-        },
         text: '',
-      });
-    }) as typeof fetch;
+      })) as typeof fetch;
     const state = installDevtools('/inspect');
     const shadow = document.querySelector('brumate-devtools')!.shadowRoot!;
     const root: Scope = { id: 5, k: 0, m: 'Counter_3', s: [1, 2], children: new Set() };
@@ -234,18 +223,10 @@ describe('devtools', () => {
     )!;
     pick.click();
     document.querySelector('[b-b]')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    const body = (): string => shadow.querySelector('.body')!.textContent!;
-    await expect.poll(body).toContain('<div> · Counter');
-    expect(body()).toContain('src/Counter.brm:9:1');
-    expect(body()).toContain('count = 1');
-    expect(body()).toContain('click:prevent');
-    // The insert inside it, which has a marker instead of `b-b`.
-    expect(body()).toContain('double = 2');
-    const source = [...shadow.querySelectorAll('.body button')].find(
-      (button) => button.textContent === 'src/Counter.brm:9:1',
-    ) as HTMLElement;
-    source.click();
-    expect(opened).toEqual(['/app/src/Counter.brm:9:1']);
+    const selected = (): string =>
+      shadow.querySelector('.tree-row[aria-current="true"]')?.textContent ?? '';
+    await expect.poll(selected).toContain('Counter');
+    expect((shadow.querySelector('.slot input') as HTMLInputElement).value).toBe('1');
     togglePanel(shadow, state);
   });
 
