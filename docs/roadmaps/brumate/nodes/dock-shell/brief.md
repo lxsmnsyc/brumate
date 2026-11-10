@@ -1,7 +1,7 @@
 ---
 id: dock-shell
 title: Dock shell: grip, tab, header and workspace nav
-status: todo
+status: active
 priority:
 type: feature
 story: dev-dock-redesign

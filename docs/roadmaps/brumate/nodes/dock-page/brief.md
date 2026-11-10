@@ -1,7 +1,7 @@
 ---
 id: dock-page
 title: Page workspace
-status: todo
+status: active
 priority:
 type: feature
 story: dev-dock-redesign
