@@ -1,7 +1,7 @@
 ---
 id: dock-issues
 title: Issues workspace
-status: todo
+status: active
 priority:
 type: feature
 story: dev-dock-redesign

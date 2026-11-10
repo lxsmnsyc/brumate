@@ -1,7 +1,7 @@
 ---
 id: dock-inspect
 title: Inspect workspace: component tree and detail
-status: todo
+status: active
 priority:
 type: feature
 story: dev-dock-redesign
