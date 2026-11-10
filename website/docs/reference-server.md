@@ -230,7 +230,7 @@ See [Testing](./testing.md).
 
 ## `brumate/devtools`
 
-`installDevtools(endpoint = '/__brumate/inspect')` adds the devtools button to a page. The dev server calls it. See [Inspect and devtools](./inspect.md#devtools).
+`installDevtools(endpoint = '/__brumate/inspect')` adds the devtools grip to a page. The dev server calls it. See [Inspect and devtools](./inspect.md#devtools).
 
 ## `brumate/hot`
 

@@ -5,6 +5,7 @@
 import type { NavigationReport } from './navigate.ts';
 import type { DevtoolsHooks, Scope } from './client.ts';
 import type * as Panel from './devtools-panel.ts';
+import { installFlash } from './devtools-flash.ts';
 import type { ScopeId } from './shared.ts';
 
 // The same key as the core's, without importing the core.
@@ -19,6 +20,8 @@ export interface DevtoolsEntry {
   scope?: ScopeId;
   /** For a write: the component, the scope in the compiled component, and the slot. */
   write?: { component: string; k: number; slot: number };
+  /** For a call: its timing and record, which the call detail of the dock shows. */
+  call?: CallTiming;
 }
 
 /** What the plugin tells the devtools about the dev server. */
@@ -65,6 +68,51 @@ export interface CallTiming {
   status?: number | 'redirect' | 'failed';
   /** How long the function took on the server, from the `Server-Timing` of the dev server. */
   server?: number;
+  /** The arguments, the result and what ran on the server. It arrives after the answer. */
+  record?: CallRecord;
+  /** What was sent, so the dock can run the call again and write it as a `fetch`. Dev only. */
+  request?: {
+    url: string;
+    /** Only `content-type` and the `x-brumate-` headers, never cookies. */
+    headers: Record<string, string>;
+    body?: string | FormData;
+  };
+}
+
+/**
+ * What a server call needs for its detail, for the dock. The browser decodes the arguments and the
+ * result, and the dev server sends `server` and the stack in the `x-brumate-dev` header, so a
+ * production build has none of them. Values are cut at a length, and no cookies or headers are in it.
+ */
+export interface CallRecord {
+  name: string;
+  /** The decoded arguments, cut. */
+  args: unknown[];
+  /** The decoded result, cut. Absent for an error or a redirect. */
+  result?: unknown;
+  /** The error that the server function threw, with the real message and the stack of the server. */
+  error?: { message: string; stack?: string };
+  /** Milliseconds: `module` before the request left, `network` there and back, `server` in the function, `decode` reading the answer. */
+  timing: { module: number; network: number; server: number; decode: number };
+  /** What ran on the server. Absent when the answer did not come from the dev server. */
+  server?: ServerRecord;
+}
+
+/** What ran on the server during a call. */
+export interface ServerRecord {
+  /** The server functions whose memos the answer asked to load again (`refresh`). */
+  reads: string[];
+  /** The IDs of the server functions that the function called. */
+  calls: string[];
+  /** The `console.*` output of the call, in order. */
+  logs: { level: string; text: string }[];
+  /** True when logs were left out to fit the header. */
+  truncated?: boolean;
+}
+
+/** The content of the `x-brumate-dev` header of the dev server. */
+export interface DevAnswer extends ServerRecord {
+  error?: { message: string; stack?: string };
 }
 
 /** A batch of updates that a write ran, with its effects. */
@@ -391,130 +439,6 @@ function panelModule(): Promise<typeof Panel> {
   return import('./devtools-panel.ts');
 }
 
-/** Where the choice to outline changed elements is kept. */
-const FLASH_KEY = 'brumate:devtools:flash';
-/** How long an outline shows. */
-const FLASH_MS = 700;
-/** The most outlines that one frame draws, so a big change does not stall the page. */
-const MAX_FLASHES = 200;
-
-/** The class of an outline, by how many times the element changed in the last second. */
-function heatClass(count: number): string {
-  if (count >= 5) {
-    return 'hot';
-  }
-  return count >= 2 ? 'warm' : '';
-}
-
-/**
- * Outlines the elements that change, as an update writes them: green for an
- * element that changes now and then, yellow and red for one that changes
- * often. A MutationObserver sees every change of the page, so it needs no
- * hook of the core. The outlines are drawn in the shadow root, so the page
- * itself does not change.
- */
-function installFlash(state: DevtoolsState, root: ShadowRoot, host: Element): void {
-  const layer = document.createElement('div');
-  layer.className = 'flashes';
-  root.append(layer);
-  // How many times each element changed lately, for its colour.
-  const heat = new WeakMap<Element, { count: number; time: number }>();
-  const pending = new Set<Element>();
-  let frame = 0;
-  function draw(): void {
-    frame = 0;
-    let drawn = 0;
-    for (const target of pending) {
-      if (drawn >= MAX_FLASHES) {
-        break;
-      }
-      const rect = target.getBoundingClientRect();
-      if (rect.width === 0 && rect.height === 0) {
-        continue;
-      }
-      const now = performance.now();
-      const last = heat.get(target);
-      const count = last && now - last.time < 1000 ? last.count + 1 : 1;
-      heat.set(target, { count, time: now });
-      const box = document.createElement('div');
-      box.className = `flash ${heatClass(count)}`;
-      box.style.cssText = `left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px`;
-      layer.append(box);
-      setTimeout(() => box.remove(), FLASH_MS);
-      drawn++;
-    }
-    pending.clear();
-  }
-  const observer = new MutationObserver((records) => {
-    for (const record of records) {
-      let target: Node | null = record.target;
-      if (record.type === 'childList') {
-        // The elements that came in, or else the element that lost some.
-        let added = 0;
-        for (const node of record.addedNodes) {
-          if (node.nodeType === 1) {
-            pending.add(node as Element);
-            added++;
-          }
-        }
-        if (added > 0) {
-          continue;
-        }
-      }
-      if (target.nodeType !== 1) {
-        target = target.parentElement;
-      }
-      if (
-        target &&
-        target !== host &&
-        target !== document.documentElement &&
-        target !== document.body
-      ) {
-        pending.add(target as Element);
-      }
-    }
-    for (const target of pending) {
-      // The devtools change their own markup, and the host carries their styles.
-      if (target === host || host.contains(target)) {
-        pending.delete(target);
-      }
-    }
-    if (pending.size > 0 && frame === 0) {
-      frame = requestAnimationFrame(draw);
-    }
-  });
-  state.setFlash = (on) => {
-    state.flash = on;
-    if (on) {
-      observer.observe(document.documentElement, {
-        subtree: true,
-        childList: true,
-        attributes: true,
-        characterData: true,
-      });
-    } else {
-      observer.disconnect();
-      pending.clear();
-      layer.replaceChildren();
-    }
-    try {
-      localStorage.setItem(FLASH_KEY, on ? '1' : '0');
-    } catch {
-      // Storage can be off.
-    }
-    state.changed?.();
-  };
-  let saved = false;
-  try {
-    saved = localStorage.getItem(FLASH_KEY) === '1';
-  } catch {
-    // Storage can be off.
-  }
-  if (saved) {
-    state.setFlash(true);
-  }
-}
-
 /** True for an error of code that is not of the page, such as of a browser extension. */
 function foreign(stack: string | undefined, file = ''): boolean {
   return (
@@ -719,6 +643,18 @@ export function installDevtools(
     const name = decodeURIComponent(url.pathname.slice(rpc.length + 1));
     const started = performance.now();
     const call: CallTiming = { name, start: started };
+    const headers: Record<string, string> = {};
+    for (const [header, value] of new Headers(init?.headers)) {
+      if (header === 'content-type' || header.startsWith('x-brumate-')) {
+        headers[header] = value;
+      }
+    }
+    const body = init?.body;
+    call.request = {
+      url: url.pathname + url.search,
+      headers,
+      ...(typeof body === 'string' || body instanceof FormData ? { body } : {}),
+    };
     owner(started)?.calls.push(call);
     try {
       const response = await original(input, init);
@@ -730,10 +666,30 @@ export function installDevtools(
       if (server) {
         call.server = Number(server[1]);
       }
+      // The record fills in once the arguments and the result are decoded. It reads a clone.
+      const arrived = call.end;
+      const copy = response.clone();
+      void import('./devtools-calls.ts')
+        .then(({ readCall }) =>
+          readCall({
+            name,
+            init,
+            response: copy,
+            started,
+            arrived,
+            module: Math.max(0, started - (owner(started)?.ready ?? started)),
+          }),
+        )
+        .then((record) => {
+          call.record = record;
+          state.changed?.();
+        })
+        .catch(() => {});
       state.changed?.();
       add({
         kind: 'call',
         text: `${name}: ${redirect ? `redirect to ${redirect}` : response.status} in ${took} ms`,
+        call,
       });
       return response;
     } catch (error) {
@@ -742,6 +698,7 @@ export function installDevtools(
       add({
         kind: 'call',
         text: `${name}: failed, ${error instanceof Error ? error.message : String(error)}`,
+        call,
       });
       throw error;
     }
@@ -801,26 +758,19 @@ export function installDevtools(
   const root = host.attachShadow({ mode: 'open' });
   const style = document.createElement('style');
   style.textContent = `
-.open { position: fixed; left: 50%; bottom: 0; z-index: 2147483647; transform: translateX(-50%); display: flex; justify-content: center; padding: 8px 16px 0; border: 0; background: none; color: #ece8e4; font: 600 12px/1 system-ui, -apple-system, sans-serif; cursor: pointer; touch-action: none; outline: none; }
+.open { position: fixed; left: 50%; bottom: 0; z-index: 2147483647; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; height: 6px; max-width: 44px; padding: 0 10px; overflow: hidden; border: 0; border-radius: 7px 7px 0 0; background: #3a373d; color: #ece8e4; font: 500 12px/1 system-ui, -apple-system, sans-serif; white-space: nowrap; cursor: pointer; touch-action: none; outline: none; transition: height 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), max-width 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.2s; }
 .open[hidden] { display: none; }
-.grip { width: 40px; height: 5px; border-radius: 4px 4px 0 0; background: rgb(25 24 26 / 0.88); box-shadow: 0 0 0 1px rgb(255 255 255 / 0.3); transition: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1), width 150ms cubic-bezier(0.4, 0, 0.2, 1); }
-.open[data-errors] .grip { width: 56px; background: #e5484d; }
-.content { position: absolute; left: 50%; bottom: 0; transform: translate(-50%, 100%); display: flex; align-items: center; gap: 8px; padding: 5px 8px 5px 10px; white-space: nowrap; background: #222023; border: 1px solid #2f2c31; border-bottom: 0; border-radius: 10px 10px 0 0; box-shadow: 0 -4px 16px rgb(0 0 0 / 0.3); opacity: 0; pointer-events: none; transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1), opacity 150ms cubic-bezier(0.4, 0, 0.2, 1); }
-.open:hover .content, .open:focus-visible .content, .open:active .content { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
-.open:hover .grip, .open:focus-visible .grip, .open:active .grip { opacity: 0; }
-.open:focus-visible .content { border-color: #ee7a3e; }
-.mark { display: inline-flex; width: 16px; height: 16px; }
-.version { padding: 1px 8px; border-radius: 999px; background: rgb(238 122 62 / 0.16); color: #ffb48a; font: 600 12px/20px ui-monospace, SFMono-Regular, Menlo, monospace; }
-.chevron { width: 12px; height: 12px; color: #a39a92; }
-.count { min-width: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 999px; background: #e5484d; color: #fff; font: 600 11px/18px system-ui, sans-serif; text-align: center; }
+.open > * { opacity: 0; transition: opacity 0.12s; }
+.open[data-errors] { background: #c94a4a; max-width: 64px; }
+.open:hover, .open:focus-visible { height: 30px; max-width: 320px; background: #1d1c1f; box-shadow: 0 0 0 1px #36333a; }
+.open[data-errors]:hover, .open[data-errors]:focus-visible { box-shadow: 0 0 0 1px #ff6b6b66; }
+.open:hover > *, .open:focus-visible > * { opacity: 1; transition-delay: 0.08s; }
+.mark { display: inline-flex; width: 16px; height: 16px; flex: none; }
+.name { font-weight: 600; }
+.version { color: #a39a92; font: 11px ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace; }
+.count { padding: 0 6px; border-radius: 999px; background: #ff6b6b26; color: #ff6b6b; font: 600 10.5px/17px ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace; }
 .count:empty { display: none; }
-.flashes { position: fixed; inset: 0; pointer-events: none; z-index: 2147483646; }
-.flash { position: fixed; box-sizing: border-box; border: 2px solid #7fd99a; border-radius: 3px; background: rgb(127 217 154 / 0.08); animation: flash 700ms ease-out forwards; }
-.flash.warm { border-color: #ffd166; background: rgb(255 209 102 / 0.1); }
-.flash.hot { border-color: #ff7a7a; background: rgb(255 122 122 / 0.12); }
-@keyframes flash { from { opacity: 1; } to { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .flash { animation: none; } }
-@media (prefers-reduced-motion: reduce) { .grip, .content { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .open, .open > * { transition: none; } }
 `;
   // The closed panel: a grip on the bottom edge that grows into a pull tab on hover or focus, so
   // it covers almost none of the page. A click, or a drag up, opens the panel.
@@ -828,9 +778,9 @@ export function installDevtools(
   button.type = 'button';
   button.className = 'open';
   button.title = 'brumate devtools (Alt+Shift+D)';
-  button.innerHTML = `<span class="grip"></span><span class="content"><span class="mark">${LOGO}</span><span class="version"></span><span class="count"></span><svg class="chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 7.5 6 4.5 9 7.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
+  button.innerHTML = `<span class="mark">${LOGO}</span><span class="name">brumate</span><span class="version"></span><span class="count"></span>`;
   // The version of brumate, next to its mark.
-  button.querySelector('.version')!.textContent = meta.version ? `v${meta.version}` : 'brumate';
+  button.querySelector('.version')!.textContent = meta.version ?? '';
   function label(): void {
     const errors = state.errors.length;
     button.setAttribute(
@@ -842,7 +792,10 @@ export function installDevtools(
   // The number of errors, in red on the tab, and a red grip, so an error shows while it is closed.
   const count = button.querySelector<HTMLElement>('.count')!;
   state.errorCount = (): void => {
-    count.textContent = state.errors.length > 0 ? String(state.errors.length) : '';
+    count.textContent =
+      state.errors.length > 0
+        ? `${state.errors.length} ${state.errors.length === 1 ? 'issue' : 'issues'}`
+        : '';
     button.toggleAttribute('data-errors', state.errors.length > 0);
     label();
   };
@@ -864,7 +817,7 @@ export function installDevtools(
         opened = true;
         dragged = true;
         void panelModule().then(({ openPanel }) => {
-          openPanel(root, state, 'overview');
+          openPanel(root, state);
           state.resize?.(next.clientY);
         });
         return;
