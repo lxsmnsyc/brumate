@@ -1,60 +1,56 @@
-// The panel of the devtools overlay. It reads the core through the hooks in
-// `devtools.ts`, and asks the dev server about each component. It docks at
-// the bottom of the page, and its height can be dragged.
+// The dock of the devtools overlay. It reads the core through the hooks in `devtools.ts`, and asks
+// the dev server about each component. It attaches to the bottom or the right edge of the page.
 //
-// The panel is the shell: the tab bar, the header, Pick and the draw loop. The tabs are drawn by
-// the workspaces in `devtools-panel/`:
+// This file is the entry: it opens and closes the dock, keeps its side and size, and holds Pick,
+// the keys and the draw loop. The chrome is in `devtools-panel/shell.ts`, the search in
+// `devtools-panel/search.ts`, and each workspace draws itself:
 //
-// - Inspect (`inspect.ts`): Components, Elements and Graph.
-// - Activity (`activity.ts`): Log, Timeline, Effects, Navigation and Server.
-// - Issues (`issues.ts`): Errors.
-// - Page (`page.ts`): Overview, Page state, Blocks and Report.
+// - Inspect (`inspect.ts`): the components, their values and their graph.
+// - Activity (`activity.ts`): the log, the timeline and the server calls.
+// - Issues (`issues.ts`): the errors.
+// - Page (`page.ts`): the page, its state and its blocks.
 
 import type { ScopeId } from './shared.ts';
-import { LOGO, findRootScope } from './devtools.ts';
+import { findRootScope } from './devtools.ts';
 import type { DevtoolsState } from './devtools.ts';
 import { activity } from './devtools-panel/activity.ts';
 import { drawCallDetail } from './devtools-panel/call-detail.ts';
-import { element, icon, iconButton, pill } from './devtools-panel/dom.ts';
-import { kilobytes, stateBytes } from './devtools-panel/format.ts';
+import { element, pill } from './devtools-panel/dom.ts';
 import { drawGraph } from './devtools-panel/graph.ts';
-import {
-  collectModules,
-  countBlocks,
-  drawReads,
-  findAnchor,
-  findScope,
-  roots,
-} from './devtools-panel/info.ts';
+import { drawReads, findAnchor, findScope } from './devtools-panel/info.ts';
 import { inspect } from './devtools-panel/inspect.ts';
 import { issues } from './devtools-panel/issues.ts';
 import { page } from './devtools-panel/page.ts';
+import { createSearch } from './devtools-panel/search.ts';
+import type { SearchItem } from './devtools-panel/search.ts';
+import {
+  LIMITS,
+  applySide,
+  createChrome,
+  drawChrome,
+  placeIndicator,
+  readPref,
+  writePref,
+} from './devtools-panel/shell.ts';
+import type { Side } from './devtools-panel/shell.ts';
 import { STYLE } from './devtools-panel/style.ts';
 import { createShell, splitPlain } from './devtools-panel/workspace.ts';
 import type { DockContext, Shell, Tab, Workspace } from './devtools-panel/workspace.ts';
 
 export { layoutGraph } from './devtools-panel/graph.ts';
 
-/** The workspaces, with the tabs that each holds. */
+/** The workspaces, in the order of the nav. */
 const WORKSPACES: Workspace[] = [inspect, activity, issues, page];
-/** The tabs of the tab bar, in order. */
-const TABS: [Tab, string][] = [
-  ['overview', 'Overview'],
-  ['errors', 'Errors'],
-  ['scopes', 'Components'],
-  ['elements', 'Elements'],
-  ['graph', 'Graph'],
-  ['log', 'Log'],
-  ['timeline', 'Timeline'],
-  ['state', 'Page state'],
-  ['effects', 'Effects'],
-  ['navigation', 'Navigation'],
-  ['server', 'Server'],
-  ['blocks', 'Blocks'],
-  ['report', 'Report'],
-];
-/** The height of the panel, kept between pages. */
-const HEIGHT_KEY = 'brumate:devtools:height';
+
+/** The workspace with an ID. */
+function findWorkspaceById(id: string | undefined): Workspace | undefined {
+  for (const workspace of WORKSPACES) {
+    if (workspace.id === id) {
+      return workspace;
+    }
+  }
+  return undefined;
+}
 
 /** The workspace that holds a tab. */
 function findWorkspace(tab: Tab): Workspace {
@@ -68,80 +64,69 @@ function findWorkspace(tab: Tab): Workspace {
 
 /** The state of the open panel, or nothing when it is closed. */
 let docked: Shell | undefined;
+/** What closes the open dock, or reopens it while it slides out. */
+let leave: { close(): void; reopen(): void } | undefined;
+/** True while the dock slides out. */
+let closing = false;
 
-/** Opens the panel on a tab, or switches to it when the panel is open. */
-export function openPanel(root: ShadowRoot, state: DevtoolsState, tab: string): void {
+/** Opens the dock on a tab, or switches to it when the dock is open. Without a tab, it opens on the last workspace. */
+export function openPanel(root: ShadowRoot, state: DevtoolsState, tab?: string): void {
   if (docked?.panel) {
-    docked.showTab?.(tab as Tab);
+    if (closing) {
+      leave?.reopen();
+    }
+    if (tab) {
+      docked.showTab?.(tab as Tab);
+    }
   } else {
-    togglePanel(root, state, tab as Tab);
+    togglePanel(root, state, tab as Tab | undefined);
   }
 }
 
-/** Opens the panel, or closes it when it is open. */
-export function togglePanel(
-  root: ShadowRoot,
-  state: DevtoolsState,
-  initial: Tab = 'overview',
-): void {
+/** The first tab of a workspace, which the nav opens it on. */
+function defaultTab(workspace: Workspace): Tab {
+  return Object.keys(workspace.tabs)[0] as Tab;
+}
+
+/** True on macOS, where Ctrl+K is not the key of the search. */
+function isMac(): boolean {
+  return /Mac|iPhone|iPad/.test(navigator.platform);
+}
+
+/** Keeps a size between its least and its greatest. */
+function clamp(size: number, min: number, max: number): number {
+  return Math.min(Math.max(size, min), max);
+}
+
+/** Opens the dock, or closes it when it is open. */
+export function togglePanel(root: ShadowRoot, state: DevtoolsState, initial?: Tab): void {
   const opener = root.querySelector<HTMLElement>('button.open');
   if (docked?.panel) {
-    // Pick has no button, nor the styles of its card, without the panel.
-    docked.endPick?.();
-    docked.endPick = undefined;
-    docked.panel.remove();
-    docked.panel = undefined;
-    docked.showTab = undefined;
-    docked = undefined;
-    state.changed = undefined;
-    document.documentElement.style.removeProperty('padding-bottom');
-    if (opener) {
-      opener.hidden = false;
+    // The dock slides out, and a second toggle while it does slides it back in.
+    if (closing) {
+      leave?.reopen();
+    } else {
+      leave?.close();
     }
-    state.resize = undefined;
-    state.resized = undefined;
     return;
   }
-  const shell = createShell(initial);
+  const remembered = findWorkspaceById(readPref('workspace')) ?? WORKSPACES[0]!;
+  const shell = createShell(initial ?? defaultTab(remembered));
+  const chrome = createChrome(state, WORKSPACES);
+  const { panel, body, pick } = chrome;
+  shell.panel = panel;
+  panel.prepend(element('style', {}, STYLE));
 
-  let height = 340;
-  try {
-    height = Number(localStorage.getItem(HEIGHT_KEY)) || height;
-  } catch {
-    // Storage can be off. The default height stays.
-  }
+  let side: Side = readPref('side') === 'right' ? 'right' : 'bottom';
+  let height = Number(readPref('height')) || 340;
+  let width = Number(readPref('width')) || 480;
   // The page of an error of the server has nothing else to show.
   const errorPage = document.getElementById('brumate-error') !== null;
   if (errorPage) {
+    side = 'bottom';
     height = window.innerHeight;
   }
 
-  const body = element('div', { class: 'body' });
-  const nav = element('div', { class: 'nav', role: 'tablist', 'aria-orientation': 'vertical' });
-  const badges = new Map<Tab, HTMLElement>();
-  for (const [name, label] of TABS) {
-    const badge = element('span', { class: 'badge' });
-    const button = element(
-      'button',
-      { class: 'tab', role: 'tab', 'data-tab': name },
-      icon(name === 'scopes' ? 'scopes' : name, 15),
-      element('span', { class: 'label' }, label),
-      badge,
-    );
-    badges.set(name, badge);
-    button.addEventListener('click', () => {
-      shell.tab = name;
-      ctx.draw();
-    });
-    nav.append(button);
-  }
-
-  const routeText = element('span', { class: 'route', title: 'The page' });
-  const stats = element('span', { class: 'stats' });
-  const pick = iconButton('pick', 'Pick', {
-    'aria-pressed': 'false',
-    title: 'Click an element of the page to see its scope, handlers and code',
-  });
   const ctx: DockContext = {
     root,
     state,
@@ -154,92 +139,277 @@ export function togglePanel(
     drawGraph: (scope, info) => drawGraph(ctx, scope, info),
     drawCallDetail: (entry) => drawCallDetail(ctx, entry),
   };
-  // Outlines the elements that change on the page, as updates write them.
-  const flash = iconButton('flash', 'Updates', {
-    'aria-pressed': String(state.flash),
-    title: 'Outline the elements that change: green now and then, red often',
-  });
-  flash.addEventListener('click', () => {
-    state.setFlash?.(!state.flash);
-    flash.setAttribute('aria-pressed', String(state.flash));
-  });
-  const close = iconButton('close', 'Close the devtools (Alt+Shift+D)', {}, true);
-  close.addEventListener('click', () => togglePanel(root, state));
-  const versions: HTMLElement[] = [
-    element(
-      'span',
-      { class: 'chip accent', title: 'The version of brumate' },
-      `v${state.meta.version ?? '?'}`,
-    ),
-  ];
-  if (state.meta.vite) {
-    versions.push(
-      element('span', { class: 'chip', title: 'The version of Vite' }, `Vite ${state.meta.vite}`),
-    );
-  }
-  const logo = element('i');
-  logo.innerHTML = LOGO;
-  const resize = element('div', { class: 'resize', title: 'Drag to resize' });
-  shell.panel = element(
-    'div',
-    { class: 'panel', role: 'region', 'aria-label': 'brumate devtools' },
-    element('style', {}, STYLE),
-    resize,
-    element(
-      'div',
-      { class: 'top' },
-      element('span', { class: 'brand' }, logo, 'brumate'),
-      ...versions,
-      routeText,
-      stats,
-      element('span', { class: 'spacer' }),
-      flash,
-      pick,
-      close,
-    ),
-    element('div', { class: 'main' }, nav, body),
-  );
-  function applyHeight(): void {
-    shell.panel!.style.height = `${height}px`;
+
+  // The page can scroll past the dock.
+  function applySize(): void {
+    panel.style.setProperty('--h', `${height}px`);
+    panel.style.setProperty('--w', `${width}px`);
     if (errorPage) {
-      shell.panel!.style.maxHeight = 'none';
+      panel.style.maxHeight = 'none';
     }
-    // The page can scroll past the panel.
-    document.documentElement.style.paddingBottom = `${height}px`;
+    document.documentElement.style.paddingBottom = side === 'bottom' ? `${height}px` : '';
+    document.documentElement.style.paddingRight = side === 'right' ? `${width}px` : '';
+  }
+  function keepSize(): void {
+    if (!errorPage) {
+      writePref('height', String(Math.round(height)));
+    }
+    writePref('width', String(Math.round(width)));
+  }
+  function moveEdge(clientX: number, clientY: number): void {
+    if (side === 'bottom') {
+      height = clamp(
+        window.innerHeight - clientY,
+        LIMITS.height.min,
+        window.innerHeight * LIMITS.height.share,
+      );
+    } else {
+      width = clamp(
+        window.innerWidth - clientX,
+        LIMITS.width.min,
+        window.innerWidth * LIMITS.width.share,
+      );
+    }
+    applySize();
   }
   docked = shell;
-  applyHeight();
-  root.append(shell.panel);
-  // The tab hides while the panel is open. Close, or Alt+Shift+D, closes it.
+  applySide(chrome, side);
+  applySize();
+  drawEdge();
+  // The dock slides in from its edge.
+  panel.classList.add('closed');
+  root.append(panel);
+  void panel.offsetHeight;
+  panel.classList.remove('closed');
+  // The grip hides while the dock is open. Close, Escape or Alt+Shift+D closes it.
   if (opener) {
     opener.hidden = true;
   }
+  // The grip of the closed dock drags the dock open under the pointer.
   state.resize = (clientY) => {
-    height = Math.min(Math.max(window.innerHeight - clientY, 160), window.innerHeight * 0.9);
-    applyHeight();
+    if (side === 'bottom') {
+      moveEdge(0, clientY);
+    }
   };
   state.resized = () => {
-    try {
-      localStorage.setItem(HEIGHT_KEY, String(Math.round(height)));
-    } catch {
-      // Storage can be off.
-    }
+    keepSize();
     ctx.draw();
   };
-  resize.addEventListener('pointerdown', (event) => {
+  // The listeners of a drag that is under way, so closing mid-drag leaves none.
+  let endDrag: (() => void) | undefined;
+  chrome.edge.addEventListener('pointerdown', (event) => {
     event.preventDefault();
-    // oxlint-disable-next-line unicorn/consistent-function-scoping -- It writes the height of this panel.
+    endDrag?.();
+    panel.classList.add('dragging');
+    // oxlint-disable-next-line unicorn/consistent-function-scoping -- It resizes this dock.
     function move(next: PointerEvent): void {
-      state.resize?.(next.clientY);
+      moveEdge(next.clientX, next.clientY);
     }
     function up(): void {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
+      endDrag?.();
       state.resized?.();
     }
+    endDrag = (): void => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      panel.classList.remove('dragging');
+      endDrag = undefined;
+    };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
   });
+  // The arrow keys move the edge, 16 pixels at a time, or 64 with Shift.
+  chrome.edge.addEventListener('keydown', (event) => {
+    const grow = side === 'bottom' ? 'ArrowUp' : 'ArrowLeft';
+    const shrink = side === 'bottom' ? 'ArrowDown' : 'ArrowRight';
+    if (event.key !== grow && event.key !== shrink) {
+      return;
+    }
+    event.preventDefault();
+    const step = (event.shiftKey ? 64 : 16) * (event.key === grow ? 1 : -1);
+    if (side === 'bottom') {
+      moveEdge(0, window.innerHeight - (height + step));
+    } else {
+      moveEdge(window.innerWidth - (width + step), 0);
+    }
+    drawEdge();
+    // Keeps the size and draws the workspaces again, as the end of a drag does.
+    state.resized?.();
+  });
+  function drawEdge(): void {
+    chrome.edge.setAttribute('aria-orientation', side === 'bottom' ? 'horizontal' : 'vertical');
+    chrome.edge.setAttribute(
+      'aria-valuenow',
+      String(Math.round(side === 'bottom' ? height : width)),
+    );
+  }
+  chrome.side.addEventListener('click', () => {
+    side = side === 'bottom' ? 'right' : 'bottom';
+    writePref('side', side);
+    applySide(chrome, side);
+    applySize();
+    drawEdge();
+    ctx.draw();
+  });
+  chrome.close.addEventListener('click', () => togglePanel(root, state));
+  chrome.updates.addEventListener('click', () => {
+    state.setFlash?.(!state.flash);
+    chrome.updates.setAttribute('aria-pressed', String(state.flash));
+  });
+  for (const [id, button] of chrome.tabs) {
+    button.addEventListener('click', () => {
+      if (findWorkspace(shell.tab).id !== id) {
+        select(id);
+      }
+    });
+  }
+  // The arrow keys move along the nav, as a tab list does.
+  chrome.tabs.get(WORKSPACES[0]!.id)!.parentElement!.addEventListener('keydown', (event) => {
+    const step = { ArrowRight: 1, ArrowLeft: -1 }[(event as KeyboardEvent).key];
+    if (!step) {
+      return;
+    }
+    event.preventDefault();
+    let at = 0;
+    for (const [index, item] of WORKSPACES.entries()) {
+      if (item === findWorkspace(shell.tab)) {
+        at = index;
+      }
+    }
+    const next = WORKSPACES[(at + step + WORKSPACES.length) % WORKSPACES.length]!;
+    select(next.id);
+    chrome.tabs.get(next.id)!.focus();
+  });
+  window.addEventListener('resize', placeNav);
+  function placeNav(): void {
+    placeIndicator(chrome, findWorkspace(shell.tab).id);
+  }
+
+  // Search (Cmd+K) lists the components, the issues and what the dock can do.
+  const search = createSearch(ctx, listActions);
+  chrome.search.addEventListener('click', () => search.open());
+  function listActions(): SearchItem[] {
+    const items: SearchItem[] = [
+      { group: 'Actions', label: 'Pick an element', hint: '', run: () => ctx.pick() },
+      {
+        group: 'Actions',
+        label: side === 'right' ? 'Dock to the bottom' : 'Dock to the right',
+        hint: '',
+        run: () => chrome.side.click(),
+      },
+      {
+        group: 'Actions',
+        label: state.flash ? 'Stop outlining updates' : 'Outline updates',
+        hint: '',
+        run: () => chrome.updates.click(),
+      },
+    ];
+    for (const item of WORKSPACES) {
+      items.push({
+        group: 'Actions',
+        label: `Open ${item.label}`,
+        hint: '',
+        run: () => select(item.id),
+      });
+    }
+    return items;
+  }
+  // Cmd+K opens the search and Escape closes the dock, unless Pick, the search, or a field
+  // that is being typed in, takes the key first.
+  function onKey(event: KeyboardEvent): void {
+    const target = event.composedPath()[0];
+    const typing =
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement ||
+      (target instanceof HTMLElement && target.isContentEditable);
+    if (event.key.toLowerCase() === 'k' && !event.altKey) {
+      // Cmd+K always. Ctrl+K is the search off macOS only, and not in a field of the page.
+      const ctrl = event.ctrlKey && !isMac() && !(typing && !root.contains(target as Node));
+      if (event.metaKey || ctrl) {
+        event.preventDefault();
+        search.open();
+        return;
+      }
+    }
+    if (event.key !== 'Escape' || event.defaultPrevented || search.isOpen() || typing) {
+      return;
+    }
+    if (closing) {
+      return;
+    }
+    togglePanel(root, state);
+  }
+  window.addEventListener('keydown', onKey);
+  const clock = setInterval(() => {
+    chrome.up.textContent = `${Math.round(performance.now() / 1000)} s`;
+  }, 1000);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  // The dock leaves for good: the window, the page and the hooks of the core are as before.
+  function finishClose(): void {
+    clearTimeout(timer);
+    panel.removeEventListener('transitionend', onSlid);
+    window.removeEventListener('keydown', onKey);
+    window.removeEventListener('resize', placeNav);
+    clearInterval(clock);
+    endDrag?.();
+    search.close();
+    // Pick may have been armed while the dock slid out.
+    shell.endPick?.();
+    shell.endPick = undefined;
+    panel.remove();
+    shell.panel = undefined;
+    shell.showTab = undefined;
+    docked = undefined;
+    leave = undefined;
+    closing = false;
+    state.changed = undefined;
+    document.documentElement.style.removeProperty('padding-bottom');
+    document.documentElement.style.removeProperty('padding-right');
+    state.resize = undefined;
+    state.resized = undefined;
+  }
+  function onSlid(event: TransitionEvent): void {
+    if (event.target === panel && event.propertyName === 'transform') {
+      finishClose();
+    }
+  }
+  leave = {
+    close(): void {
+      // Pick has no button, nor the styles of its card, without the dock.
+      shell.endPick?.();
+      search.close();
+      endDrag?.();
+      closing = true;
+      if (opener) {
+        opener.hidden = false;
+        // Focus goes back to the grip, so the keyboard picks up where it left.
+        opener.focus();
+      }
+      // Without a transition (reduced motion, or none) the dock leaves at once.
+      if (!(Number.parseFloat(getComputedStyle(panel).transitionDuration) > 0)) {
+        finishClose();
+        return;
+      }
+      panel.classList.add('closed');
+      panel.addEventListener('transitionend', onSlid);
+      timer = setTimeout(finishClose, 400);
+    },
+    reopen(): void {
+      closing = false;
+      clearTimeout(timer);
+      panel.removeEventListener('transitionend', onSlid);
+      panel.classList.remove('closed');
+      if (opener) {
+        // The grip hides, so focus on it moves to the open workspace in the nav.
+        const lost = root.activeElement === opener;
+        opener.hidden = true;
+        if (lost) {
+          chrome.tabs.get(findWorkspace(shell.tab).id)?.focus();
+        }
+      }
+    },
+  };
   // Without an event, the core has not loaded yet, and nothing knows the components of the page.
   if (!state.scopes) {
     document.dispatchEvent(new Event('brumate:core'));
@@ -265,7 +435,7 @@ export function togglePanel(
     }
   }
 
-  // Pick: the next click on the page shows its element in the Elements tab.
+  // Pick: the next click on the page selects the row of its component in Inspect.
   function onPick(event: MouseEvent): void {
     const clicked = event.target as Element | null;
     if (!clicked?.closest || event.composedPath().includes(shell.panel!)) {
@@ -361,7 +531,7 @@ export function togglePanel(
     } else {
       rows.push(element('div', { class: 'sub' }, 'Nothing in the browser updates this element.'));
     }
-    rows.push(element('div', { class: 'card-hint' }, 'Click to see it in Elements · Esc to stop'));
+    rows.push(element('div', { class: 'card-hint' }, 'Click to see it in Inspect · Esc to stop'));
     inspectCard.replaceChildren(...rows);
     // Below the element, or above it when there is no room, and inside the window.
     const cardHeight = inspectCard.offsetHeight;
@@ -374,6 +544,9 @@ export function togglePanel(
   }
   function onEscape(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
+      // The dock closes on Escape too, but not on the key that ends Pick, so the key stops here.
+      event.preventDefault();
+      event.stopPropagation();
       stopPicking();
     }
   }
@@ -402,53 +575,38 @@ export function togglePanel(
     window.addEventListener('keydown', onEscape, true);
   });
 
-  /** Opens a workspace. The target is a tab of the old tab bar. */
+  /** Opens a workspace. The target is a tab of the workspace, for the one that has several. */
   function select(id: Workspace['id'], target?: Tab): void {
     const workspace = WORKSPACES.find((item) => item.id === id)!;
-    shell.tab = target ?? (Object.keys(workspace.tabs)[0] as Tab);
+    shell.tab = target ?? defaultTab(workspace);
     draw();
   }
-  /** The header and the counts of the tabs. */
-  function drawChrome(): void {
-    for (const button of nav.querySelectorAll('.tab')) {
-      button.setAttribute(
-        'aria-selected',
-        String((button as HTMLElement).dataset.tab === shell.tab),
-      );
-    }
-    const list = roots(state);
-    routeText.textContent = location.pathname + location.search;
-    stats.textContent = [
-      `${collectModules(list).size} components`,
-      `${state.scopes?.size ?? 0} scopes`,
-      `state ${kilobytes(stateBytes())}`,
-    ].join(' · ');
-    const waiting = countBlocks(state.blocks.values(), 'waiting');
-    const counts: Partial<Record<Tab, [number, string?]>> = {
-      errors: [state.errors.length, 'Errors'],
-      scopes: [collectModules(list).size],
-      log: [state.log.length],
-      blocks: waiting > 0 ? [waiting, 'Blocks that wait for their trigger'] : [state.blocks.size],
-    };
-    for (const [name, badge] of badges) {
-      const [count = 0, warning] = counts[name] ?? [];
-      badge.textContent = count > 0 ? String(count) : '';
-      let kind = warning ? ' warn' : '';
-      if (name === 'errors') {
-        kind = ' error';
-      }
-      badge.className = `badge${kind}`;
-      badge.title = warning ?? '';
+  let shown: Workspace['id'] | undefined;
+  /** The header and the counts of the nav. */
+  function drawHeader(): void {
+    const current = findWorkspace(shell.tab).id;
+    drawChrome(chrome, state, current, shell.paused);
+    // The next open starts on the workspace that was last open.
+    if (current !== shown) {
+      shown = current;
+      writePref('workspace', current);
     }
   }
 
   let queued = false;
   function draw(): void {
-    drawChrome();
+    drawHeader();
     const drawing = shell.tab;
-    const drawn = findWorkspace(shell.tab).draw(ctx, body);
+    const drawn = findWorkspace(drawing).draw(ctx, body);
+    // Marks of writes show once, on the next draw of Inspect.
+    function settle(): void {
+      if (findWorkspace(shell.tab).id === 'inspect') {
+        state.written.clear();
+      }
+    }
     // Log and Blocks draw at once.
     if (!drawn) {
+      settle();
       return;
     }
     void drawn.then(() => {
@@ -458,14 +616,11 @@ export function togglePanel(
         draw();
         return;
       }
-      drawChrome();
-      // Marks of writes show once, on the next draw of the scopes.
-      if (shell.tab === 'scopes') {
-        state.written.clear();
-      }
+      drawHeader();
+      settle();
     });
   }
-  // Changes come in bursts, so the panel draws once per frame. It waits while a value is edited
+  // Changes come in bursts, so the dock draws once per frame. It waits while a value is edited
   // or a search is typed.
   state.changed = () => {
     const typing = root.activeElement?.matches?.('input[type="search"]');
