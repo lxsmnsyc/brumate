@@ -24,6 +24,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: for-leave
+    kind: hard
+    why: a must feature of the 0.8.0 cut (added 2026-11-10)
   - on: dev-dock-redesign
     kind: hard
     why: a must feature of the 0.8.0 cut
