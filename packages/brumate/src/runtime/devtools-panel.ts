@@ -34,7 +34,8 @@ import {
 } from './devtools-panel/shell.ts';
 import type { Side } from './devtools-panel/shell.ts';
 import { STYLE } from './devtools-panel/style.ts';
-import { createShell, splitPlain } from './devtools-panel/workspace.ts';
+import { createSplit } from './devtools-panel/split.ts';
+import { createShell } from './devtools-panel/workspace.ts';
 import type { DockContext, Shell, Tab, Workspace } from './devtools-panel/workspace.ts';
 
 export { layoutGraph } from './devtools-panel/graph.ts';
@@ -133,7 +134,7 @@ export function togglePanel(root: ShadowRoot, state: DevtoolsState, initial?: Ta
     shell,
     draw,
     select,
-    split: splitPlain,
+    split: createSplit(root),
     outline,
     pick: () => pick.click(),
     drawGraph: (scope, info) => drawGraph(ctx, scope, info),

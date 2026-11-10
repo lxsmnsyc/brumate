@@ -149,13 +149,6 @@ export function drawTabOf(
   return tabs[ctx.shell.tab]?.(ctx, into);
 }
 
-/** Two plain columns. The first is a list and the second its detail. */
-export function splitPlain(): Columns {
-  const first = element('div', { class: 'list' });
-  const second = element('div', { class: 'detail' });
-  return { box: element('div', { class: 'split' }, first, second), first, second };
-}
-
 /** A select of the components on the page, for Graph. */
 export function chooser(ctx: DockContext, current: string | undefined): HTMLElement {
   const { state, shell } = ctx;
