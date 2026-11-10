@@ -2,10 +2,10 @@
 id: for-leave
 title: "Leave animations for #for items"
 status: todo
-priority: later
+priority: must
 type: feature
 outline: true
-milestone: backlog
+milestone: 0.8.0
 target:
 from:
 size: M
