@@ -24,6 +24,15 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: render-memo-reads
+    kind: hard
+    why: a must of 0.8.0 (added 2026-11-10)
+  - on: seroval-1-8
+    kind: hard
+    why: a must of 0.8.0 (added 2026-11-10)
+  - on: skill-tasks
+    kind: hard
+    why: a must of 0.8.0 (added 2026-11-10)
   - on: for-leave
     kind: hard
     why: a must feature of the 0.8.0 cut (added 2026-11-10)

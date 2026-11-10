@@ -2,7 +2,7 @@
 id: skill-tasks
 title: Tasks that check what an agent writes with the skill
 status: todo
-priority: should
+priority: must
 type: chore
 outline: false
 milestone: 0.8.0
