@@ -8,7 +8,7 @@
 // - Inspect (`inspect.ts`): Components, Elements and Graph.
 // - Activity (`activity.ts`): Log, Timeline, Effects, Navigation and Server.
 // - Issues (`issues.ts`): Errors.
-// - Page (`page.ts`): Overview, Page state, Blocks and Report.
+// - Page (`page.ts`): Overview, Page state and Blocks.
 
 import type { ScopeId } from './shared.ts';
 import { LOGO, findRootScope } from './devtools.ts';
@@ -51,7 +51,6 @@ const TABS: [Tab, string][] = [
   ['navigation', 'Navigation'],
   ['server', 'Server'],
   ['blocks', 'Blocks'],
-  ['report', 'Report'],
 ];
 /** The height of the panel, kept between pages. */
 const HEIGHT_KEY = 'brumate:devtools:height';

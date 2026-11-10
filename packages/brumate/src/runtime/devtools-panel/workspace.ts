@@ -26,8 +26,7 @@ export type Tab =
   | 'effects'
   | 'navigation'
   | 'server'
-  | 'blocks'
-  | 'report';
+  | 'blocks';
 
 /** Draws one tab into an element. A tab that waits for the dev server returns a promise. */
 export type TabDraw = (ctx: DockContext, into: HTMLElement) => void | Promise<void>;
@@ -92,7 +91,7 @@ export interface Shell {
   /** The error and the place of its stack that the Errors tab shows. */
   selectedError: ErrorEntry | undefined;
   selectedFrame: number;
-  /** The ID of the component that Graph and Report show. */
+  /** The ID of the component that Graph shows. */
   selected: string | undefined;
   selectedScope: ScopeId | undefined;
   editing: { scope: ScopeId; slot: number } | undefined;
@@ -157,7 +156,7 @@ export function splitPlain(): Columns {
   return { box: element('div', { class: 'split' }, first, second), first, second };
 }
 
-/** A select of the components on the page, for Graph and Report. */
+/** A select of the components on the page, for Graph. */
 export function chooser(ctx: DockContext, current: string | undefined): HTMLElement {
   const { state, shell } = ctx;
   const select = element('select', { 'aria-label': 'Component' });
