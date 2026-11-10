@@ -1,7 +1,7 @@
 ---
 id: dock-call-detail
 title: Server call detail in Activity
-status: todo
+status: active
 priority:
 type: feature
 story: dev-dock-redesign

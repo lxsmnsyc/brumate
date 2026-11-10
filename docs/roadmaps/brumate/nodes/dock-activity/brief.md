@@ -1,7 +1,7 @@
 ---
 id: dock-activity
 title: Activity workspace: log, timeline and call list
-status: todo
+status: active
 priority:
 type: feature
 story: dev-dock-redesign
