@@ -1,8 +1,8 @@
 // The graph of a component: its layout and its drawing.
 
 import type { Scope } from '../client.ts';
-import { preview } from '../devtools.ts';
-import { element, iconButton, key, pill, svg } from './dom.ts';
+import { findRootScope, preview } from '../devtools.ts';
+import { element, iconButton, svg } from './dom.ts';
 import { clip } from './format.ts';
 import { componentInfo, place, roots } from './info.ts';
 import type { ComponentInfo } from './info.ts';
@@ -12,46 +12,113 @@ import type { DockContext } from './workspace.ts';
 /** How long a write marks the nodes of the graph. */
 export const HOT_MS = 1500;
 
-/** The colour of a node in the graph. Other kinds are blue when they hold a value. */
-export function nodeColor(kind: string, slot: number | undefined): string {
+/** How long a mark waits at each node it passes, so a write shows its order. */
+const STEP_MS = 140;
+
+/** The height of a node, the distance between rows, the space between columns and the margin. */
+const NODE_HEIGHT = 42;
+const ROW = 54;
+const GAP = 56;
+const PAD = 24;
+
+/** The colour of a node in the graph: signals and props peach, memos purple, effects green, markup blue. */
+export function pickNodeColor(kind: string, slot: number | undefined): string {
   if (kind === 'memo') {
-    return 'purple';
+    return 'var(--purple)';
   }
   if (kind === 'effect') {
-    return 'green';
+    return 'var(--green)';
   }
-  return slot === undefined ? '' : 'blue';
+  return slot === undefined ? 'var(--blue)' : '#ffc28f';
+}
+
+/** What the tooltip of a node calls its kind. */
+function nameKind(kind: string): string {
+  if (kind === 'memo' || kind === 'effect') {
+    return `$${kind}`;
+  }
+  return kind === 'binding' ? 'markup' : kind;
+}
+
+interface Spot {
+  x: number;
+  y: number;
+  width: number;
 }
 
 /**
- * Places the nodes of a graph in columns, left to right, by the longest
- * path from a value that nothing feeds. Within a column, nodes are ordered
- * by the average place of the nodes they connect to, a few times in each
- * direction, so edges cross less. Each column is as wide as its widest node.
+ * Places the nodes of a graph in columns, left to right. A node's column is
+ * its depth, the longest path from a value that nothing feeds, so a memo of
+ * a memo sits one column further. An edge that skips columns passes through
+ * a placeholder in each column it crosses, so no line goes through a node.
+ * Within a column, rows are ordered by the average place of the neighbours,
+ * a few times in each direction, so edges cross less. Each column is as wide
+ * as its widest node and is centred against the tallest one.
+ *
+ * `routes` has, for each edge, the placeholders it passes through.
  */
-export function layoutGraph(
+export function arrangeGraph(
   nodes: unknown[],
   edges: [number, number][],
   getWidth: (index: number) => number,
-): { x: number; y: number; width: number }[] {
-  // Depth of each node: the longest path from a value that nothing feeds.
+): { position: Spot[]; routes: Spot[][] } {
+  const count = nodes.length;
+  // Depth of each node: the longest path from a value that nothing feeds, in topological order.
+  // A node in a cycle never reaches zero inputs, so it keeps the depth its other inputs gave it.
   const depth: number[] = [];
-  for (let index = 0; index < nodes.length; index++) {
+  const waiting: number[] = [];
+  const nextOf: number[][] = [];
+  for (let index = 0; index < count; index++) {
     depth.push(0);
+    waiting.push(0);
+    nextOf.push([]);
   }
-  for (let round = 0, changed = true; changed && round < nodes.length; round++) {
-    changed = false;
-    for (const [from, to] of edges) {
-      if (depth[from]! + 1 > depth[to]!) {
-        depth[to] = depth[from]! + 1;
-        changed = true;
+  for (const [from, to] of edges) {
+    nextOf[from]!.push(to);
+    waiting[to]!++;
+  }
+  const ready: number[] = [];
+  for (let index = 0; index < count; index++) {
+    if (waiting[index] === 0) {
+      ready.push(index);
+    }
+  }
+  for (let next = ready.pop(); next !== undefined; next = ready.pop()) {
+    for (const to of nextOf[next]!) {
+      depth[to] = Math.max(depth[to]!, depth[next]! + 1);
+      if (--waiting[to]! === 0) {
+        ready.push(to);
       }
     }
   }
-  // Group the nodes in columns by depth, and keep the columns that hold a node.
+  // A placeholder for each column that an edge crosses, shared by the edges of one source, so
+  // there are at most as many as nodes times columns. Items after `count` are placeholders.
+  const level = depth.slice();
+  const links: [number, number][] = [];
+  const through: number[][] = [];
+  const placeholders = new Map<number, number>();
+  for (const [from, to] of edges) {
+    const via: number[] = [];
+    let last = from;
+    for (let column = depth[from]! + 1; column < depth[to]!; column++) {
+      const key = from * (count + 1) + column;
+      let item = placeholders.get(key);
+      if (item === undefined) {
+        item = level.length;
+        level.push(column);
+        placeholders.set(key, item);
+        links.push([last, item]);
+      }
+      via.push(item);
+      last = item;
+    }
+    links.push([last, to]);
+    through.push(via);
+  }
+  // Group the items in columns by depth, and keep the columns that hold an item.
   const columns: number[][] = [];
-  for (let index = 0; index < nodes.length; index++) {
-    (columns[depth[index]!] ??= []).push(index);
+  for (let index = 0; index < level.length; index++) {
+    (columns[level[index]!] ??= []).push(index);
   }
   const filled: number[][] = [];
   for (const column of columns) {
@@ -61,17 +128,17 @@ export function layoutGraph(
   }
   const order = new Map<number, number>();
   for (const column of filled) {
-    for (const [index, node] of column.entries()) {
-      order.set(node, index);
+    for (const [index, item] of column.entries()) {
+      order.set(item, index);
     }
   }
   const before: number[][] = [];
   const after: number[][] = [];
-  for (let index = 0; index < nodes.length; index++) {
+  for (let index = 0; index < level.length; index++) {
     before.push([]);
     after.push([]);
   }
-  for (const [from, to] of edges) {
+  for (const [from, to] of links) {
     after[from]!.push(to);
     before[to]!.push(from);
   }
@@ -80,8 +147,8 @@ export function layoutGraph(
       return fallback;
     }
     let sum = 0;
-    for (const node of list) {
-      sum += order.get(node)!;
+    for (const item of list) {
+      sum += order.get(item)!;
     }
     return sum / list.length;
   }
@@ -91,40 +158,191 @@ export function layoutGraph(
     const sequence = forward ? filled.slice(1) : filled.slice(0, -1).toReversed();
     for (const column of sequence) {
       const weight = new Map<number, number>();
-      for (const node of column) {
-        weight.set(node, average(forward ? before[node]! : after[node]!, order.get(node)!));
+      for (const item of column) {
+        weight.set(item, average(forward ? before[item]! : after[item]!, order.get(item)!));
       }
       column.sort((a, b) => weight.get(a)! - weight.get(b)!);
-      for (const [index, node] of column.entries()) {
-        order.set(node, index);
+      for (const [index, item] of column.entries()) {
+        order.set(item, index);
       }
     }
   }
-  const ROW = 50;
-  const GAP = 72;
   let tallest = 1;
   for (const column of filled) {
     tallest = Math.max(tallest, column.length);
   }
-  const result: { x: number; y: number; width: number }[] = [];
-  let x = 16;
+  const spots: Spot[] = [];
+  let x = PAD;
   for (const column of filled) {
-    let width = -Infinity;
-    for (const node of column) {
-      width = Math.max(width, getWidth(node));
+    let width = 0;
+    for (const item of column) {
+      if (item < count) {
+        width = Math.max(width, getWidth(item));
+      }
     }
     // Each column is centred against the tallest one.
-    const top = 16 + ((tallest - column.length) * ROW) / 2;
-    for (const [index, node] of column.entries()) {
-      result[node] = { x, y: top + index * ROW, width };
+    const top = PAD + ((tallest - column.length) * ROW) / 2;
+    for (const [index, item] of column.entries()) {
+      spots[item] = { x, y: top + index * ROW, width };
     }
     x += width + GAP;
   }
-  return result;
+  const routes: Spot[][] = [];
+  for (const via of through) {
+    const route: Spot[] = [];
+    for (const item of via) {
+      route.push(spots[item]!);
+    }
+    routes.push(route);
+  }
+  return { position: spots.slice(0, count), routes };
 }
 
-/** The graph of a component as a panel, from one of its instances. */
+/** The place of each node, as `arrangeGraph` puts it. */
+export function layoutGraph(
+  nodes: unknown[],
+  edges: [number, number][],
+  getWidth: (index: number) => number,
+): Spot[] {
+  return arrangeGraph(nodes, edges, getWidth).position;
+}
+
+/** The path of an edge: from the right side of its source, through its placeholders, to its target. */
+function drawEdge(from: Spot, via: Spot[], to: Spot): string {
+  const half = NODE_HEIGHT / 2;
+  let x = from.x + from.width;
+  let y = from.y + half;
+  let d = `M${x},${y}`;
+  for (const spot of via) {
+    const middle = (x + spot.x) / 2;
+    d += ` C${middle},${y} ${middle},${spot.y + half} ${spot.x},${spot.y + half} L${spot.x + spot.width},${spot.y + half}`;
+    x = spot.x + spot.width;
+    y = spot.y + half;
+  }
+  const end = to.x - 7;
+  const middle = (x + end) / 2;
+  return `${d} C${middle},${y} ${middle},${to.y + half} ${end},${to.y + half}`;
+}
+
+/** The colour class of a value in its text. */
+function classifyValue(value: string): string {
+  if (value.startsWith('"')) {
+    return 'str';
+  }
+  if (value === 'true' || value === 'false') {
+    return 'bool';
+  }
+  return /^-?\d/.test(value) ? 'num' : 'dim';
+}
+
+const GRAPH_STYLE = `
+.gwrap { position: relative; height: calc(100% - 42px); min-height: 180px; margin-top: 8px; border-top: 1px solid var(--line); overflow: hidden; cursor: grab; touch-action: none; background: radial-gradient(circle, #ffffff0d 1px, transparent 1.2px) 0 0 / 18px 18px; }
+.gwrap.dragging { cursor: grabbing; }
+.gwrap > svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.gwrap .node { cursor: pointer; outline: none; }
+.gwrap .node rect.box { fill: var(--raised); stroke: #36333a; stroke-width: 1; transition: fill 0.2s, stroke 0.2s; }
+.gwrap .node:hover rect.box { stroke: #4a464f; }
+.gwrap .node:focus-visible rect.box { stroke: var(--accent); }
+.gwrap .node .name { fill: var(--text); font: 500 12px var(--mono); }
+.gwrap .node .meta { fill: var(--dim); font: 11px var(--mono); }
+.gwrap .node .meta.str { fill: var(--green); }
+.gwrap .node .meta.num { fill: var(--blue); }
+.gwrap .node .meta.bool { fill: var(--purple); }
+.gwrap .node.selected rect.box { fill: #ee7a3e14; stroke: #ee7a3e80; }
+.gwrap .node.hot rect.box { animation: graph-mark 0.2s both; }
+.gwrap path.edge.hot-edge { animation: graph-mark-edge 0.2s both; }
+@keyframes graph-mark { to { fill: #ffd16624; stroke: #ffd166; } }
+@keyframes graph-mark-edge { to { stroke: #ffd166; stroke-width: 1.6; } }
+.gwrap .node.faded { opacity: 0.35; }
+.gwrap path.edge { fill: none; stroke: #4a464f; stroke-width: 1.2; transition: stroke 0.2s, opacity 0.2s; }
+.gwrap path.edge.lit { stroke: var(--accent); stroke-width: 1.6; }
+.gwrap path.edge.faded { opacity: 0.25; }
+.gtools { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 2px; padding: 3px; border-radius: 9px; background: var(--bg); box-shadow: 0 0 0 1px #36333a, 0 8px 20px #0007; }
+.gtools button { width: 26px; height: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; }
+.graph-side { position: absolute; top: 10px; right: 10px; bottom: 10px; width: 250px; overflow: auto; padding: 14px 16px; border: 0; border-radius: 10px; background: var(--bg); box-shadow: 0 0 0 1px #36333a, 0 12px 32px #0009; cursor: default; }
+.graph-side h4 { margin: 0; display: flex; align-items: center; gap: 8px; font: 600 13px var(--mono); }
+.graph-side h4 i { flex: none; width: 8px; height: 8px; border-radius: 2px; }
+.graph-side h4 button { margin-left: auto; width: 24px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; }
+.graph-side .kind { margin-top: 4px; display: flex; align-items: center; gap: 8px; color: var(--dim); font: 11.5px var(--mono); }
+.graph-side .gv { margin-top: 10px; font: 12px var(--mono); overflow-wrap: anywhere; }
+.graph-side .sec { margin: 16px 0 6px; color: var(--faint); font-size: 11px; }
+.graph-side .lk { display: flex; align-items: center; gap: 7px; width: calc(100% + 16px); height: 26px; margin: 0 -8px; padding: 0 8px; border: 0; border-radius: 6px; font: 11.5px var(--mono); text-align: left; }
+.graph-side .lk i { flex: none; width: 7px; height: 7px; border-radius: 2px; }
+.graph-side .lk span { margin-left: auto; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.graph-side .str { color: var(--green); }
+.graph-side .num { color: var(--blue); }
+.graph-side .bool { color: var(--purple); }
+.graph-side .dim { color: var(--dim); }
+`;
+
+/** A cross, to close the side. */
+function drawCross(): SVGElement {
+  return svg(
+    'svg',
+    {
+      width: 14,
+      height: 14,
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: 'currentColor',
+      'stroke-width': 2,
+      'stroke-linecap': 'round',
+      'aria-hidden': 'true',
+    },
+    svg('path', { d: 'M6 6l12 12M18 6 6 18' }),
+  );
+}
+
+/** The arrowhead of an edge, in the colour of its stroke, so it follows the stroke when that changes. */
+function drawArrow(name: string): SVGElement {
+  return svg(
+    'marker',
+    {
+      id: name,
+      viewBox: '0 0 8 8',
+      refX: 1,
+      refY: 4,
+      markerWidth: 8,
+      markerHeight: 8,
+      orient: 'auto',
+    },
+    svg('path', { d: 'M0,0.5 L7,4 L0,7.5 z', fill: 'context-stroke' }),
+  );
+}
+
+/** What a node reaches by the edges of an adjacency list, at any depth, with the steps it took. */
+function follow(start: number, adjacent: number[][]): Map<number, number> {
+  const found = new Map([[start, 0]]);
+  const queue = [start];
+  for (let at = 0; at < queue.length; at++) {
+    const next = queue[at]!;
+    for (const far of adjacent[next]!) {
+      if (!found.has(far)) {
+        found.set(far, found.get(next)! + 1);
+        queue.push(far);
+      }
+    }
+  }
+  return found;
+}
+
+/**
+ * The graph of a component as a panel, from any scope of one of its instances.
+ * Without the dev server's graph, or without nodes, it shows an empty state.
+ */
 export function drawGraph(
+  ctx: DockContext,
+  scope: Scope,
+  info: ComponentInfo | undefined,
+): HTMLElement {
+  if (!info?.graph) {
+    return element('div', { class: 'empty' }, 'No graph for this component.');
+  }
+  const instance = findRootScope(scope);
+  return drawNodes(ctx, instance.m ?? '', instance, info);
+}
+
+function drawNodes(
   ctx: DockContext,
   id: string,
   instance: Scope | undefined,
@@ -132,11 +350,18 @@ export function drawGraph(
 ): HTMLElement {
   const { state, shell } = ctx;
   const { nodes, edges } = info.graph!;
+  if (nodes.length === 0) {
+    return element('div', { class: 'empty' }, 'Nothing in this component changes in the browser.');
+  }
+  // The styles go in the shadow root once, so they are not part of the text of the body.
+  if (!ctx.root.querySelector('style[data-graph]')) {
+    ctx.root.append(element('style', { 'data-graph': '' }, GRAPH_STYLE));
+  }
   // The current value of each value node, from the instance of the component.
-  const scopeOfNode = new Map<number, Scope>();
+  const scopeByNode = new Map<number, Scope>();
   function visit(scope: Scope): void {
-    if (!scopeOfNode.has(scope.k)) {
-      scopeOfNode.set(scope.k, scope);
+    if (!scopeByNode.has(scope.k)) {
+      scopeByNode.set(scope.k, scope);
     }
     for (const child of scope.children ?? []) {
       if (child.m === undefined) {
@@ -147,24 +372,56 @@ export function drawGraph(
   if (instance) {
     visit(instance);
   }
-  // Nodes that a recent write reached: the written value, and what reads it.
+  // What each node reads and what reads it.
+  const readsOf: number[][] = [];
+  const readersOf: number[][] = [];
+  for (let index = 0; index < nodes.length; index++) {
+    readsOf.push([]);
+    readersOf.push([]);
+  }
+  for (const [from, to] of edges) {
+    readersOf[from]!.push(to);
+    readsOf[to]!.push(from);
+  }
+  // Nodes that a recent write reached: the written value, then every node after it, each one
+  // STEP_MS after the one before. A node lights at its delay and stays until `end`.
   const now = performance.now();
-  const hot = new Set<number>();
-  for (const entry of state.log) {
-    if (entry.write?.component === id && now - entry.time < HOT_MS) {
-      for (const [index, node] of nodes.entries()) {
-        if (node.scope === entry.write!.k && node.slot === entry.write!.slot) {
-          hot.add(index);
-        }
+  const hot = new Map<number, { delay: number; end: number }>();
+  // The nodes of each written slot, and what each one reaches (once for each draw).
+  const written = new Map<string, number[]>();
+  for (const [index, node] of nodes.entries()) {
+    if (node.slot !== undefined) {
+      const key = `${node.scope}:${node.slot}`;
+      const list = written.get(key);
+      if (list) {
+        list.push(index);
+      } else {
+        written.set(key, [index]);
       }
     }
   }
-  for (let grew = true; grew;) {
-    grew = false;
-    for (const [from, to] of edges) {
-      if (hot.has(from) && !hot.has(to)) {
-        hot.add(to);
-        grew = true;
+  const reached = new Map<number, { steps: Map<number, number>; deepest: number }>();
+  for (const entry of state.log) {
+    if (entry.write?.component !== id) {
+      continue;
+    }
+    const elapsed = now - entry.time;
+    for (const start of written.get(`${entry.write.k}:${entry.write.slot}`) ?? []) {
+      let found = reached.get(start);
+      if (!found) {
+        const steps = follow(start, readersOf);
+        found = { steps, deepest: Math.max(...steps.values()) };
+        reached.set(start, found);
+      }
+      // The mark has ended once the deepest node has been lit for HOT_MS.
+      if (elapsed >= found.deepest * STEP_MS + HOT_MS) {
+        continue;
+      }
+      for (const [index, steps] of found.steps) {
+        const end = entry.time + steps * STEP_MS + HOT_MS;
+        if (end > now && end > (hot.get(index)?.end ?? 0)) {
+          hot.set(index, { delay: steps * STEP_MS - elapsed, end });
+        }
       }
     }
   }
@@ -177,138 +434,155 @@ export function drawGraph(
   }[] = [];
   for (const node of nodes) {
     const at = node.at ? `${node.at.line}:${node.at.column}` : undefined;
-    const owner = node.slot === undefined ? undefined : scopeOfNode.get(node.scope);
+    const owner = node.slot === undefined ? undefined : scopeByNode.get(node.scope);
     const value = owner && node.slot !== undefined ? preview(owner.s[node.slot]) : undefined;
-    let meta = at ? `${node.kind} · ${at}` : node.kind;
+    let meta = at ? `${nameKind(node.kind)} · ${at}` : nameKind(node.kind);
     if (value !== undefined) {
-      meta = `= ${value}`;
+      meta = value;
     }
-    parts.push({
-      name: node.label,
-      meta,
-      value,
-      at,
-    });
+    parts.push({ name: node.label, meta, value, at });
   }
   function getNodeWidth(index: number): number {
     return Math.min(
       262,
       Math.max(
-        112,
+        120,
         36 + 7 * Math.max(clip(parts[index]!.name).length, clip(parts[index]!.meta).length),
       ),
     );
   }
-  const position = layoutGraph(nodes, edges, getNodeWidth);
-  // What the clicked node reads, and what reads it, all the way.
-  const related = new Set<number>();
-  if (shell.graphNode !== undefined && shell.graphNode < nodes.length) {
-    related.add(shell.graphNode);
-    for (const [from, to] of [
-      [0, 1],
-      [1, 0],
-    ] as const) {
-      const queue = [shell.graphNode];
-      while (queue.length > 0) {
-        const next = queue.pop()!;
-        for (const edge of edges) {
-          if (edge[from] === next && !related.has(edge[to])) {
-            related.add(edge[to]);
-            queue.push(edge[to]);
-          }
-        }
-      }
-    }
-  }
+  const { position, routes } = arrangeGraph(nodes, edges, getNodeWidth);
+  // The lineage of the clicked node: what it reads and what reads it, at any depth.
+  const selected =
+    shell.graphNode !== undefined && shell.graphNode < nodes.length ? shell.graphNode : undefined;
+  const upstream = selected === undefined ? undefined : follow(selected, readsOf);
+  const downstream = selected === undefined ? undefined : follow(selected, readersOf);
+  const lineage = new Set<number>([...(upstream?.keys() ?? []), ...(downstream?.keys() ?? [])]);
   let graphWidth = 0;
   let graphHeight = 0;
   for (const spot of position) {
     graphWidth = Math.max(graphWidth, spot.x + spot.width);
-    graphHeight = Math.max(graphHeight, spot.y);
+    graphHeight = Math.max(graphHeight, spot.y + NODE_HEIGHT);
   }
-  graphWidth += 16;
-  graphHeight += 56;
+  graphWidth += PAD;
+  graphHeight += PAD;
   const layer = svg('g', { class: 'layer' });
-  for (const [from, to] of edges) {
-    const a = position[from]!;
-    const b = position[to]!;
-    const x1 = a.x + a.width;
-    const y1 = a.y + 19;
-    const x2 = b.x - 3;
-    const y2 = b.y + 19;
-    const bend = Math.max(28, (x2 - x1) / 2);
+  // Faded edges first, then the rest, then lit and hot ones, so a shared run shows the lit colour.
+  const behind: SVGElement[] = [];
+  const plain: SVGElement[] = [];
+  const front: SVGElement[] = [];
+  for (const [index, [from, to]] of edges.entries()) {
     const classes = ['edge'];
+    let style = '';
+    let pile = plain;
     if (hot.has(from) && hot.has(to)) {
       classes.push('hot-edge');
-    } else if (related.size > 0) {
-      classes.push(related.has(from) && related.has(to) ? 'lit' : 'faded');
+      style = `animation-delay: ${hot.get(to)!.delay}ms`;
+      pile = front;
+    } else if (selected !== undefined) {
+      // An edge is lit only on a path through the clicked node: both ends before it, or both after it.
+      const through =
+        (upstream!.has(from) && upstream!.has(to)) ||
+        (downstream!.has(from) && downstream!.has(to));
+      classes.push(through ? 'lit' : 'faded');
+      pile = through ? front : behind;
     }
-    layer.append(
+    pile.push(
       svg('path', {
         class: classes.join(' '),
-        d: `M${x1},${y1} C${x1 + bend},${y1} ${x2 - bend},${y2} ${x2},${y2}`,
+        'data-edge': index,
+        d: drawEdge(position[from]!, routes[index]!, position[to]!),
         'marker-end': 'url(#arrow)',
+        ...(style ? { style } : {}),
       }),
     );
   }
+  layer.append(...behind, ...plain, ...front);
   for (const [index, node] of nodes.entries()) {
     const { x, y, width: nodeWidth } = position[index]!;
     const part = parts[index]!;
-    const classes = ['node', `k-${node.kind}`];
+    const classes = ['node'];
     if (hot.has(index)) {
       classes.push('hot');
     }
-    if (shell.graphNode === index) {
+    if (selected === index) {
       classes.push('selected');
     }
-    if (related.size > 0 && !related.has(index)) {
+    if (selected !== undefined && !lineage.has(index)) {
       classes.push('faded');
     }
-    const name = svg('text', { class: 'name', x: x + 23, y: y + 16 });
+    const name = svg('text', { class: 'name', x: x + 24, y: y + 19 });
     name.textContent = clip(part.name);
-    const meta = svg('text', { class: 'meta', x: x + 23, y: y + 30 });
+    const meta = svg('text', {
+      class: part.value === undefined ? 'meta' : `meta ${classifyValue(part.value)}`,
+      x: x + 24,
+      y: y + 33,
+    });
     meta.textContent = clip(part.meta);
+    // The tooltip names the kind, since the graph has no legend.
     const title = svg('title', {});
-    title.textContent = `${node.kind} ${node.label}${part.value === undefined ? '' : ` = ${part.value}`}${part.at ? `, line ${node.at!.line}` : ''}`;
+    title.textContent = `${nameKind(node.kind)} ${node.label}${part.value === undefined ? '' : ` = ${part.value}`}${part.at ? `, line ${node.at!.line}` : ''}`;
     const group = svg(
       'g',
-      { class: classes.join(' '), 'data-node': index },
-      svg('rect', { class: 'box', x, y, width: nodeWidth, height: 38, rx: 7 }),
-      svg('circle', { class: 'kind', cx: x + 13, cy: y + 12.5, r: 3.5 }),
+      {
+        class: classes.join(' '),
+        'data-node': index,
+        tabindex: 0,
+        role: 'button',
+        'aria-label': `${nameKind(node.kind)} ${node.label}`,
+      },
+      svg('rect', {
+        class: 'box',
+        x,
+        y,
+        width: nodeWidth,
+        height: NODE_HEIGHT,
+        rx: 8,
+        ...(hot.has(index) ? { style: `animation-delay: ${hot.get(index)!.delay}ms` } : {}),
+      }),
+      svg('circle', {
+        class: 'kind',
+        cx: x + 14,
+        cy: y + 15,
+        r: 3.5,
+        fill: pickNodeColor(node.kind, node.slot),
+      }),
       name,
       meta,
       title,
     );
+    function choose(): void {
+      select(shell.graphNode === index ? undefined : index, index);
+    }
     group.addEventListener('click', (event) => {
       event.stopPropagation();
-      shell.graphNode = shell.graphNode === index ? undefined : index;
-      ctx.draw();
+      choose();
+    });
+    group.addEventListener('keydown', (event) => {
+      if ((event as KeyboardEvent).key === 'Enter' || (event as KeyboardEvent).key === ' ') {
+        event.preventDefault();
+        choose();
+      }
     });
     layer.append(group);
   }
   const canvas = svg(
     'svg',
     { role: 'img', 'aria-label': `Graph of ${info.name}` },
-    svg(
-      'defs',
-      {},
-      svg(
-        'marker',
-        {
-          id: 'arrow',
-          viewBox: '0 0 8 8',
-          refX: 7,
-          refY: 4,
-          markerWidth: 6,
-          markerHeight: 6,
-          orient: 'auto',
-        },
-        svg('path', { d: 'M0,0 L8,4 L0,8 z', fill: '#8a8280' }),
-      ),
-    ),
+    svg('defs', {}, drawArrow('arrow')),
     layer,
   );
-  const frame = element('div', { class: 'graph-view' }, canvas);
+  const frame = element('div', { class: 'gwrap' }, canvas);
+  // Selects a node without the dock drawing again, which would drop the focus: this graph is
+  // built anew in place of the old one, with the same pan and zoom, and the focus goes to `focus`.
+  function select(index: number | undefined, focus?: number): void {
+    shell.graphNode = index;
+    const next = drawNodes(ctx, id, instance, info);
+    frame.replaceWith(next);
+    if (focus !== undefined) {
+      next.querySelector<SVGElement>(`[data-node="${focus}"]`)?.focus();
+    }
+  }
   function apply(): void {
     layer.setAttribute(
       'transform',
@@ -318,18 +592,22 @@ export function drawGraph(
   function fit(): void {
     const box = frame.getBoundingClientRect();
     if (box.width === 0) {
+      // The dock is not shown yet: leave the view unfitted so the next draw fits it.
       return;
     }
+    shell.view.fitted = id;
+    // The side covers the right of the view, so the graph fits in what is left.
+    const room = box.width - (shell.graphNode === undefined ? 0 : 270);
     shell.view.scale = Math.min(
-      1.2,
-      Math.max(0.3, Math.min(box.width / graphWidth, box.height / graphHeight)),
+      1.1,
+      Math.max(0.4, Math.min(room / graphWidth, box.height / graphHeight)),
     );
-    shell.view.x = (box.width - graphWidth * shell.view.scale) / 2;
+    shell.view.x = Math.max(0, (room - graphWidth * shell.view.scale) / 2);
     shell.view.y = Math.max(0, (box.height - graphHeight * shell.view.scale) / 2);
     apply();
   }
   function zoomAt(factor: number, px: number, py: number): void {
-    const next = Math.min(3, Math.max(0.2, shell.view.scale * factor));
+    const next = Math.min(2, Math.max(0.4, shell.view.scale * factor));
     shell.view.x = px - ((px - shell.view.x) * next) / shell.view.scale;
     shell.view.y = py - ((py - shell.view.y) * next) / shell.view.scale;
     shell.view.scale = next;
@@ -341,17 +619,19 @@ export function drawGraph(
     (event) => {
       event.preventDefault();
       const box = frame.getBoundingClientRect();
-      zoomAt(event.deltaY < 0 ? 1.1 : 1 / 1.1, event.clientX - box.left, event.clientY - box.top);
+      zoomAt(Math.exp(-event.deltaY * 0.0015), event.clientX - box.left, event.clientY - box.top);
     },
     { passive: false },
   );
   frame.addEventListener('pointerdown', (event) => {
-    if ((event.target as Element).closest('.node, button')) {
+    if ((event.target as Element).closest('.node, .gtools, .graph-side')) {
       return;
     }
     const start = { x: event.clientX - shell.view.x, y: event.clientY - shell.view.y };
+    let moved = false;
     frame.classList.add('dragging');
     function move(next: PointerEvent): void {
+      moved = true;
       shell.view.x = next.clientX - start.x;
       shell.view.y = next.clientY - start.y;
       apply();
@@ -360,15 +640,13 @@ export function drawGraph(
       frame.classList.remove('dragging');
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
+      // A click on the empty graph lets go of the node.
+      if (!moved && shell.graphNode !== undefined) {
+        select(undefined);
+      }
     }
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
-  });
-  canvas.addEventListener('click', () => {
-    if (shell.graphNode !== undefined) {
-      shell.graphNode = undefined;
-      ctx.draw();
-    }
   });
   function zoomButton(name: 'plus' | 'minus', title: string, factor: number): HTMLElement {
     const button = iconButton(name, title, {}, true);
@@ -383,23 +661,22 @@ export function drawGraph(
   frame.append(
     element(
       'div',
-      { class: 'zoom' },
+      { class: 'gtools' },
       zoomButton('minus', 'Zoom out', 1 / 1.2),
       zoomButton('plus', 'Zoom in', 1.2),
       fitButton,
     ),
   );
 
-  // The side: the node that was clicked, or how to read the graph.
-  const side = element('div', { class: 'graph-side' });
-  if (shell.graphNode !== undefined && shell.graphNode < nodes.length) {
-    const node = nodes[shell.graphNode]!;
-    const part = parts[shell.graphNode]!;
-    function list(indexes: number[]): Node {
+  // The side: the node that was clicked, with what it reads and what reads it.
+  if (selected !== undefined) {
+    const node = nodes[selected]!;
+    const part = parts[selected]!;
+    function list(title: string, indexes: number[]): Node[] {
       if (indexes.length === 0) {
-        return element('div', { class: 'sub' }, 'nothing');
+        return [];
       }
-      const labels: HTMLElement[] = [];
+      const links: HTMLElement[] = [];
       for (const index of indexes) {
         // Markup nodes share a label, so the list names them with their place, such as `insert 9:42`.
         const { label } = nodes[index]!;
@@ -411,72 +688,77 @@ export function drawGraph(
             break;
           }
         }
-        labels.push(element('div', { class: 'mono' }, shared && at ? `${label} ${at}` : label));
+        const link = element(
+          'button',
+          { class: 'lk' },
+          element('i', {
+            style: `background: ${pickNodeColor(nodes[index]!.kind, nodes[index]!.slot)}`,
+          }),
+          shared && at ? `${label} ${at}` : label,
+        );
+        const value = parts[index]!.value;
+        if (value !== undefined) {
+          link.append(element('span', {}, clip(value)));
+        }
+        link.addEventListener('click', () => {
+          select(index, index);
+        });
+        links.push(link);
       }
-      return element('div', {}, ...labels);
+      return [element('div', { class: 'sec' }, title), ...links];
     }
     // The nodes that this node reads, and the nodes that read it.
     const reads: number[] = [];
     const readBy: number[] = [];
     for (const [from, to] of edges) {
-      if (to === shell.graphNode) {
+      if (to === selected) {
         reads.push(from);
       }
-      if (from === shell.graphNode) {
+      if (from === selected) {
         readBy.push(to);
       }
     }
-    const color = nodeColor(node.kind, node.slot);
-    side.append(
-      element('h2', {}, part.name),
+    const close = element('button', { title: 'Close', 'aria-label': 'Close' }, drawCross());
+    close.addEventListener('click', () => {
+      select(undefined, selected);
+    });
+    const side = element(
+      'aside',
+      { class: 'graph-side' },
       element(
-        'div',
-        { class: 'toolbar' },
-        pill(node.kind, color),
-        node.at ? place(info, node.at) : '',
+        'h4',
+        {},
+        element('i', { style: `background: ${pickNodeColor(node.kind, node.slot)}` }),
+        part.name,
+        close,
       ),
+      element('div', { class: 'kind' }, nameKind(node.kind), node.at ? place(info, node.at) : ''),
       ...(part.value === undefined
         ? []
-        : [element('h3', {}, 'Value'), element('div', { class: 'mono' }, part.value)]),
-      element('h3', {}, 'Reads'),
-      list(reads),
-      element('h3', {}, 'Read by'),
-      list(readBy),
+        : [element('div', { class: `gv ${classifyValue(part.value)}` }, part.value)]),
+      ...list('Reads', reads),
+      ...list('Read by', readBy),
     );
-  } else {
-    side.append(
-      element('h2', {}, info.name),
-      element(
-        'p',
-        { class: 'sub', style: 'margin-top: 0' },
-        'What changes in the browser, and what reads what, left to right. Click a node to follow it. Drag to pan, and scroll to zoom.',
-      ),
-      element(
-        'div',
-        { class: 'legend', style: 'flex-direction: column; align-items: flex-start; gap: 4px' },
-        key('var(--blue)', 'signals and props'),
-        key('var(--purple)', 'memos'),
-        key('var(--faint)', 'markup'),
-        key('var(--green)', 'effects'),
-        key('var(--yellow)', 'what a change reached'),
-      ),
-    );
+    frame.append(side);
   }
-  const wrap = element('div', { class: 'graph-wrap' }, frame, side);
   // A new component fits the view. Otherwise the pan and zoom stay.
   if (shell.view.fitted === id) {
     apply();
   } else {
-    shell.view = { x: 0, y: 0, scale: 1, fitted: id };
+    shell.view = { x: 0, y: 0, scale: 1, fitted: '' };
     apply();
     requestAnimationFrame(fit);
   }
-  // Draws again when the marks of the last write expire.
+  // Draws again when the last mark expires.
   if (hot.size > 0) {
+    let last = 0;
+    for (const { end } of hot.values()) {
+      last = Math.max(last, end);
+    }
     clearTimeout(shell.cooling);
-    shell.cooling = setTimeout(() => state.changed?.(), HOT_MS);
+    shell.cooling = setTimeout(() => state.changed?.(), last - now);
   }
-  return wrap;
+  return frame;
 }
 
 /** The Graph tab: the chooser and the graph of a component. */
@@ -515,8 +797,6 @@ export async function drawGraphTab(ctx: DockContext, into: HTMLElement): Promise
       chooser(ctx, id),
       element('span', { class: 'sub' }, `${nodes.length} nodes · ${edges.length} edges`),
     ),
-    nodes.length > 0
-      ? drawGraph(ctx, id, instance, info)
-      : element('div', { class: 'empty' }, 'Nothing in this component changes in the browser.'),
+    drawNodes(ctx, id, instance, info),
   );
 }

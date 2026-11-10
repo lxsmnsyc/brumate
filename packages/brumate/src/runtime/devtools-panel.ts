@@ -151,10 +151,7 @@ export function togglePanel(
     split: splitPlain,
     outline,
     pick: () => pick.click(),
-    drawGraph: (scope, info) =>
-      info?.graph
-        ? drawGraph(ctx, findRootScope(scope).m ?? '', findRootScope(scope), info)
-        : element('div', { class: 'empty' }, 'No graph for this component.'),
+    drawGraph: (scope, info) => drawGraph(ctx, scope, info),
     drawCallDetail: (entry) => drawCallDetail(ctx, entry),
   };
   // Outlines the elements that change on the page, as updates write them.
