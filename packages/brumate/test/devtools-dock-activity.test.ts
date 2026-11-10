@@ -28,7 +28,7 @@ function open(): { state: ReturnType<typeof installDevtools>; shadow: ShadowRoot
 }
 
 function show(shadow: ShadowRoot): void {
-  (shadow.querySelector('[data-tab="log"]') as HTMLElement).click();
+  (shadow.querySelector('[data-ws="activity"]') as HTMLElement).click();
 }
 
 function rows(shadow: ShadowRoot): string[] {

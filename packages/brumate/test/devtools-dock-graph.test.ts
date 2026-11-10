@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import type { DevtoolsHooks, Scope } from '../src/runtime/client.ts';
 import { installDevtools } from '../src/runtime/devtools.ts';
-import { togglePanel } from '../src/runtime/devtools-panel.ts';
+import { openPanel, togglePanel } from '../src/runtime/devtools-panel.ts';
 import { drawGraph, arrangeGraph, layoutGraph } from '../src/runtime/devtools-panel/graph.ts';
 import { createShell } from '../src/runtime/devtools-panel/workspace.ts';
 import type { DockContext } from '../src/runtime/devtools-panel/workspace.ts';
@@ -173,7 +173,7 @@ describe('the Graph view', () => {
       },
     });
     togglePanel(shadow, state);
-    (shadow.querySelector('[data-tab="graph"]') as HTMLElement).click();
+    openPanel(shadow, state, 'graph');
     await expect.poll(() => shadow.querySelectorAll('svg g.node').length).toBe(5);
 
     // Arrowheads on every edge, the kind in the tooltip, and no legend or column headings.
@@ -291,7 +291,7 @@ describe('the Graph view', () => {
     });
     togglePanel(shadow, state);
     hooks().write!(root, 0, 5);
-    (shadow.querySelector('[data-tab="graph"]') as HTMLElement).click();
+    openPanel(shadow, state, 'graph');
     await expect.poll(() => shadow.querySelectorAll('svg g.node.hot').length).toBe(3);
     const marks: number[] = [];
     for (const box of shadow.querySelectorAll('svg g.node rect.box')) {

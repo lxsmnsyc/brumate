@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import type { DevtoolsHooks, Scope } from '../src/runtime/client.ts';
 import { installDevtools } from '../src/runtime/devtools.ts';
-import { togglePanel } from '../src/runtime/devtools-panel.ts';
+import { openPanel, togglePanel } from '../src/runtime/devtools-panel.ts';
 import { findCurrent } from '../src/runtime/devtools-panel/inspect.ts';
 import { createShell } from '../src/runtime/devtools-panel/workspace.ts';
 import type { DockContext } from '../src/runtime/devtools-panel/workspace.ts';
@@ -79,7 +79,7 @@ function open(): Page {
   });
   togglePanel(shadow, state);
   opened = { shadow, state };
-  (shadow.querySelector('[data-tab="scopes"]') as HTMLElement).click();
+  openPanel(shadow, state, 'scopes');
   return { state, shadow, root, item, other, writes };
 }
 
@@ -341,7 +341,7 @@ describe('dock inspect', () => {
     document.body.innerHTML = '<p class="n" b-b="2:0">hi</p>';
     await expect.poll(() => rows(shadow).length).toBe(3);
     const pick = [...shadow.querySelectorAll('button')].find(
-      (button) => button.textContent === 'Pick',
+      (button) => button.getAttribute('aria-label') === 'Pick an element',
     )!;
     pick.click();
     document.querySelector('.n')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
