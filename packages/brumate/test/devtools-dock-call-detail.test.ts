@@ -7,13 +7,8 @@ import type {
   DevtoolsState,
 } from '../src/runtime/devtools.ts';
 import { installDevtools } from '../src/runtime/devtools.ts';
-import {
-  cutLong,
-  drawCallDetail,
-  printValue,
-  writeFetch,
-  writeForAgent,
-} from '../src/runtime/devtools-panel/call-detail.ts';
+import { drawCallDetail, writeFetch } from '../src/runtime/devtools-panel/call-detail.ts';
+import { cutLong, printValue, writeForAgent } from '../src/runtime/devtools-panel/copy.ts';
 import type { DockContext } from '../src/runtime/devtools-panel/workspace.ts';
 
 function fakeRecord(extra: Partial<CallRecord> = {}): CallRecord {
@@ -229,13 +224,13 @@ describe('call detail', () => {
     expect(text).toContain('scope 0 slot 1 = 2');
   });
 
-  it('puts the texts on the clipboard from the buttons', () => {
+  it('puts the texts on the clipboard from the buttons', async () => {
     const write = vi.fn<(text: string) => Promise<void>>(async () => {});
     vi.stubGlobal('navigator', { clipboard: { writeText: write } });
     const root = open(fakeCall(fakeRecord()));
     button(root, 'Copy as fetch').click();
     button(root, 'Copy for an agent').click();
-    expect(write).toHaveBeenCalledTimes(2);
+    await expect.poll(() => write.mock.calls.length).toBe(2);
     expect(write.mock.calls[0]![0]).toContain('await fetch(');
     expect(write.mock.calls[1]![0]).toContain('A server function call');
   });

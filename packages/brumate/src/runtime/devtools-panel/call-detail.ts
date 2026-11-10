@@ -9,13 +9,12 @@ import type {
   Interaction,
 } from '../devtools.ts';
 import { element, icon } from './dom.ts';
+import { copyText, cutLong, writeForAgent } from './copy.ts';
 import { ms } from './format.ts';
 import { codeView, frameUrls, mapFrames, parseFrames } from './stack.ts';
 import type { Frame } from './stack.ts';
 import type { DockContext } from './workspace.ts';
 
-/** The longest text of a value on screen, as the record cuts them. */
-const TEXT_LIMIT = 1000;
 /** The longest wait for the writes that the result made, after the answer. */
 const AFTER_MS = 300;
 const DEPTH_LIMIT = 8;
@@ -98,51 +97,6 @@ export function findWrites(state: DevtoolsState, call: CallTiming): string[] {
   return writes;
 }
 
-/** Cuts a text at a length, and marks the cut. */
-export function cutLong(text: string, limit: number = TEXT_LIMIT): string {
-  return text.length > limit ? `${text.slice(0, limit)}… (${text.length - limit} more)` : text;
-}
-
-/** A copy of a value that JSON can write: long texts cut, maps and sets as plain values, cycles marked. */
-function toPlain(value: unknown, ancestors: Set<object>): unknown {
-  if (typeof value === 'bigint') {
-    return `${value}n`;
-  }
-  if (typeof value === 'string') {
-    return cutLong(value);
-  }
-  if (typeof value !== 'object' || value === null || value instanceof Date) {
-    return value;
-  }
-  // Only an object that is its own ancestor is a cycle; the same object twice is fine.
-  if (ancestors.has(value)) {
-    return '[Circular]';
-  }
-  ancestors.add(value);
-  let result: unknown;
-  if (Array.isArray(value) || value instanceof Set) {
-    const items: unknown[] = [];
-    for (const item of value) {
-      items.push(toPlain(item, ancestors));
-    }
-    result = items;
-  } else {
-    const copy: Record<string, unknown> = {};
-    const entries = value instanceof Map ? value.entries() : Object.entries(value);
-    for (const [key, item] of entries) {
-      copy[String(key)] = toPlain(item, ancestors);
-    }
-    result = copy;
-  }
-  ancestors.delete(value);
-  return result;
-}
-
-/** The text of a value for a person or an agent, with long texts cut and cycles left out. */
-export function printValue(value: unknown): string {
-  return JSON.stringify(toPlain(value, new Set()), undefined, 2) ?? 'undefined';
-}
-
 /** The phases of the timing, with the total. */
 function readPhases(record: CallRecord): { name: string; color: string; time: number }[] {
   const phases: { name: string; color: string; time: number }[] = [];
@@ -180,51 +134,6 @@ export function writeFetch(call: CallTiming): string | undefined {
   // A blob sends the JSON type by itself, so no header is written.
   const json = typeof body === 'string' ? JSON.stringify(body) : undefined;
   return `await fetch(${url}, {\n  method: 'POST',\n${json ? `  body: new Blob([${json}], { type: 'application/json' }),\n` : ''}});`;
-}
-
-/** The text for a coding agent: what was called, with what, what came back and what ran on the server. */
-export function writeForAgent(call: CallTiming, from?: string, writes: string[] = []): string {
-  const record = call.record;
-  const lines = [`A server function call in the dev server of a brumate app: ${call.name}()`];
-  lines.push(`Status: ${call.status ?? 'pending'}`);
-  if (from) {
-    lines.push(`Called by: ${from}`);
-  }
-  if (record) {
-    lines.push('', 'Arguments:', printValue(record.args));
-    if (record.error) {
-      lines.push('', 'Error on the server:', cutLong(record.error.message));
-      if (record.error.stack) {
-        lines.push(cutLong(record.error.stack, 2000));
-      }
-    } else if ('result' in record) {
-      lines.push('', 'Result:', printValue(record.result));
-    }
-    const { module, network, server, decode } = record.timing;
-    lines.push(
-      '',
-      `Timing: module ${module} ms, network ${network} ms, server ${server} ms, decode ${decode} ms`,
-    );
-    const ran = record.server;
-    if (ran) {
-      if (ran.reads.length > 0) {
-        lines.push(`Reloads: ${ran.reads.join(', ')}`);
-      }
-      if (ran.calls.length > 0) {
-        lines.push(`Called on the server: ${ran.calls.join(', ')}`);
-      }
-      for (const log of ran.logs) {
-        lines.push(`console.${log.level}: ${cutLong(log.text)}`);
-      }
-      if (ran.truncated) {
-        lines.push('Some console output was left out.');
-      }
-    }
-  }
-  if (writes.length > 0) {
-    lines.push('', 'The result changed:', ...writes);
-  }
-  return lines.join('\n');
 }
 
 /** A value in the tree: texts, numbers and the like in a colour, lists and objects that fold. */
@@ -359,22 +268,6 @@ function drawSection(title: string, note: string | undefined, ...children: Node[
   const section = element('div', {}, heading);
   section.append(...children);
   return section;
-}
-
-/** Puts a text on the clipboard, and shows it on the button for a moment. */
-function copyText(button: HTMLButtonElement, text: () => string | undefined): void {
-  const label = button.textContent;
-  button.addEventListener('click', () => {
-    const value = text();
-    if (value === undefined) {
-      return;
-    }
-    void navigator.clipboard?.writeText(value).catch(() => {});
-    button.textContent = 'Copied';
-    setTimeout(() => {
-      button.textContent = label;
-    }, 1200);
-  });
 }
 
 /** Switches Run again between asking and ready: the warning note and Cancel show while it asks. */

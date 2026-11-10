@@ -3,9 +3,17 @@
 
 import type * as ErrorCatalog from '../../error-catalog.ts';
 import type { ErrorEntry } from '../devtools.ts';
+import { copyText, writeIssue } from './copy.ts';
 import { icon, element } from './dom.ts';
 import { seconds } from './format.ts';
-import { codeView, frameUrls, mapFrames, parseFrames } from './stack.ts';
+import {
+  codeView,
+  fetchCompiled,
+  fetchSource,
+  frameUrls,
+  mapFrames,
+  parseFrames,
+} from './stack.ts';
 import { drawTabOf } from './workspace.ts';
 import type { DockContext, Workspace } from './workspace.ts';
 
@@ -95,21 +103,6 @@ function locate(entry: ErrorEntry): string {
     return `${entry.loc.file.replace(/^.*\/(src|test|routes)\//, '$1/')}:${entry.loc.line}:${entry.loc.column}`;
   }
   return seconds(entry.time);
-}
-
-/** The text of an issue for a person or an agent to read. */
-function writeIssue(entry: ErrorEntry): string {
-  const lines = [`${describe(entry.source).label}: ${entry.message}`];
-  if (entry.loc) {
-    lines.push(`at ${entry.loc.file}:${entry.loc.line}:${entry.loc.column}`);
-  }
-  if (entry.frame) {
-    lines.push('', entry.frame);
-  }
-  if (entry.stack) {
-    lines.push('', entry.stack);
-  }
-  return lines.join('\n');
 }
 
 /** Keeps the keyboard focus on the same row after the workspace draws again. */
@@ -283,9 +276,21 @@ export async function drawErrors(ctx: DockContext, into: HTMLElement): Promise<v
     edit.addEventListener('click', () => openInEditor(editable));
     actions.append(edit);
   }
-  const copy = element('button', { class: 'btn' }, 'Copy for an agent');
-  copy.addEventListener('click', () => {
-    void navigator.clipboard?.writeText(writeIssue(error));
+  const copy = element('button', { class: 'btn', 'data-key': 'copy' }, 'Copy for an agent');
+  // The source around the place is read when the button is pressed, and the copy goes without it
+  // when the dev server cannot read it.
+  copyText(copy, async () => {
+    let around: { file: string; line: number; text: string } | undefined;
+    if (place) {
+      try {
+        const url = 'url' in place && typeof place.url === 'string' ? place.url : undefined;
+        const text = await (url ? fetchCompiled(url) : fetchSource(place.file));
+        around = text === undefined ? undefined : { file: place.file, line: place.line, text };
+      } catch {
+        around = undefined;
+      }
+    }
+    return writeIssue(error, describe(error.source).label, state.meta, around);
   });
   actions.append(copy);
   if (error.source === 'browser') {

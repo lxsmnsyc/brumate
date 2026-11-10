@@ -3,6 +3,7 @@
 // a server call.
 
 import type { CallTiming, DevtoolsEntry, DevtoolsState, Interaction } from '../devtools.ts';
+import { drawCopyRowTool, writeRun } from './copy.ts';
 import { element, svg } from './dom.ts';
 import { ms, seconds } from './format.ts';
 import { known, loadComponents } from './info.ts';
@@ -45,6 +46,8 @@ interface Row {
   child?: boolean;
   /** The entry of a server call, which the detail pane opens. */
   call?: DevtoolsEntry;
+  /** The run of a handler, which the copy button writes. */
+  run?: Interaction;
 }
 
 /** What the workspace remembers in `shell.work.activity`. */
@@ -152,14 +155,24 @@ function addHandler(
   // The run in the timeline that this entry stands for gives the time of its own code.
   let own: string | undefined;
   let bad = false;
+  let found: Interaction | undefined;
   for (const run of state.timeline) {
     if (run.ref === ref && Math.abs(run.begun - entry.time) < 100) {
       own = ms(run.end - run.ready);
       bad = run.failed === true;
       matched.add(run);
+      found = run;
     }
   }
-  rows.push({ time: entry.time, kind: 'handler', text: handlerName(ref), sub: label, d: own, bad });
+  rows.push({
+    time: entry.time,
+    kind: 'handler',
+    text: handlerName(ref),
+    sub: label,
+    d: own,
+    bad,
+    run: found,
+  });
 }
 
 function addCall(entry: DevtoolsEntry, rows: Row[]): void {
@@ -219,6 +232,7 @@ function collectRows(state: DevtoolsState): Row[] {
         sub: run.label,
         d: ms(run.end - run.ready),
         bad: run.failed === true,
+        run,
       });
     }
   }
@@ -403,6 +417,25 @@ function drawRow(ctx: DockContext, work: ActivityWork, row: Row): HTMLElement {
     text,
     element('span', { class: 'd' }, row.d ?? ''),
   );
+  const run = row.run;
+  if (run) {
+    // The writes of the run, from the log, as they are named when the button is pressed.
+    line.lastElementChild!.append(
+      drawCopyRowTool(() => {
+        const writes: string[] = [];
+        for (const item of ctx.state.log) {
+          if (
+            item.kind === 'write' &&
+            item.time >= run.begun &&
+            item.time <= (run.settled ?? run.end) + 32
+          ) {
+            writes.push(describe(item));
+          }
+        }
+        return writeRun(run, handlerName(run.ref), writes);
+      }),
+    );
+  }
   const entry = row.call;
   if (entry) {
     classes.push('call');
@@ -506,7 +539,9 @@ const ACTIVITY_STYLE = `
 .ent .k i { width: 7px; height: 7px; border-radius: 2px; }
 .ent .x { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ent .x .sub { color: var(--faint); margin-right: 6px; }
-.ent .d { color: var(--faint); }
+.ent .d { color: var(--faint); display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; }
+.ent .dock-copy-row { height: 20px; padding: 0 5px; font: 10.5px system-ui, sans-serif; color: var(--dim); opacity: 0; transition: opacity .12s; }
+.ent:hover .dock-copy-row, .ent .dock-copy-row:focus-visible, .ent[aria-current="true"] .dock-copy-row { opacity: 1; }
 .ent.child .k { visibility: hidden; }
 .ent.call { cursor: pointer; }
 .ent.call .x::after { content: "  details ›"; color: var(--faint); opacity: 0; transition: opacity .12s; }

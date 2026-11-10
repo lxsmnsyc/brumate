@@ -4,6 +4,7 @@
 import type { Scope } from '../client.ts';
 import { findRootScope, preview } from '../devtools.ts';
 import type { ScopeId } from '../shared.ts';
+import { drawCopyTool, writeComponent } from './copy.ts';
 import { element, icon } from './dom.ts';
 import { readType } from './format.ts';
 import { known, loadComponents, roots, source } from './info.ts';
@@ -516,6 +517,7 @@ async function drawInspect(ctx: DockContext, into: HTMLElement): Promise<void> {
       { class: 'title' },
       element('h3', { title: info?.name ?? component.m ?? '' }, info?.name ?? component.m ?? ''),
       element('span', { class: 'path' }, source(info)),
+      drawCopyTool(() => writeComponent(component, info, state.meta)),
       views,
     ),
     tags,
