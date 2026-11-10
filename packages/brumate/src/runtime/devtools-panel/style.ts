@@ -32,7 +32,6 @@ button.tool:hover .icon { color: var(--text); }
 button.tool.only { padding: 3px 5px; }
 .link { display: inline-flex; align-items: center; gap: 4px; }
 .link .icon { opacity: 0.7; }
-.zoom button.tool { background: var(--raised); }
 button.tool[aria-pressed="true"] { border-color: var(--accent); background: #ee7a3e22; color: #ffb48a; }
 select, input[type="search"] { background: var(--raised); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; }
 .main { flex: 1; display: flex; min-height: 0; }
@@ -147,29 +146,6 @@ tr.failed td:not(.bar-cell) { color: var(--red); }
 .seg.failed { background: var(--red); }
 .legend { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; color: var(--dim); }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
-.graph-wrap { display: flex; gap: 10px; height: calc(100% - 42px); min-height: 180px; }
-.graph-view { position: relative; flex: 1; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: radial-gradient(circle, #ffffff12 1px, transparent 1px) 0 0 / 16px 16px; cursor: grab; touch-action: none; }
-.graph-view.dragging { cursor: grabbing; }
-.graph-view svg { display: block; width: 100%; height: 100%; }
-.graph-side { width: 250px; flex: none; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--surface); }
-.zoom { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 4px; }
-.zoom button { background: var(--raised); border-color: var(--line); min-width: 28px; }
-svg .node rect.box { fill: var(--surface); stroke: var(--line); }
-svg .node .kind { fill: var(--faint); }
-svg .node .name { fill: var(--text); font: 600 11.5px var(--mono); }
-svg .node .meta { fill: var(--dim); font: 10.5px var(--mono); }
-svg .node { cursor: pointer; }
-svg .node:hover rect.box { stroke: var(--dim); }
-svg .k-signal .kind, svg .k-prop .kind { fill: var(--blue); }
-svg .k-memo .kind { fill: var(--purple); }
-svg .k-effect .kind { fill: var(--green); }
-svg .node.selected rect.box { stroke: var(--accent); stroke-width: 1.5; }
-svg .node.hot rect.box { fill: #3a3020; stroke: var(--yellow); }
-svg .node.faded { opacity: 0.3; }
-svg path.edge { fill: none; stroke: #8a828066; stroke-width: 1.25; }
-svg path.edge.lit { stroke: var(--accent); stroke-width: 1.75; }
-svg path.edge.hot-edge { stroke: var(--yellow); stroke-width: 1.75; }
-svg path.edge.faded { opacity: 0.15; }
 pre.report { margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font: 11.5px/1.55 var(--mono); white-space: pre-wrap; }
 .inspect-card { position: fixed; z-index: 2147483647; display: flex; flex-direction: column; gap: 5px; max-width: 340px; padding: 9px 11px; border: 1px solid var(--line, #2f2c31); border-radius: 10px; background: #19181aee; color: #ece8e4; font: 12px/1.4 system-ui, -apple-system, sans-serif; box-shadow: 0 10px 28px #0008; pointer-events: none; backdrop-filter: blur(6px); }
 .inspect-card .card-head { display: flex; justify-content: space-between; gap: 12px; color: #ffb48a; }
