@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import type { DevtoolsHooks, Scope } from '../src/runtime/client.ts';
 import { installDevtools, reportError } from '../src/runtime/devtools.ts';
-import { togglePanel } from '../src/runtime/devtools-panel.ts';
+import { openPanel, togglePanel } from '../src/runtime/devtools-panel.ts';
 
 function hooks(): DevtoolsHooks {
   return (globalThis as Record<symbol, DevtoolsHooks | undefined>)[Symbol.for('brumate.devtools')]!;
@@ -37,7 +37,7 @@ describe('the Page workspace', () => {
     // An error of the server opens the panel.
     reportError(state, { message: 'Boom' }, 'server');
     await expect.poll(() => shadow.querySelector('.panel')).not.toBeNull();
-    (shadow.querySelector('[data-tab="overview"]') as HTMLElement).click();
+    openPanel(shadow, state, 'overview');
     const body = (): string => shadow.querySelector('.body')!.textContent!;
     await expect.poll(body).toContain('Environment');
     const metrics = [...shadow.querySelectorAll('.pg .metric .l')].map((node) => node.textContent);
@@ -68,7 +68,7 @@ describe('the Page workspace', () => {
     if (!shadow.querySelector('.panel')) {
       togglePanel(shadow, state);
     }
-    (shadow.querySelector('[data-tab="blocks"]') as HTMLElement).click();
+    openPanel(shadow, state, 'blocks');
     const body = (): string => shadow.querySelector('.body')!.textContent!;
     expect(body()).toContain('#defer2visiblewaiting');
     expect(shadow.querySelector('.pg .sec .n')).not.toBeNull();

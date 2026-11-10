@@ -54,7 +54,7 @@ describe('the Issues workspace', () => {
     expect(text).toContain('Copy for an agent');
     expect(text).not.toContain('Show in Activity');
     // The badge on the nav counts the issues.
-    expect(shadow.querySelector('[data-tab="errors"] .badge')!.textContent).toBe('2');
+    expect(shadow.querySelector('[data-ws="issues"] .c')!.textContent).toBe('2');
 
     rows(shadow)[1]!.click();
     await expect.poll(() => rows(shadow)[1]!.getAttribute('aria-current')).toBe('true');

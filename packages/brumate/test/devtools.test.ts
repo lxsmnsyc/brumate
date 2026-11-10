@@ -11,7 +11,7 @@ import {
   type BlockEntry,
   type BlockEvent,
 } from '../src/runtime/devtools.ts';
-import { togglePanel } from '../src/runtime/devtools-panel.ts';
+import { openPanel, togglePanel } from '../src/runtime/devtools-panel.ts';
 
 function hooks(): DevtoolsHooks {
   return (globalThis as Record<symbol, DevtoolsHooks | undefined>)[DEVTOOLS]!;
@@ -60,10 +60,11 @@ describe('devtools', () => {
       })) as typeof fetch;
     togglePanel(host.shadowRoot!, state);
     const shadow = host.shadowRoot!;
+    openPanel(shadow, state, 'overview');
     const body = (): string => shadow.querySelector('.body')!.textContent!;
     // The first tab is the page: its numbers and its environment.
     await expect.poll(body).toContain('Environment');
-    (shadow.querySelector('[data-tab="scopes"]') as HTMLElement).click();
+    openPanel(shadow, state, 'scopes');
     await expect.poll(body).toContain('body of #offscreen · hidden');
     expect(body()).toContain('body of #for');
     const values = (): string[] =>
@@ -141,7 +142,7 @@ describe('devtools', () => {
     });
     togglePanel(shadow, state);
     const body = (): HTMLElement => shadow.querySelector('.body')!;
-    (shadow.querySelector('[data-tab="scopes"]') as HTMLElement).click();
+    openPanel(shadow, state, 'scopes');
     await expect
       .poll(() => (shadow.querySelector('.slot input') as HTMLInputElement | null)?.value)
       .toBe('1');
@@ -155,7 +156,7 @@ describe('devtools', () => {
 
     // A write marks its node and the nodes that read it.
     hooks().write!(root, 0, 42);
-    (shadow.querySelector('[data-tab="graph"]') as HTMLElement).click();
+    openPanel(shadow, state, 'graph');
     await expect.poll(() => shadow.querySelectorAll('svg g.node.hot').length).toBe(4);
     expect(shadow.querySelectorAll('svg g.node').length).toBe(4);
     expect(shadow.querySelectorAll('svg path.edge.hot-edge').length).toBe(3);
@@ -188,7 +189,7 @@ describe('devtools', () => {
 
     // A server function call is logged, and the log shows writes by the name of their slot.
     await fetch('/_brumate/Counter_2%23save', { method: 'POST' });
-    (shadow.querySelector('[data-tab="log"]') as HTMLElement).click();
+    openPanel(shadow, state, 'log');
     await expect.poll(() => body().textContent).toContain('Counter save()');
     expect(body().textContent).toContain('redirect → /done');
     expect(body().textContent).toContain('Counter count = 42');
@@ -218,7 +219,7 @@ describe('devtools', () => {
     togglePanel(shadow, state);
 
     const pick = [...shadow.querySelectorAll('button')].find(
-      (button) => button.textContent === 'Pick',
+      (button) => button.getAttribute('aria-label') === 'Pick an element',
     )!;
     pick.click();
     document.querySelector('[b-b]')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -251,7 +252,7 @@ describe('devtools', () => {
     } as unknown as Scope;
     hooks().attach!({ scopes: new Map([[0, scope]]), set: () => {} });
     togglePanel(shadow, state);
-    (shadow.querySelector('[data-tab="state"]') as HTMLElement).click();
+    openPanel(shadow, state, 'state');
     const rows = (): string[] =>
       [...shadow.querySelectorAll('.rows tr')].map((tr) => tr.textContent ?? '');
     await expect.poll(() => rows().length).toBe(3);
@@ -279,7 +280,7 @@ describe('devtools', () => {
     expect(state.effects.get('3:e2')).toMatchObject({ runs: 13, cleanups: 12, active: true });
     expect(state.effects.get('3:c4')).toMatchObject({ runs: 1, cleanups: 1, active: false });
     togglePanel(shadow, state);
-    (shadow.querySelector('[data-tab="effects"]') as HTMLElement).click();
+    openPanel(shadow, state, 'effects');
     // One row for each run, 13 and 1, and the newest run of a busy effect is marked.
     await expect.poll(() => shadow.querySelectorAll('.ent').length).toBe(14);
     const busy = [...shadow.querySelectorAll('.ent')].filter((row) => row.querySelector('.bad'));
@@ -311,7 +312,7 @@ describe('devtools', () => {
       time: 20,
     });
     togglePanel(shadow, state);
-    (shadow.querySelector('[data-tab="navigation"]') as HTMLElement).click();
+    openPanel(shadow, state, 'navigation');
     const text = (): string => shadow.querySelector('.body')!.textContent!;
     // The oldest first, as the log reads.
     await expect.poll(text).toMatch(/\/issues\/2 push.*\/ form.*whole page/);
@@ -382,7 +383,7 @@ describe('devtools', () => {
     expect(states()['$client 0:3']).toBe('rendered');
 
     togglePanel(shadow, state);
-    (shadow.querySelector('[data-tab="blocks"]') as HTMLElement).click();
+    openPanel(shadow, state, 'blocks');
     const body = (): string => shadow.querySelector('.body')!.textContent!;
     expect(body()).toContain('#defer2visiblewaiting');
     // Fire asks the server for the body of `#defer` now.
@@ -410,7 +411,7 @@ describe('devtools', () => {
     const shadow = document.querySelector('brumate-devtools')!.shadowRoot!;
     const count = (): string => shadow.querySelector('button.open .count')!.textContent!;
     // The tab shows the version of brumate.
-    expect(shadow.querySelector('button.open .version')!.textContent).toBe('v1.2.3');
+    expect(shadow.querySelector('button.open .version')!.textContent).toBe('1.2.3');
 
     // An error of a browser extension is not an error of the page.
     dispatchEvent(
@@ -422,7 +423,7 @@ describe('devtools', () => {
       'browser',
     );
     expect(state.errors.map((error) => error.source)).toEqual(['browser']);
-    expect(count()).toBe('1');
+    expect(count()).toBe('1 issue');
     expect(shadow.querySelector('.panel')).toBeNull();
 
     reportError(
@@ -443,7 +444,7 @@ describe('devtools', () => {
     await expect
       .poll(() => shadow.querySelector('.code .error-line')?.textContent)
       .toContain('throw');
-    expect(shadow.querySelector('.top')!.textContent).toContain('v1.2.3');
+    expect(shadow.querySelector('.head .ver')!.textContent).toBe('1.2.3');
     togglePanel(shadow, state);
   });
 
@@ -484,8 +485,8 @@ describe('devtools', () => {
     const root: Scope = { id: 9, k: 0, m: 'Counter_4', s: [3], children: new Set() };
     hooks().attach!({ scopes: new Map([[9, root]]), set: () => {} });
     togglePanel(shadow, state);
-    const pick = [...shadow.querySelectorAll('.top button')].find((button) =>
-      button.textContent!.includes('Pick'),
+    const pick = [...shadow.querySelectorAll('.head button')].find(
+      (button) => button.getAttribute('aria-label') === 'Pick an element',
     ) as HTMLElement;
     pick.click();
     document
@@ -545,7 +546,7 @@ describe('devtools', () => {
     expect(run!.calls).toMatchObject([{ name: 'Cart_1#save', status: 200, server: 12.5 }]);
     expect(run!.updates.map((update) => update.count)).toEqual([3]);
     togglePanel(shadow, state);
-    (shadow.querySelector('[data-tab="timeline"]') as HTMLElement).click();
+    openPanel(shadow, state, 'timeline');
     const body = (): string => shadow.querySelector('.body')!.textContent!;
     await expect.poll(body).toContain('click on <button>');
     expect(body()).toContain('Cart h2');

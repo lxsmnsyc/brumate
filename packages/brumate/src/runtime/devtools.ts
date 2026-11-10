@@ -758,20 +758,19 @@ export function installDevtools(
   const root = host.attachShadow({ mode: 'open' });
   const style = document.createElement('style');
   style.textContent = `
-.open { position: fixed; left: 50%; bottom: 0; z-index: 2147483647; transform: translateX(-50%); display: flex; justify-content: center; padding: 8px 16px 0; border: 0; background: none; color: #ece8e4; font: 600 12px/1 system-ui, -apple-system, sans-serif; cursor: pointer; touch-action: none; outline: none; }
+.open { position: fixed; left: 50%; bottom: 0; z-index: 2147483647; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; height: 6px; max-width: 44px; padding: 0 10px; overflow: hidden; border: 0; border-radius: 7px 7px 0 0; background: #3a373d; color: #ece8e4; font: 500 12px/1 system-ui, -apple-system, sans-serif; white-space: nowrap; cursor: pointer; touch-action: none; outline: none; transition: height 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), max-width 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.2s; }
 .open[hidden] { display: none; }
-.grip { width: 40px; height: 5px; border-radius: 4px 4px 0 0; background: rgb(25 24 26 / 0.88); box-shadow: 0 0 0 1px rgb(255 255 255 / 0.3); transition: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1), width 150ms cubic-bezier(0.4, 0, 0.2, 1); }
-.open[data-errors] .grip { width: 56px; background: #e5484d; }
-.content { position: absolute; left: 50%; bottom: 0; transform: translate(-50%, 100%); display: flex; align-items: center; gap: 8px; padding: 5px 8px 5px 10px; white-space: nowrap; background: #222023; border: 1px solid #2f2c31; border-bottom: 0; border-radius: 10px 10px 0 0; box-shadow: 0 -4px 16px rgb(0 0 0 / 0.3); opacity: 0; pointer-events: none; transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1), opacity 150ms cubic-bezier(0.4, 0, 0.2, 1); }
-.open:hover .content, .open:focus-visible .content, .open:active .content { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
-.open:hover .grip, .open:focus-visible .grip, .open:active .grip { opacity: 0; }
-.open:focus-visible .content { border-color: #ee7a3e; }
-.mark { display: inline-flex; width: 16px; height: 16px; }
-.version { padding: 1px 8px; border-radius: 999px; background: rgb(238 122 62 / 0.16); color: #ffb48a; font: 600 12px/20px ui-monospace, SFMono-Regular, Menlo, monospace; }
-.chevron { width: 12px; height: 12px; color: #a39a92; }
-.count { min-width: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 999px; background: #e5484d; color: #fff; font: 600 11px/18px system-ui, sans-serif; text-align: center; }
+.open > * { opacity: 0; transition: opacity 0.12s; }
+.open[data-errors] { background: #c94a4a; max-width: 64px; }
+.open:hover, .open:focus-visible { height: 30px; max-width: 320px; background: #1d1c1f; box-shadow: 0 0 0 1px #36333a; }
+.open[data-errors]:hover, .open[data-errors]:focus-visible { box-shadow: 0 0 0 1px #ff6b6b66; }
+.open:hover > *, .open:focus-visible > * { opacity: 1; transition-delay: 0.08s; }
+.mark { display: inline-flex; width: 16px; height: 16px; flex: none; }
+.name { font-weight: 600; }
+.version { color: #a39a92; font: 11px ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace; }
+.count { padding: 0 6px; border-radius: 999px; background: #ff6b6b26; color: #ff6b6b; font: 600 10.5px/17px ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace; }
 .count:empty { display: none; }
-@media (prefers-reduced-motion: reduce) { .grip, .content { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .open, .open > * { transition: none; } }
 `;
   // The closed panel: a grip on the bottom edge that grows into a pull tab on hover or focus, so
   // it covers almost none of the page. A click, or a drag up, opens the panel.
@@ -779,9 +778,9 @@ export function installDevtools(
   button.type = 'button';
   button.className = 'open';
   button.title = 'brumate devtools (Alt+Shift+D)';
-  button.innerHTML = `<span class="grip"></span><span class="content"><span class="mark">${LOGO}</span><span class="version"></span><span class="count"></span><svg class="chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 7.5 6 4.5 9 7.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
+  button.innerHTML = `<span class="mark">${LOGO}</span><span class="name">brumate</span><span class="version"></span><span class="count"></span>`;
   // The version of brumate, next to its mark.
-  button.querySelector('.version')!.textContent = meta.version ? `v${meta.version}` : 'brumate';
+  button.querySelector('.version')!.textContent = meta.version ?? '';
   function label(): void {
     const errors = state.errors.length;
     button.setAttribute(
@@ -793,7 +792,10 @@ export function installDevtools(
   // The number of errors, in red on the tab, and a red grip, so an error shows while it is closed.
   const count = button.querySelector<HTMLElement>('.count')!;
   state.errorCount = (): void => {
-    count.textContent = state.errors.length > 0 ? String(state.errors.length) : '';
+    count.textContent =
+      state.errors.length > 0
+        ? `${state.errors.length} ${state.errors.length === 1 ? 'issue' : 'issues'}`
+        : '';
     button.toggleAttribute('data-errors', state.errors.length > 0);
     label();
   };
@@ -815,7 +817,7 @@ export function installDevtools(
         opened = true;
         dragged = true;
         void panelModule().then(({ openPanel }) => {
-          openPanel(root, state, 'overview');
+          openPanel(root, state);
           state.resize?.(next.clientY);
         });
         return;
