@@ -65,8 +65,9 @@ describe('devtools', () => {
     // The first tab is the page: its numbers and its environment.
     await expect.poll(body).toContain('Environment');
     openPanel(shadow, state, 'scopes');
-    await expect.poll(body).toContain('body of #offscreen · hidden');
-    expect(body()).toContain('body of #for');
+    await expect.poll(body).toContain('#offscreen');
+    expect(shadow.querySelector('.tree-row.off')!.textContent).toContain('#offscreen');
+    expect(body()).toContain('#for');
     const values = (): string[] =>
       [...shadow.querySelectorAll('.slot')].map(
         (line) => line.textContent! + (line.querySelector('input') as HTMLInputElement).value,
@@ -74,7 +75,7 @@ describe('devtools', () => {
     expect(values()).toEqual(['countnumber2']);
     // A scope of the tree shows its slots.
     const forRow = [...shadow.querySelectorAll('.tree-row')].find((line) =>
-      line.textContent!.startsWith('body of #for'),
+      line.textContent!.startsWith('#for'),
     ) as HTMLElement;
     forRow.click();
     await expect.poll(values).toEqual(['itemstring"a"']);
@@ -159,7 +160,7 @@ describe('devtools', () => {
     openPanel(shadow, state, 'graph');
     await expect.poll(() => shadow.querySelectorAll('svg g.node.hot').length).toBe(4);
     expect(shadow.querySelectorAll('svg g.node').length).toBe(4);
-    expect(shadow.querySelectorAll('svg path.edge.hot-edge').length).toBe(3);
+    expect(shadow.querySelectorAll('svg path.gedge.hot-edge').length).toBe(3);
 
     // A node shows its place, and its link opens the editor there: in the file of the
     // component, or in the file of the module that gave the code.

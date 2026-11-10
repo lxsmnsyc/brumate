@@ -149,7 +149,7 @@ describe('dock inspect', () => {
     await expect.poll(() => rows(shadow).length).toBe(3);
     expect(rows(shadow).map((row) => row.querySelector('.meta')!.textContent)).toEqual([
       '2 scopes',
-      '#1',
+      '1 item',
       '1 scope',
     ]);
     expect(current(shadow)).toBe('Cart');
@@ -239,7 +239,7 @@ describe('dock inspect', () => {
     await expect.poll(() => rows(shadow).length).toBe(3);
     rows(shadow)[1]!.focus();
     rows(shadow)[1]!.click();
-    await expect.poll(() => current(shadow)).toBe('body of #for');
+    await expect.poll(() => current(shadow)).toBe('#for');
     expect((shadow.activeElement as HTMLElement).getAttribute('aria-current')).toBe('true');
     // A change of the page draws the dock again.
     state.changed?.();
@@ -254,7 +254,7 @@ describe('dock inspect', () => {
     shadow.activeElement!.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }),
     );
-    await expect.poll(() => current(shadow)).toBe('body of #for');
+    await expect.poll(() => current(shadow)).toBe('#for');
   });
 
   it('leaves the arrow keys of the filter to the field, and folds rows with Left and Right', async () => {
@@ -287,7 +287,7 @@ describe('dock inspect', () => {
     // Cart is selected; the focus is on Note.
     rows(shadow)[2]!.focus();
     rows(shadow)[2]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
-    await expect.poll(() => current(shadow)).toBe('body of #for');
+    await expect.poll(() => current(shadow)).toBe('#for');
   });
 
   it('keeps the text and the caret of the filter while it redraws', async () => {
@@ -315,14 +315,14 @@ describe('dock inspect', () => {
   it('switches between Values and Graph, and draws the graph through the context', async () => {
     const { shadow } = open();
     await expect.poll(() => shadow.querySelectorAll('.slot').length).toBe(2);
-    const switches = [...shadow.querySelectorAll<HTMLElement>('.seg button')];
+    const switches = [...shadow.querySelectorAll<HTMLElement>('.views button')];
     expect(switches.map((button) => button.textContent)).toEqual(['Values', 'Graph']);
     expect(switches[0]!.getAttribute('aria-pressed')).toBe('true');
     switches[1]!.click();
     await expect.poll(() => shadow.querySelector('.ins .graph svg')).not.toBeNull();
     expect(shadow.querySelector('.slot')).toBeNull();
     expect((shadow.activeElement as HTMLElement).textContent).toBe('Graph');
-    (shadow.querySelectorAll('.seg button')[0] as HTMLElement).click();
+    (shadow.querySelectorAll('.views button')[0] as HTMLElement).click();
     await expect.poll(() => shadow.querySelectorAll('.slot').length).toBe(2);
   });
 
@@ -346,5 +346,52 @@ describe('dock inspect', () => {
     pick.click();
     document.querySelector('.n')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await expect.poll(() => current(shadow)).toBe('Note');
+  });
+
+  it('keeps the Values and Graph switch in the header of the detail, in the flow', async () => {
+    const { shadow } = open();
+    await expect.poll(() => shadow.querySelectorAll('.slot').length).toBe(2);
+    const views = shadow.querySelector<HTMLElement>('.ins .detail .title .views')!;
+    expect(views).not.toBeNull();
+    expect(views.querySelectorAll('button')).toHaveLength(2);
+    expect(getComputedStyle(views).position).not.toBe('absolute');
+    // The header holds the name in its own case and the path of the file with its icon.
+    const title = shadow.querySelector('.ins .detail .title')!;
+    expect(title.querySelector('h3')!.textContent).toBe('Cart');
+    expect(title.querySelector('.path svg')).not.toBeNull();
+    // No rule of the dock styles the old timeline segment, which the switch once shared a name with.
+    let styles = '';
+    for (const style of shadow.querySelectorAll('style')) {
+      styles += style.textContent;
+    }
+    expect(styles).not.toMatch(/\.seg\b/);
+  });
+
+  it('draws one row for the scopes of a block, under their component', async () => {
+    const { shadow, root } = open();
+    const second: Scope = { id: 5, k: 1, p: root, s: ['b'], children: new Set() };
+    root.children!.add(second);
+    hooks().attach!({
+      scopes: new Map([
+        [0, root],
+        [1, [...root.children!][0]!],
+        [5, second],
+        [2, { id: 2, k: 0, m: 'Note_1', s: ['hi'], children: new Set() }],
+      ]),
+      set: () => {},
+    });
+    await expect.poll(() => rows(shadow).length).toBe(3);
+    const labels = rows(shadow).map((row) => [
+      row.querySelector('.name, .blk')!.textContent,
+      row.querySelector('.meta')!.textContent,
+    ]);
+    expect(labels).toEqual([
+      ['Cart', '3 scopes'],
+      ['#for', '2 items'],
+      ['Note', '1 scope'],
+    ]);
+    // The block is indented one step under its component, and its name has no scope or position.
+    expect((rows(shadow)[1]!.querySelector('.ind') as HTMLElement).style.width).toBe('14px');
+    expect(rows(shadow)[1]!.textContent).not.toContain('body of');
   });
 });
