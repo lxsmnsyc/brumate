@@ -1,7 +1,7 @@
 ---
 id: dock-docs
 title: Docs and changeset for the new dock
-status: todo
+status: active
 priority:
 type: feature
 story: dev-dock-redesign
