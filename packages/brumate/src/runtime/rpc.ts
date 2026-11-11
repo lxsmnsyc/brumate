@@ -1,8 +1,8 @@
-import { toJSONAsync } from 'seroval';
+import { toJSONAsync } from 'seroval/write';
 import { build, skew } from './client.ts';
 import type { Scope } from './client.ts';
 import { callPlugins, serialOptions } from './serial.ts';
-import { fromChunkStream } from './stream.ts';
+import { fromChunkStream } from './stream-read.ts';
 
 /**
  * Calls a server function. It is a separate module, so pages that never call

@@ -1,5 +1,11 @@
-import { crossSerialize, crossSerializeStream, fromJSON } from 'seroval';
-import type { SerovalJSON } from 'seroval';
+import { fromJSON } from 'seroval/read';
+import {
+  SerovalDeserializationError,
+  SerovalMissingPluginError,
+  SerovalPluginValidationError,
+} from 'seroval/read';
+import type { SerovalJSON } from 'seroval/read';
+import { crossSerialize, crossSerializeStream } from 'seroval/write';
 import { cacheStore, tagVersions } from './cache.ts';
 import {
   VOID_ELEMENTS,
@@ -3693,17 +3699,32 @@ async function handleForm(invoke: () => unknown, event: RequestEvent): Promise<R
  * `file<index>`, whose index stands in the JSON.
  */
 async function readArgs(request: Request): Promise<unknown[]> {
-  if (!request.headers.has('x-brumate-args')) {
-    return fromJSON<unknown[]>((await request.json()) as SerovalJSON, {
-      plugins,
+  try {
+    if (!request.headers.has('x-brumate-args')) {
+      return fromJSON<unknown[]>((await request.json()) as SerovalJSON, {
+        plugins,
+        ...serialOptions(),
+      });
+    }
+    const form = await request.formData();
+    return fromJSON<unknown[]>(JSON.parse(String(form.get('args'))) as SerovalJSON, {
+      plugins: callPlugins(undefined, form),
       ...serialOptions(),
     });
+  } catch (error) {
+    // A value that a plugin refused, such as a scope that is not a number, or a plugin that the
+    // server does not have, is the fault of the caller.
+    if (
+      error instanceof SerovalDeserializationError &&
+      (error.cause instanceof SerovalPluginValidationError ||
+        error.cause instanceof SerovalMissingPluginError)
+    ) {
+      throw new ServerError(`The arguments of the call are malformed: ${error.cause.message}`, {
+        status: 400,
+      });
+    }
+    throw error;
   }
-  const form = await request.formData();
-  return fromJSON<unknown[]>(JSON.parse(String(form.get('args'))) as SerovalJSON, {
-    plugins: callPlugins(undefined, form),
-    ...serialOptions(),
-  });
 }
 
 export interface RequestOptions {
@@ -3879,7 +3900,11 @@ async function answerCall(
     }
     headers.set('content-type', STREAM_TYPE);
     return respond(
-      toChunkStream(result, (reason) => event.abort(reason)),
+      toChunkStream(
+        result,
+        (reason) => event.abort(reason),
+        (error) => logError(error, 'call', event.errors, event),
+      ),
       { headers },
     );
   } catch (error) {

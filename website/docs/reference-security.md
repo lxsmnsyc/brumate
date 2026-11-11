@@ -56,7 +56,7 @@ The server variables of `src/env.ts` never ship. The browser gets the file witho
 
 ## Untrusted arguments
 
-The arguments of a server function and the fields of a form come from the browser. Their types are not checked when they arrive. A user can send any value that seroval reads.
+The arguments of a server function and the fields of a form come from the browser. Their types are not checked when they arrive. A user can send any value that seroval reads. The fields of brumate's own values in the arguments, such as an element reference or a file index, are validated, and a bad one answers 400 with `The arguments of the call are malformed`. So does a plugin that the server does not have.
 
 - Check them with `parse`, `safeParse` or `parseForm` from `brumate/server` and a [Standard Schema](https://standardschema.dev). See [Validating arguments](./server-functions.md#validating-arguments).
 - `parse` answers with status 400 and the message of the first issue, cut at 300 characters. The issues stay on the server.

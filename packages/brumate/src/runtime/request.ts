@@ -1,4 +1,4 @@
-import { toJSON } from 'seroval';
+import { toJSON } from 'seroval/write';
 import { deleteCookie, getCookies, setCookie } from './cookies.ts';
 import type { CookieOptions } from './cookies.ts';
 import { serialOptions, syncPlugins } from './serial.ts';
