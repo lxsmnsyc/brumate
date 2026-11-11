@@ -1,7 +1,7 @@
 ---
 id: head-rerun-scripts
 title: A head script can ask to run again after each client navigation
-status: active
+status: done
 priority: must
 type: feature
 story:
@@ -17,10 +17,10 @@ spike: false
 hypothesis:
 verify: pnpm --filter brumate exec vitest run test/head-rerun.test.ts
 exclusive: []
-fulfilled_by:
+fulfilled_by: c330ae1f (batch/brumate-release-0.8)
 gate: false
 added: 2026-10-30
-spent:
+spent: 170000
 owns:
   - packages/brumate/test/head-rerun.test.ts
 shared:
