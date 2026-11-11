@@ -54,7 +54,7 @@ export function r2($$p) {
   let big = $$b.get($$p, 0);
   const $$e = $$b.clone($$k2), $$f = $$e[1];
   $$b.setAttr($$e[0], "style", $$b.vars({ "--s-9wx0az-0": (big ? 'red' : 'blue'), "--s-9wx0az-1": (big ? '20px' : '12px') }, undefined));
-  $$b.setAttr($$e[0], "b-v", $$p);
+  $$b.setAttr($$e[0], "b-v", $$p.id);
   return $$f;
 }
 
