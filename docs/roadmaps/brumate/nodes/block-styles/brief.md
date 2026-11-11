@@ -1,7 +1,7 @@
 ---
 id: block-styles
 title: Styles in blocks
-status: active
+status: done
 priority: must
 type: feature
 story:
@@ -17,10 +17,10 @@ spike: false
 hypothesis:
 verify: pnpm --filter brumate exec vitest run test/styles/block-styles-live.test.ts
 exclusive: []
-fulfilled_by:
+fulfilled_by: 56bc064b, a8d14b6f (batch/brumate-release-0.8, PR #513)
 gate: false
 added:
-spent: 473000
+spent: 896000
 owns:
   - packages/brumate/test/styles/block-styles-live.test.ts
 shared:
