@@ -2139,7 +2139,7 @@ export class Emitter {
       return undefined;
     }
     if (hasSpread(node.attributes)) {
-      this.emitLiveStyles();
+      this.emitLiveStyles(scope);
       return values;
     }
     const own = findStyleAttribute(node.attributes);
@@ -2150,7 +2150,7 @@ export class Emitter {
       existing = this.expression(own.value);
     }
     this.code(`$$b.attribute("style", $$b.vars(${values}, ${existing}))`);
-    this.emitLiveStyles();
+    this.emitLiveStyles(scope);
     return values;
   }
 
@@ -2212,11 +2212,46 @@ export class Emitter {
     return names;
   }
 
-  private emitLiveStyles(): void {
-    // Marks the element, so changes to the variables of the component reach it.
+  /**
+   * The scopes whose style variables the element that renders now carries and that change on the
+   * client, as code: the IDs of the instances, or undefined for none. A top-level element of the
+   * component carries the component, and one of a body the live block styles that it is the top
+   * level of.
+   */
+  private liveVariableScopes(scope: Scope): string | undefined {
+    // A scope that this render creates is its ID. One outside it is the object of the instance.
+    const id = (owner: Scope): string => {
+      const name = this.scopeVar(instanceScope(this.plan, owner));
+      return this.isInside(owner) ? name : `${name}.id`;
+    };
+    const ids: string[] = [];
+    let component: string | undefined;
     if (this.plan.liveStyles && this.hasComponentVariables()) {
+      component = this.scopeVar(this.plan.graph.model.component);
+    }
+    if (this.nesting === this.bodyBase) {
+      for (const block of this.blockStyles(scope)?.variables ?? []) {
+        if (this.plan.liveBlocks.has(block.body)) {
+          ids.push(id(this.plan.bodyScopes.get(block.body)!));
+        }
+      }
+    }
+    if (ids.length === 0) {
+      return component;
+    }
+    if (component !== undefined) {
+      ids.unshift(id(this.plan.graph.model.component));
+    }
+    // Several IDs make one value, such as `3 5`.
+    return ids.length === 1 ? ids[0]! : `[${ids.join(', ')}].join(" ")`;
+  }
+
+  private emitLiveStyles(scope: Scope): void {
+    // Marks the element, so changes to the variables of the component and of blocks reach it.
+    const ids = this.liveVariableScopes(scope);
+    if (ids !== undefined) {
       this.html(' b-v="');
-      this.code(this.scopeVar(this.plan.graph.model.component));
+      this.code(ids);
       this.html('"');
     }
   }
@@ -2862,8 +2897,9 @@ export class Emitter {
     // With a spread, the style variables go on after the attributes merge, so the style of the
     // spread does not take their place.
     let spreadVariables: string | undefined;
-    if (this.hasComponentVariables() && this.plan.liveStyles) {
-      extra.push(`"b-v": $$b.internal(${this.scopeVar(this.plan.graph.model.component)})`);
+    const liveScopes = this.liveVariableScopes(scope);
+    if (liveScopes !== undefined) {
+      extra.push(`"b-v": $$b.internal(${liveScopes})`);
     }
     if (variableCode !== undefined && hasSpread(attributes)) {
       spreadVariables = variableCode;

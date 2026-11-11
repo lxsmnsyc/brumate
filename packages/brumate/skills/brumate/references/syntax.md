@@ -182,6 +182,7 @@ A file uses another component by importing it, and renders it with a capitalized
 ```
 
 - The body of a block can start with a `<script>` of its own, which runs for each instance, such as each item of a `#for`. It can declare signals and functions.
+- The body of a block can hold a `<style>` at its top level. It matches the elements of the body and of the bodies inside it, and its `${}` reads the item, the signals of the block script and the values of the component. A change updates only the instance that reads it. It takes no `global` and no `:global(…)`.
 - `#for (item of list) { … }` has no `by` for a list that needs no key: each item is its own key. Use `by item.id` when items are objects that change.
 - Write `} #else if (…) {` and `} #else {` on the line of the closing brace, as the style. The compiler accepts `#else` on the next line too.
 - `#for (item of list) window(32) { … }` renders only the items in view, for a long list. `32` is the height of an item.

@@ -108,6 +108,40 @@ A `<style global>` block holds rules that are not scoped, so a stylesheet of man
 - A value of `null`, `undefined` or `false` leaves the property unset.
 - A value that never changes in the browser ships no client code.
 
+## A style in a block
+
+A block body can hold a `<style>` too, as it can hold a `<script>`. Its rules match the elements of the block and of the blocks inside it, and its `${}` can read the item and the signals of the block script.
+
+```brm live
+<script>
+  import { $signal } from 'brumate/signals';
+
+  const swatches = [
+    { id: 1, color: 'tomato' },
+    { id: 2, color: 'gold' },
+    { id: 3, color: 'royalblue' },
+  ];
+</script>
+
+#for (swatch of swatches by swatch.id) {
+  <script>
+    let size = $signal(24);
+  </script>
+  <button class="swatch" onClick=(() => (size += 8))>{size}px</button>
+  <style>
+    .swatch {
+      background: ${swatch.color};
+      font-size: ${size}px;
+    }
+  </style>
+}
+```
+
+- A block style gets its own scope attribute, `b-c-<hash>-<n>`, on its elements and on those of the blocks inside it. The rules of the block join the stylesheet of the component, after its own rules, so the sheet still loads once per page.
+- The custom properties of a block are `--s-<hash>-<n>-<k>`. They go on the top-level elements of each instance of the block, and a change sets them on the elements of that instance only.
+- The server writes the values with the first render. After that, a value that changes in the browser updates the elements of its instance. A value that never changes ships no client code.
+- Where the style is written decides what it reaches. See [A style in a block](./control-flow.md#a-style-in-a-block) for the scope rules.
+
 ## Classes
 
 A `class` attribute takes a string, an object or an array, and a `style` attribute takes a string or an object. See [`class` and `style`](./markup.md#class-and-style).

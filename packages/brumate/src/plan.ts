@@ -86,8 +86,10 @@ export interface Plan {
   clientSites: Set<Site>;
   /** The compiled `<style>` blocks. */
   styles: StyleOutput;
-  /** True if a style variable can change on the client. */
+  /** True if a style variable of the component can change on the client. */
   liveStyles: boolean;
+  /** The bodies whose style variables can change on the client, so their instances carry an ID. */
+  liveBlocks: Set<Body>;
   /** True when server function IDs hash the names of the functions. */
   hideNames: boolean;
   /** Errors in markup that the client could not update. */
@@ -804,11 +806,20 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
 
   const styles = compileStyles(file, hash(file.filename), path);
   let liveStyles = false;
+  const liveBlocks = new Set<Body>();
   for (const site of model.sites) {
-    // The variables of a block style are the update of block-styles, not of the component.
-    if (site.kind === 'style' && !site.scope.body && isLiveSite(site)) {
+    if (site.kind !== 'style' || !isLiveSite(site)) {
+      continue;
+    }
+    if (site.scope.body) {
+      // A block style: the instance of the body is the scope of its variables.
+      liveBlocks.add(site.scope.body);
+      const plan = scopes.get(site.scope);
+      if (plan) {
+        plan.needsId = true;
+      }
+    } else {
       liveStyles = true;
-      break;
     }
   }
 
@@ -818,6 +829,7 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     id: `${name}_${hash(file.filename)}`,
     styles,
     liveStyles,
+    liveBlocks,
     hideNames,
     scopes,
     bodyScopes,

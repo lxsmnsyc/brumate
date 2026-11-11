@@ -1219,7 +1219,12 @@ class ClientGenerator {
     }
     if (site.kind === 'style') {
       let variable: (typeof this.plan.styles.variables)[number] | undefined;
-      for (const item of this.plan.styles.variables) {
+      // The variables of the component, and those of the block styles.
+      const variables = [...this.plan.styles.variables];
+      for (const block of this.plan.styles.blocks) {
+        variables.push(...block.variables);
+      }
+      for (const item of variables) {
         if (item.expression.ast === site.node) {
           variable = item;
           break;

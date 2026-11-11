@@ -113,6 +113,45 @@ A block body can start with a `<script>`. It runs for each instance of the body,
 
 Each question has its own `open`. The script can read the item and the values of the component.
 
+## A style in a block
+
+A `<style>` at the top level of a block body styles the elements of that body, and of the bodies inside it. It reaches nothing outside the block. The `${}` in it reads what the block reads: the item, the signals of the block script, and the values of the component. When one of them changes, only the instance that reads it changes.
+
+```brm live
+<script>
+  import { $signal } from 'brumate/signals';
+
+  const tags = [
+    { id: 1, name: 'server', color: 'tomato' },
+    { id: 2, name: 'browser', color: 'royalblue' },
+    { id: 3, name: 'edge', color: 'seagreen' },
+  ];
+</script>
+
+#for (tag of tags by tag.id) {
+  <script>
+    let picked = $signal(false);
+  </script>
+  <button class="tag" onClick=(() => (picked = !picked)) aria-pressed=picked>{tag.name}</button>
+  <style>
+    .tag {
+      border: 2px solid ${tag.color};
+      background: ${picked ? tag.color : 'transparent'};
+      color: ${picked ? 'white' : 'inherit'};
+    }
+  </style>
+}
+```
+
+- The rules of a block style match only the elements of the block. A block next to it, and the rest of the component, are not matched.
+- The `<style>` of the component still matches the elements of every block. When both match an element, both apply, and the rule of the inner block comes last.
+- The values of `${}` are custom properties on the top-level elements of each instance of the block. A row that moves in a keyed `#for` keeps its values, and a row that the browser adds or an `#if` that opens gets its own.
+- Elements that the block writes as children of a component keep the attributes of the block. The `{children}` that the block inserts were written by the parent, so the style of the block does not reach them.
+- A `#template` is a block of its own. Its style does not reach the block that calls it, and the style of that block does not reach it.
+- A block style takes no `global` and no `:global(…)`, and `@keyframes` names stay global as in the style of a component. A `<style>` in a `#reveal` is an error.
+
+See [Styles](./styles.md#a-style-in-a-block) for how the values reach the page.
+
 ## `#repeat`
 
 `#repeat (index of count)` renders its body `count` times, with `index` from 0. `#else` renders when the count is 0:
