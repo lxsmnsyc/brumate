@@ -33,9 +33,6 @@ depends_on:
   - on: skill-tasks
     kind: hard
     why: a must of 0.8.0 (added 2026-11-10)
-  - on: for-leave
-    kind: hard
-    why: a must feature of the 0.8.0 cut (added 2026-11-10)
   - on: dev-dock-redesign
     kind: hard
     why: a must feature of the 0.8.0 cut

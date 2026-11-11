@@ -52,3 +52,7 @@ The maintainer counts devtools-copy as part of dev-dock-redesign (one story), so
 0.8.0 features: 1. dev-dock-redesign with devtools-copy, 2. color-scheme, 3. context-menu, 4. popover-group-alert, 5. derived-stores, 6. head-rerun-scripts, 7. block-styles, 8. dev-setup-in-plugin, 9. editor-sizes, 10. for-leave.
 
 Also made must on 2026-11-10 (not features, so the count stays 10): render-memo-reads (wins back the size cost of #485), seroval-1-8 (the validator on values from the network, split entry points), skill-tasks (checks the skill against the new APIs before the release).
+
+## Amendment, 2026-11-11
+
+for-leave left the cut. The maintainer was unsure the idea is worth keeping: a leave hook for `#for` alone implies one for conditionals, and prior art has either one mechanism for every block (Svelte, Framer Motion) or a pair (Vue, Solid). It is parked in the backlog for a goal debate. The cut has 9 features.
