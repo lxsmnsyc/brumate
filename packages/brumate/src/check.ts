@@ -751,6 +751,13 @@ class Generator {
       }
     }
     this.templates(body.templates);
+    for (const style of body.styles) {
+      for (const variable of style.variables) {
+        this.out.text('$$use(');
+        this.out.expression(variable);
+        this.out.text(');\n');
+      }
+    }
     this.nodes(body.children);
     this.leave();
   }

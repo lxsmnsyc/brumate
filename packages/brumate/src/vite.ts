@@ -345,6 +345,7 @@ function getMarkup(result: CompileResult): string {
     ...(file.instanceScript ? [file.instanceScript] : []),
     ...(file.moduleScript ? [file.moduleScript] : []),
     ...file.styles,
+    ...file.blockStyles,
   ];
   forEachNode(file.children, (node) => {
     if ('body' in node && node.body && 'script' in node.body && node.body.script) {

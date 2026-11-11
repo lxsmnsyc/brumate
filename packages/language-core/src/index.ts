@@ -43,14 +43,16 @@ function createSnapshot(text: string): IScriptSnapshot {
 const STYLE_FEATURES: CodeInformation = { ...FEATURES, verification: true, format: false };
 
 /**
- * The style blocks of a file, each as its own CSS, SCSS or Less code. An
+ * The style blocks of a file and of its blocks, each as its own CSS, SCSS or Less code. An
  * interpolation such as `${size}` becomes underscores of the same length, a
  * name that the CSS service accepts, so offsets stay the same.
  */
 function styleCodes(source: string, fileName: string): VirtualCode[] {
   let styles;
   try {
-    ({ styles } = parse(source, { filename: fileName }));
+    const file = parse(source, { filename: fileName });
+    // The styles of blocks follow those of the file.
+    styles = [...file.styles, ...file.blockStyles];
   } catch {
     return [];
   }

@@ -338,6 +338,45 @@ export async function run({ browser, url, runner }) {
     await page.close();
   }
 
+  // The style in a block: a click changes the computed style of one row only.
+  {
+    const page = await browser.newPage();
+    const errors = watch(page);
+    const flow = runner.flow('website', { page, errors });
+    let result;
+    await flow('/docs/control-flow: the block style sample renders its rows', async () => {
+      await page.goto(`${url}/docs/control-flow`, { waitUntil: 'load' });
+      await page.locator('h2', { hasText: 'A style in a block' }).scrollIntoViewIfNeeded();
+      result = page.locator('.live-result:has(.tag)').first();
+      await result.locator('.tag').nth(2).waitFor({ timeout: TIMEOUT });
+    });
+    await flow('/docs/control-flow: a click changes the style of one row', async () => {
+      const backgrounds = () =>
+        result
+          .locator('.tag')
+          .evaluateAll((tags) => tags.map((tag) => getComputedStyle(tag).backgroundColor));
+      const before = await backgrounds();
+      assert(
+        before.every((color) => color === 'rgba(0, 0, 0, 0)'),
+        `the rows start with the backgrounds ${JSON.stringify(before)}`,
+      );
+      await result.locator('.tag').nth(1).click();
+      await page.waitForFunction(
+        () =>
+          getComputedStyle(document.querySelectorAll('.live-result .tag')[1]).backgroundColor ===
+          'rgb(65, 105, 225)',
+        null,
+        { timeout: 5000 },
+      );
+      const after = await backgrounds();
+      assert(
+        after[0] === before[0] && after[2] === before[2],
+        `the other rows changed: ${JSON.stringify(after)}`,
+      );
+    });
+    await page.close();
+  }
+
   // The home page, and client navigation between docs pages.
   {
     const page = await browser.newPage();

@@ -386,7 +386,8 @@ function shiftIds(root: Node, shift: Shift): void {
     for (const name of IDS) {
       const value = element.getAttribute(name);
       if (value) {
-        element.setAttribute(name, add(value));
+        // `b-v` can list several IDs.
+        element.setAttribute(name, value.split(' ').map(add).join(' '));
       }
     }
     // A handler that a spread passed on names the scope of its owner after `@`, such as

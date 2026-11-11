@@ -28,6 +28,7 @@ A `.brm` file is a component: scripts for its state, an optional `<style>`, and 
 - Never change a value in place. `todos.push(todo)` updates nothing. Assign a new value, or use `$produce(todos, (draft) => { … })`.
 - An attribute value is a quoted string, a plain name, a property path or a call, or an expression in parentheses. A value with an operator, such as `?:`, `+`, `>` or `&&`, or an arrow function, needs parentheses: `disabled=(count > 3)`. A bare `title=!closed` and `data-a=-1` work.
 - Use the shorthands: `<a {href}>`, `<button {onClick}>`, `<input {...rest}>`.
+- A block body can hold a `<style>` at its top level, after its optional `<script>`. It styles the elements of the block and of the blocks inside it, and its `${}` reads the item and the signals of the block script. The `<style>` of the file is the style of the outermost block, so one rule covers both, and `<style global>` and `:global(…)` work in any block.
 - Write a branch on the line of the closing brace, as the style: `} #else if (…) {` and `} #else {`. The compiler also accepts `#else` on the next line.
 - A `#for` has a key: `#for (item, index of items by item.id) { … }`. Without `by`, each item is its own key.
 - `$effect` never runs on mount. Its first run is after the first change of a value it reads. Code that must run when the page loads or comes into view is `$client(callback, trigger)`. The default trigger is `'visible'`.
