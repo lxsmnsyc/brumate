@@ -230,18 +230,10 @@ See [Testing](./testing.md).
 
 ## `brumate/devtools`
 
-`installDevtools(endpoint = '/__brumate/inspect')` adds the devtools grip to a page. The dev server calls it. See [Inspect and devtools](./inspect.md#devtools).
+`installDevtools(endpoint = '/__brumate/inspect')` adds the devtools grip to a page. The plugin calls it on the dev server for every client entry that starts the loader, so you do not. A call of your own is harmless: a second install does nothing. See [Inspect and devtools](./inspect.md#devtools).
 
 ## `brumate/hot`
 
-`hotLoad(import.meta.hot, load)` returns a `load` for the loader that loads the new code of a component that changed on the dev server, and replaces its styles. The start module of the plugin uses it. A custom client entry that calls `start` itself passes it:
-
-```ts
-import { hotLoad } from 'brumate/hot';
-import { start } from 'brumate/loader';
-import { load } from 'virtual:brumate/manifest';
-
-start({ load: hotLoad(import.meta.hot, load) });
-```
+`hotLoad(import.meta.hot, load)` returns a `load` for the loader that loads the new code of a component that changed on the dev server, and replaces its styles. The plugin wraps the `load` of every client entry that calls `start` from `brumate/loader`, so you do not call it. A call of your own is harmless: a load that is wrapped stays as it is. It stays exported for code that starts the loader some other way.
 
 Outside the dev server, `import.meta.hot` is undefined and `hotLoad` returns `load` as it is. See [Edit while it runs](./getting-started.md#edit-while-it-runs).

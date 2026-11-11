@@ -37,6 +37,9 @@ export interface HotContext {
   ): void;
 }
 
+/** The loads that `hotLoad` returned. */
+const hotLoads = new WeakSet<object>();
+
 /**
  * Listens for updates of components, and returns a `load` for the loader
  * that loads the new code of a component that changed. Pass
@@ -46,7 +49,8 @@ export function hotLoad(
   hot: HotContext | undefined,
   load: (id: string) => Promise<ClientModule>,
 ): (id: string) => Promise<ClientModule> {
-  if (!hot) {
+  // The plugin wraps the load of every entry, so a load that is wrapped already stays as it is.
+  if (!hot || hotLoads.has(load)) {
     return load;
   }
   const fresh = new Map<string, string>();
@@ -89,8 +93,10 @@ export function hotLoad(
       }
     });
   });
-  return (id) => {
+  const wrapped = (id: string): Promise<ClientModule> => {
     const url = fresh.get(id);
     return url ? (import(/* @vite-ignore */ url) as Promise<ClientModule>) : load(id);
   };
+  hotLoads.add(wrapped);
+  return wrapped;
 }

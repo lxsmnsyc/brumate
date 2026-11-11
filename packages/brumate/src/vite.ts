@@ -199,6 +199,11 @@ async function inBatches<T, R>(list: T[], run: (item: T) => Promise<R>): Promise
 }
 
 const START = 'virtual:brumate/start';
+/**
+ * On the dev server, a client entry that imports `start` from `brumate/loader` gets this module
+ * in its place. It sets up the hot updates and the devtools around `start`.
+ */
+const DEV_START = 'virtual:brumate/dev-start';
 /** Exports `load(id)`, which imports the client module of a component. */
 const MANIFEST = 'virtual:brumate/manifest';
 /** `virtual:brumate/bundle/<id>` imports the client modules of a root component and those it renders. */
@@ -2302,8 +2307,19 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
 
     async resolveId(id, importer, resolveOptions) {
+      // A client entry that calls `start` itself gets the hot updates and the devtools, on the dev server only.
+      if (
+        isServe &&
+        id === 'brumate/loader' &&
+        !resolveOptions?.ssr &&
+        importer !== `\0${START}` &&
+        importer !== `\0${DEV_START}`
+      ) {
+        return `\0${DEV_START}`;
+      }
       if (
         id === START ||
+        id === DEV_START ||
         id === MANIFEST ||
         id === SERVER ||
         id === ROUTES ||
@@ -2395,6 +2411,22 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
                 `import('brumate/devtools').then((m) => m.installDevtools(${JSON.stringify(INSPECT)}, ${JSON.stringify(rpc)}, ${JSON.stringify({ version: BRUMATE_VERSION, vite: viteVersion })}, import.meta.hot));`,
               ]
             : []),
+        ].join('\n');
+      }
+      if (id === `\0${DEV_START}`) {
+        return [
+          "import { start as startLoader } from 'brumate/loader';",
+          "import { hotLoad } from 'brumate/hot';",
+          "export { startWithoutNavigation } from 'brumate/loader';",
+          'export function start(options) {',
+          '  const stop = startLoader({ ...options, load: hotLoad(import.meta.hot, options.load) });',
+          ...(options.devtools !== false
+            ? [
+                `  import('brumate/devtools').then((m) => m.installDevtools(${JSON.stringify(INSPECT)}, ${JSON.stringify(rpc)}, ${JSON.stringify({ version: BRUMATE_VERSION, vite: viteVersion })}, import.meta.hot));`,
+              ]
+            : []),
+          '  return stop;',
+          '}',
         ].join('\n');
       }
       if (id === `\0${MANIFEST}`) {

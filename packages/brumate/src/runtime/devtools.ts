@@ -10,6 +10,20 @@ import type { ScopeId } from './shared.ts';
 
 // The same key as the core's, without importing the core.
 const DEVTOOLS = Symbol.for('brumate.devtools');
+/** The state and the button of the devtools that a page has, so a second install does nothing. */
+const INSTALLED = Symbol.for('brumate.devtools.installed');
+
+/** What an install leaves on globalThis, so a second call can find it. */
+interface Installed {
+  state: DevtoolsState;
+  host: Element;
+  /** False until the host is in the page; it waits for DOMContentLoaded while the document loads. */
+  appended: boolean;
+  /** The fetch that the install wrapped, so a new install wraps it and not the wrapper. */
+  fetch: typeof fetch;
+  /** The wrapper that the install put on globalThis. */
+  wrapper: typeof fetch;
+}
 
 /** Something that happened on the page, for the log of the panel. */
 export interface DevtoolsEntry {
@@ -456,6 +470,12 @@ export function installDevtools(
   meta: DevtoolsMeta = {},
   hot?: HotContext,
 ): DevtoolsState {
+  // The plugin installs the devtools on its own, so an entry that does it too must not add a second set.
+  const installed = (globalThis as Record<symbol, Installed | undefined>)[INSTALLED];
+  // A host that was removed (a test, or the user) lets a new install replace this one.
+  if (installed && (installed.host.isConnected || !installed.appended)) {
+    return installed.state;
+  }
   const state: DevtoolsState = {
     log: [],
     blocks: new Map(),
@@ -634,7 +654,10 @@ export function installDevtools(
   };
 
   // Server function calls, with how long each took and how it answered.
-  const original = globalThis.fetch.bind(globalThis);
+  // Code that replaced fetch since the last install (a test stub) is kept and wrapped.
+  const unwrapped =
+    installed && globalThis.fetch === installed.wrapper ? installed.fetch : globalThis.fetch;
+  const original = unwrapped.bind(globalThis);
   globalThis.fetch = async (input, init) => {
     const url = new URL(input instanceof Request ? input.url : String(input), location.href);
     if (url.origin !== location.origin || !url.pathname.startsWith(`${rpc}/`)) {
@@ -755,6 +778,14 @@ export function installDevtools(
   scanBlocks(state);
 
   const host = document.createElement('brumate-devtools');
+  (globalThis as Record<symbol, Installed | undefined>)[INSTALLED] = {
+    state,
+    host,
+    appended: false,
+    fetch: unwrapped,
+    wrapper: globalThis.fetch,
+  };
+  const mark = (globalThis as Record<symbol, Installed | undefined>)[INSTALLED]!;
   const root = host.attachShadow({ mode: 'open' });
   const style = document.createElement('style');
   style.textContent = `
@@ -914,6 +945,7 @@ export function installDevtools(
   function append(): void {
     // Navigation replaces the body, so the button goes on the document element.
     document.documentElement.append(host);
+    mark.appended = true;
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', append);
