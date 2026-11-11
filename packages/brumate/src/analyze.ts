@@ -1875,6 +1875,12 @@ class Analyzer {
     for (const template of body.templates) {
       this.declareTemplate(template, scope);
     }
+    // The style of a block reads what is in scope at the block.
+    for (const style of body.styles) {
+      for (const variable of style.variables) {
+        this.createExpressionSite('style', scope, variable, 'style');
+      }
+    }
     this.visitNodes(body.children, scope);
   }
 

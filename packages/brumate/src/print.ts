@@ -49,6 +49,12 @@ export function printAST(file: SFCFile): string {
     if (item.script) {
       write(depth + 1, 'script');
     }
+    for (const style of item.styles) {
+      write(depth + 1, `style ${style.lang}`);
+      for (const variable of style.variables) {
+        write(depth + 2, `variable (${variable.code})`);
+      }
+    }
     for (const template of item.templates) {
       write(depth + 1, `template ${template.name}`);
       body(template.body, depth + 2, 'body');

@@ -99,7 +99,7 @@ class Parser {
   constructor(source: string, filename: string) {
     this.source = source;
     this.fail = createFail(source, filename);
-    this.file = { filename, source, styles: [], templates: [], children: [] };
+    this.file = { filename, source, styles: [], blockStyles: [], templates: [], children: [] };
   }
 
   parseFile(): SFCFile {
@@ -205,7 +205,7 @@ class Parser {
 
   // Nodes
 
-  private parseNodes(mode: Mode, templates?: TemplateDecl[]): Markup[] {
+  private parseNodes(mode: Mode, templates?: TemplateDecl[], styles?: Style[]): Markup[] {
     const nodes: Markup[] = [];
     for (;;) {
       if (this.pos >= this.source.length) {
@@ -240,10 +240,16 @@ class Parser {
         continue;
       }
       if (this.isTagStart('style')) {
-        if (mode !== 'file') {
-          this.fail('<style> must be at the top level', this.pos);
+        if (mode === 'element') {
+          this.fail('<style> must be at the top level of the file or of a block', this.pos);
         }
-        this.file.styles.push(this.parseStyle());
+        const style = this.parseStyle(mode === 'body');
+        if (styles) {
+          styles.push(style);
+          this.file.blockStyles.push(style);
+        } else {
+          this.file.styles.push(style);
+        }
         continue;
       }
       if (this.peek() === '<') {
@@ -341,7 +347,7 @@ class Parser {
         start,
         end: this.pos,
         value: this.expression(inner.start, inner.end),
-        body: { start, end: this.pos, templates: [], children: [node] },
+        body: { start, end: this.pos, styles: [], templates: [], children: [node] },
       };
       return block;
     }
@@ -737,7 +743,7 @@ class Parser {
     }
   }
 
-  private parseStyle(): Style {
+  private parseStyle(inBlock: boolean): Style {
     const start = this.pos;
     const { attributes, contentStart } = this.parseBlockTag('style');
     const { contentEnd } = this.readBlockContent('style', contentStart);
@@ -748,6 +754,12 @@ class Parser {
     }
     if (attributes.global !== undefined && attributes.global !== true) {
       this.fail('global takes no value, as in <style global>', start);
+    }
+    if (inBlock && attributes.global !== undefined) {
+      this.fail(
+        '<style global> is not allowed in a block. Put global rules in the <style> of the file',
+        start,
+      );
     }
     const lang = attributes.lang ?? 'css';
     if (lang !== 'css' && lang !== 'scss' && lang !== 'less') {
@@ -816,6 +828,9 @@ class Parser {
     if (body.script) {
       this.fail('#reveal has no script of its own', body.script.start);
     }
+    if (body.styles.length > 0) {
+      this.fail('#reveal has no style of its own', body.styles[0]!.start);
+    }
     return { kind: 'fragment', start, end: this.pos, children: body.children, reveal };
   }
 
@@ -855,9 +870,10 @@ class Parser {
       script = parsed.script;
     }
     const templates: TemplateDecl[] = [];
-    const children = this.parseNodes('body', templates);
+    const styles: Style[] = [];
+    const children = this.parseNodes('body', templates, styles);
     this.pos++;
-    return { start, end: this.pos, script, templates, children };
+    return { start, end: this.pos, script, styles, templates, children };
   }
 
   /** Consumes `#keyword` if it comes next, after whitespace and comments. */

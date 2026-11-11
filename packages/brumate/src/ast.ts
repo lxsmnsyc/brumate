@@ -32,6 +32,8 @@ export interface SFCFile {
   instanceScript?: Script;
   generics?: string;
   styles: Style[];
+  /** The `<style>` of every block body, in source order. Each is also in `styles` of its `Body`. */
+  blockStyles: Style[];
   templates: TemplateDecl[];
   children: Markup[];
 }
@@ -157,6 +159,8 @@ export type Attribute =
 
 export interface Body extends Range {
   script?: Script;
+  /** The `<style>` elements at the top level of the body. */
+  styles: Style[];
   templates: TemplateDecl[];
   children: Markup[];
 }
@@ -337,4 +341,91 @@ export function forEachNode(nodes: Markup[], visit: (node: Markup) => void): voi
     visit(node);
     forEachNode(getChildren(node), visit);
   }
+}
+
+/** Returns the bodies of a block, in source order. */
+export function blockBodies(block: Block): Body[] {
+  switch (block.kind) {
+    case 'if': {
+      const bodies: Body[] = [];
+      for (const branch of block.branches) {
+        bodies.push(branch.body);
+      }
+      if (block.fallback) {
+        bodies.push(block.fallback);
+      }
+      return bodies;
+    }
+    case 'switch': {
+      const bodies: Body[] = [];
+      for (const branch of block.cases) {
+        bodies.push(branch.body);
+      }
+      if (block.fallback) {
+        bodies.push(block.fallback);
+      }
+      return bodies;
+    }
+    case 'for':
+    case 'repeat':
+    case 'loading':
+    case 'client':
+    case 'defer':
+      return [block.body, ...(block.fallback ? [block.fallback] : [])];
+    case 'try':
+      return [block.body, block.fallback];
+    default:
+      return [block.body];
+  }
+}
+
+/** Where a body sits in its file. */
+export interface BodyInfo {
+  /** The body around this one, or undefined for the body of the component. */
+  parent?: Body;
+  /**
+   * True if no element of the parent body is around this body, so its top-level elements are
+   * top-level elements of the parent too. A template body is never top-level: it renders where
+   * it is called.
+   */
+  top: boolean;
+}
+
+/** The place of every body of a file: the bodies of blocks and of templates. */
+export function bodyTree(file: SFCFile): Map<Body, BodyInfo> {
+  const tree = new Map<Body, BodyInfo>();
+  function visitBody(body: Body, parent: Body | undefined, top: boolean): void {
+    tree.set(body, { parent, top });
+    for (const template of body.templates) {
+      visitBody(template.body, body, false);
+    }
+    visitNodes(body.children, body, true);
+  }
+  function visitNodes(nodes: Markup[], parent: Body | undefined, top: boolean): void {
+    for (const node of nodes) {
+      switch (node.kind) {
+        case 'element':
+          visitNodes(node.children, parent, false);
+          break;
+        case 'component':
+        case 'dynamic':
+        case 'fragment':
+          visitNodes(node.children, parent, top);
+          break;
+        case 'text':
+        case 'insert':
+        case 'listener':
+          break;
+        default:
+          for (const body of blockBodies(node)) {
+            visitBody(body, parent, top);
+          }
+      }
+    }
+  }
+  for (const template of file.templates) {
+    visitBody(template.body, undefined, false);
+  }
+  visitNodes(file.children, undefined, true);
+  return tree;
 }

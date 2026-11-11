@@ -1292,7 +1292,13 @@ class ClientGenerator {
       // The scope attribute is the element's own. Its style is not: a spread can write one, and
       // an update writes the style variables again with whatever style the spread passes on.
       if (this.plan.styles.css) {
-        own.push(this.plan.styles.attribute);
+        if (this.plan.styles.hasComponentCss) {
+          own.push(this.plan.styles.attribute);
+        }
+        const body = site.scope.body;
+        for (const block of (body && this.plan.styles.bodies.get(body)?.attributes) || []) {
+          own.push(block.attribute);
+        }
       }
       // The other spreads of the element, which an update writes too. Each update tracks the
       // attributes that it wrote, so an update of one spread alone would remove the others'.
@@ -2122,10 +2128,21 @@ class ClientGenerator {
     function isInside(scope: Scope): boolean {
       return isWithinAny(scope, inside);
     }
+    // The block styles whose variables go on the top-level elements that these scopes render.
+    const styled = new Set<Body>();
+    for (const scope of inside) {
+      for (const block of (scope.body && this.plan.styles.bodies.get(scope.body)?.variables) ||
+        []) {
+        styled.add(block.body);
+      }
+    }
     const declarations = new Set<Declaration>();
     for (const site of this.model.sites) {
-      // Top-level elements of a body render the style variables of the component.
-      const rendered = isInside(site.scope) || site.kind === 'style';
+      // Top-level elements of a body render the style variables of the component, and of the
+      // block styles around it.
+      const rendered =
+        isInside(site.scope) ||
+        (site.kind === 'style' && (!site.scope.body || styled.has(site.scope.body)));
       if (!rendered || DEFERRED_SITES.has(site.kind)) {
         continue;
       }

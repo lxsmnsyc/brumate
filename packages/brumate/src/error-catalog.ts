@@ -96,8 +96,8 @@ const SYNTAX: ErrorEntry[] = [
   ),
   entry(
     'BRM011',
-    '<style> must be at the top level',
-    'A `<style>` is inside an element or a block.',
+    '<style> must be at the top level of the file or of a block',
+    'A `<style>` is inside an element.',
     '<style>\n  p {\n    color: red;\n  }\n</style>\n<p>Text</p>',
   ),
   entry(
@@ -305,6 +305,24 @@ const SYNTAX: ErrorEntry[] = [
     'Unknown <style> attribute "{name}"',
     'A `<style>` has an attribute other than `lang` and `global`.',
     '<style scoped>\n  p {\n    color: red;\n  }\n</style>',
+  ),
+  entry(
+    'BRM205',
+    '<style global> is not allowed in a block. Put global rules in the <style> of the file',
+    'A `<style global>` is in the body of a block. A style in a block reaches only the elements of the block, so it has no global rules.',
+    '<style global>\n  p {\n    margin: 0;\n  }\n</style>\n#if (open) {\n  <p>Open</p>\n}',
+  ),
+  entry(
+    'BRM206',
+    ':global(…) is not allowed in the <style> of a block. Put global rules in the <style> of the file',
+    'A `<style>` in a block holds `:global(…)`. A global rule would read as if it applied while the block shows, and it would not.',
+    '<style>\n  :global(body) {\n    margin: 0;\n  }\n</style>\n#if (open) {\n  <p>Open</p>\n}',
+  ),
+  entry(
+    'BRM207',
+    '#reveal has no style of its own',
+    'A `<style>` is in the body of a `#reveal`, which only orders the bodies inside it.',
+    '<style>\n  p {\n    color: red;\n  }\n</style>\n#reveal {\n  #loading {\n    <p>Loaded</p>\n  }\n}',
   ),
   entry(
     'BRM190',

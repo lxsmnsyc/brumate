@@ -2,12 +2,18 @@ import { builtin } from './node.ts';
 import { parse } from 'postcss';
 import type { AtRule, Root } from 'postcss';
 import selectorParser from 'postcss-selector-parser';
-import type { Expression, SFCFile } from './ast.ts';
+import { bodyTree } from './ast.ts';
+import type { Body, BodyInfo, Expression, SFCFile, Style } from './ast.ts';
 import type { Diagnostic } from './model.ts';
 
 export interface StyleOutput {
-  /** The CSS of every `<style>` block, scoped except `<style global>`, or an empty string. */
+  /**
+   * The CSS of every `<style>` block, the component's and then those of the blocks, scoped
+   * except `<style global>`, or an empty string.
+   */
   css: string;
+  /** True if the `<style>` of the component itself has CSS, so its elements get `attribute`. */
+  hasComponentCss: boolean;
   /** The attribute that marks the component's elements, such as `b-c-1abc`. */
   attribute: string;
   /**
@@ -15,7 +21,7 @@ export interface StyleOutput {
    * right before or after it, such as a unit in `${size}px`, is part of the
    * value, because `var(--x)px` is not valid CSS.
    */
-  variables: { name: string; expression: Expression; prefix: string; suffix: string }[];
+  variables: StyleVariable[];
   diagnostics: Diagnostic[];
   /** Absolute paths of the files that SCSS or Less imported. */
   dependencies: string[];
@@ -24,6 +30,47 @@ export interface StyleOutput {
    * needs to match one. See `needsScope`.
    */
   targets: ScopeTarget[];
+  /**
+   * The `<style>` of the block bodies, one entry for each body that has any, in source order.
+   * Their rules follow those of the component in `css`, outer blocks first.
+   */
+  blocks: BlockStyle[];
+  /**
+   * What each body of the file takes from `blocks`. Bodies that take nothing are not in it,
+   * and it is empty when no block has a style.
+   */
+  bodies: Map<Body, BodyStyles>;
+}
+
+export interface StyleVariable {
+  name: string;
+  expression: Expression;
+  prefix: string;
+  suffix: string;
+}
+
+/** The `<style>` of one block body. */
+export interface BlockStyle {
+  body: Body;
+  /** The attribute that marks the elements its rules reach, such as `b-c-1abc-1`. */
+  attribute: string;
+  /** Its `${…}` interpolations, named `--s-<hash>-<n>-<index>`. */
+  variables: StyleVariable[];
+  targets: ScopeTarget[];
+}
+
+export interface BodyStyles {
+  /**
+   * The block styles whose rules reach the elements of the body: its own and those of the bodies
+   * around it, outermost first. Its elements get their attributes.
+   */
+  attributes: BlockStyle[];
+  /**
+   * The block styles whose variables go on the top-level elements of the body: its own, and
+   * those of the bodies around it that it sits at the top level of, outermost first. Elements
+   * deeper in the body inherit the variables.
+   */
+  variables: BlockStyle[];
 }
 
 /**
@@ -332,56 +379,205 @@ function preprocess(
   return css;
 }
 
-/** Compiles the `<style>` blocks of a file into scoped CSS. */
+const GLOBAL_IN_BLOCK =
+  ':global(…) is not allowed in the <style> of a block. Put global rules in the <style> of the file';
+
+/** What `compileStyle` adds to as it goes. */
+interface StyleState {
+  filePath: string | undefined;
+  diagnostics: Diagnostic[];
+  dependencies: string[];
+  variables: StyleVariable[];
+  targets: ScopeTarget[];
+}
+
+/**
+ * Compiles one `<style>` into scoped CSS, and adds its interpolations to `state.variables`.
+ * `name` makes the name of a custom property from its index. Returns undefined after an error.
+ */
+function compileStyle(
+  file: SFCFile,
+  style: Style,
+  attribute: string,
+  name: (index: number) => string,
+  state: StyleState,
+  inBlock: boolean,
+): string | undefined {
+  const { variables } = state;
+  // Interpolations become custom properties. Offsets in `content` start after `<style>`.
+  const contentStart = file.source.indexOf(style.content, style.start);
+  let content = '';
+  let position = 0;
+  for (const expression of style.variables) {
+    const variable = name(variables.length);
+    let start = expression.start - 2 - contentStart;
+    let end = expression.end + 1 - contentStart;
+    // Text that touches the interpolation, such as `px` or `#`, goes into the value.
+    const prefixStart = start;
+    while (start > position && /[#\w.%-]/.test(style.content[start - 1]!)) {
+      start--;
+    }
+    const prefix = style.content.slice(start, prefixStart);
+    const suffixStart = end;
+    while (end < style.content.length && /[\w.%-]/.test(style.content[end]!)) {
+      end++;
+    }
+    const suffix = style.content.slice(suffixStart, end);
+    variables.push({ name: variable, expression, prefix, suffix });
+    content += `${style.content.slice(position, start)}var(${variable})`;
+    position = end;
+  }
+  content += style.content.slice(position);
+  try {
+    const root = parse(
+      style.lang === 'css'
+        ? content
+        : preprocess(style.lang, content, state.filePath, state.dependencies),
+    );
+    if (inBlock) {
+      let global = false;
+      root.walkRules((rule) => {
+        global ||= /:global\b/.test(rule.selector);
+      });
+      if (global) {
+        state.diagnostics.push({
+          severity: 'error',
+          message: GLOBAL_IN_BLOCK,
+          range: { start: style.start, end: style.end },
+        });
+        return undefined;
+      }
+    }
+    scopeRules(root, attribute, state.targets, style.global);
+    return root.toString().trim();
+  } catch (error) {
+    state.diagnostics.push({
+      severity: 'error',
+      message:
+        style.lang === 'css'
+          ? `Invalid CSS: ${(error as Error).message}`
+          : (error as Error).message,
+      range: { start: style.start, end: style.end },
+    });
+    return undefined;
+  }
+}
+
+/**
+ * What each body takes from the block styles around it. See `BodyStyles`. A body that no block
+ * style reaches is left out.
+ */
+function bodyStyles(file: SFCFile, blocks: BlockStyle[]): Map<Body, BodyStyles> {
+  const result = new Map<Body, BodyStyles>();
+  if (blocks.length === 0) {
+    return result;
+  }
+  const byBody = new Map<Body, BlockStyle>();
+  for (const block of blocks) {
+    byBody.set(block.body, block);
+  }
+  const tree = bodyTree(file);
+  for (const body of tree.keys()) {
+    const attributes: BlockStyle[] = [];
+    const variables: BlockStyle[] = [];
+    let atTop = true;
+    let current: Body | undefined = body;
+    while (current) {
+      const block = byBody.get(current);
+      if (block) {
+        attributes.unshift(block);
+        if (atTop && block.variables.length > 0) {
+          variables.unshift(block);
+        }
+      }
+      const info: BodyInfo = tree.get(current)!;
+      atTop = atTop && info.top;
+      current = info.parent;
+    }
+    if (attributes.length > 0) {
+      result.set(body, { attributes, variables });
+    }
+  }
+  return result;
+}
+
+/**
+ * Compiles the `<style>` blocks of a file into scoped CSS: the styles of the component, and then
+ * those of the block bodies, each with its own attribute.
+ */
 export function compileStyles(file: SFCFile, scope: string, filePath?: string): StyleOutput {
   // Under `b-`, which the compiler reserves, so markup and data cannot write it.
   const attribute = `b-c-${scope}`;
-  const diagnostics: Diagnostic[] = [];
-  const variables: StyleOutput['variables'] = [];
-  const dependencies: string[] = [];
+  const state: StyleState = {
+    filePath,
+    diagnostics: [],
+    dependencies: [],
+    variables: [],
+    targets: [],
+  };
   const parts: string[] = [];
-  const targets: ScopeTarget[] = [];
   for (const style of file.styles) {
-    // Interpolations become custom properties. Offsets in `content` start after `<style>`.
-    const contentStart = file.source.indexOf(style.content, style.start);
-    let content = '';
-    let position = 0;
-    for (const expression of style.variables) {
-      const name = `--s-${scope}-${variables.length}`;
-      let start = expression.start - 2 - contentStart;
-      let end = expression.end + 1 - contentStart;
-      // Text that touches the interpolation, such as `px` or `#`, goes into the value.
-      const prefixStart = start;
-      while (start > position && /[#\w.%-]/.test(style.content[start - 1]!)) {
-        start--;
-      }
-      const prefix = style.content.slice(start, prefixStart);
-      const suffixStart = end;
-      while (end < style.content.length && /[\w.%-]/.test(style.content[end]!)) {
-        end++;
-      }
-      const suffix = style.content.slice(suffixStart, end);
-      variables.push({ name, expression, prefix, suffix });
-      content += `${style.content.slice(position, start)}var(${name})`;
-      position = end;
-    }
-    content += style.content.slice(position);
-    try {
-      const root = parse(
-        style.lang === 'css' ? content : preprocess(style.lang, content, filePath, dependencies),
-      );
-      scopeRules(root, attribute, targets, style.global);
-      parts.push(root.toString().trim());
-    } catch (error) {
-      diagnostics.push({
-        severity: 'error',
-        message:
-          style.lang === 'css'
-            ? `Invalid CSS: ${(error as Error).message}`
-            : (error as Error).message,
-        range: { start: style.start, end: style.end },
-      });
+    const css = compileStyle(
+      file,
+      style,
+      attribute,
+      (index) => `--s-${scope}-${index}`,
+      state,
+      false,
+    );
+    if (css !== undefined) {
+      parts.push(css);
     }
   }
-  return { css: parts.join('\n'), attribute, variables, diagnostics, dependencies, targets };
+  const hasComponentCss = parts.join('\n') !== '';
+  // A body comes after the body around it, so its rules win at the same specificity.
+  const bodies: Body[] = [];
+  if (file.blockStyles.length > 0) {
+    for (const body of bodyTree(file).keys()) {
+      if (body.styles.length > 0) {
+        bodies.push(body);
+      }
+    }
+    bodies.sort((a, b) => a.start - b.start);
+  }
+  const blocks: BlockStyle[] = [];
+  for (const body of bodies) {
+    const number = blocks.length + 1;
+    const block: BlockStyle = {
+      body,
+      attribute: `${attribute}-${number}`,
+      variables: [],
+      targets: [],
+    };
+    const blockState: StyleState = {
+      ...state,
+      variables: block.variables,
+      targets: block.targets,
+    };
+    for (const style of body.styles) {
+      const css = compileStyle(
+        file,
+        style,
+        block.attribute,
+        (index) => `--s-${scope}-${number}-${index}`,
+        blockState,
+        true,
+      );
+      if (css !== undefined) {
+        parts.push(css);
+      }
+    }
+    blocks.push(block);
+  }
+  return {
+    css: parts.join('\n'),
+    hasComponentCss,
+    attribute,
+    variables: state.variables,
+    diagnostics: state.diagnostics,
+    dependencies: state.dependencies,
+    targets: state.targets,
+    blocks,
+    bodies: bodyStyles(file, blocks),
+  };
 }

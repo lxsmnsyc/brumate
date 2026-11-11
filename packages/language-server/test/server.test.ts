@@ -52,6 +52,19 @@ describe('styles', () => {
     const start = style!.mappings[0]!.sourceOffsets[0]!;
     expect(text.slice(start, start + css.length)).toBe('\n  p { margin: ${size}rem; }\n');
   });
+
+  it('maps the style of a block after those of the file, with the offsets of the file', () => {
+    const text = `<p>Hi</p>\n#for (tag of ['a']) {\n  <i class="tag">{tag}</i>\n  <style lang="less">\n    .tag { color: \${tag}; }\n  </style>\n}\n<style>\n  p { margin: 0; }\n</style>\n`;
+    const code = createBrumateVirtualCode('/App.brm', snapshot(text));
+    const ids = code.embeddedCodes?.map((embedded) => embedded.id);
+    expect(ids).toEqual(['ts', 'style_0', 'style_1']);
+    const block = code.embeddedCodes!.find((embedded) => embedded.id === 'style_1')!;
+    expect(block.languageId).toBe('less');
+    const css = block.snapshot.getText(0, block.snapshot.getLength());
+    expect(css).toBe('\n    .tag { color: ______; }\n  ');
+    const start = block.mappings[0]!.sourceOffsets[0]!;
+    expect(text.slice(start, start + css.length)).toBe('\n    .tag { color: ${tag}; }\n  ');
+  });
 });
 
 describe('dedupeDiagnostics', () => {

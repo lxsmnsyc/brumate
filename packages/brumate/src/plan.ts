@@ -9,6 +9,7 @@ import type {
   Markup,
   SFCFile,
 } from './ast.ts';
+import { blockBodies } from './ast.ts';
 import { cleanText } from './codegen/patch.ts';
 import { isFunctionValue, isTemplateValue, resetUsed, tryCatchesClient } from './graph.ts';
 import type { Graph } from './graph.ts';
@@ -16,6 +17,8 @@ import { compileStyles } from './css.ts';
 import { forEachNode } from './project.ts';
 import type { StyleOutput } from './css.ts';
 import type { Declaration, DeclarationKind, Diagnostic, Scope, Site } from './model.ts';
+
+export { blockBodies };
 
 export interface ScopePlan {
   scope: Scope;
@@ -802,7 +805,8 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
   const styles = compileStyles(file, hash(file.filename), path);
   let liveStyles = false;
   for (const site of model.sites) {
-    if (site.kind === 'style' && isLiveSite(site)) {
+    // The variables of a block style are the update of block-styles, not of the component.
+    if (site.kind === 'style' && !site.scope.body && isLiveSite(site)) {
       liveStyles = true;
       break;
     }
@@ -873,42 +877,6 @@ export function holdsStream(block: Block & { kind: 'try' }): boolean {
     found ||= node.kind === 'component' || node.kind === 'dynamic' || node.kind === 'loading';
   });
   return found;
-}
-
-/** Returns the bodies of a block, in source order. */
-export function blockBodies(block: Block): Body[] {
-  switch (block.kind) {
-    case 'if': {
-      const bodies: Body[] = [];
-      for (const branch of block.branches) {
-        bodies.push(branch.body);
-      }
-      if (block.fallback) {
-        bodies.push(block.fallback);
-      }
-      return bodies;
-    }
-    case 'switch': {
-      const bodies: Body[] = [];
-      for (const branch of block.cases) {
-        bodies.push(branch.body);
-      }
-      if (block.fallback) {
-        bodies.push(block.fallback);
-      }
-      return bodies;
-    }
-    case 'for':
-    case 'repeat':
-    case 'loading':
-    case 'client':
-    case 'defer':
-      return [block.body, ...(block.fallback ? [block.fallback] : [])];
-    case 'try':
-      return [block.body, block.fallback];
-    default:
-      return [block.body];
-  }
 }
 
 /**
