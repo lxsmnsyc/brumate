@@ -1,7 +1,7 @@
 ---
 id: block-styles
 title: Styles in blocks
-status: done
+status: active
 priority: must
 type: feature
 story:
@@ -17,7 +17,7 @@ spike: false
 hypothesis:
 verify: pnpm --filter brumate exec vitest run test/styles/block-styles-live.test.ts
 exclusive: []
-fulfilled_by: 08001cf1 (batch/brumate-release-0.8)
+fulfilled_by:
 gate: false
 added:
 spent: 473000
@@ -98,3 +98,12 @@ M. Uncertainty medium (live per-instance variables over block scopes and resume)
 - If `setVar` by document query is too slow for lists, change it to a query inside the instance's own top-level elements only after you measured it. The proposal says "a change sets them on the elements of that instance".
 - Do not make a `<style>` in markup valid. Only a body's top level holds one.
 - Docs must not claim more than the tests show.
+
+## Rework (2026-11-11, maintainer)
+
+The goal was misread. A block style replaces the separate component-level style: the top-level `<style>` of a file is the style of the outermost block, one rule and one code path for both. So:
+
+- Global markers work in a block as at top level: `<style global>` and `:global(...)` in a block style compile as they do in the component's style. BRM205 and BRM206 are removed (codes retired, docs regenerated).
+- css.ts, plan, markup and client codegen treat the file body as the root block. The component's names stay the same (`b-c-<hash>`, `--s-<hash>-<k>`), so output for files without block styles does not change. No user-facing deprecation: a top-level `<style>` stays valid.
+- Docs (styles.md, control-flow.md, decisions.md entry, skill) describe one rule: a style applies to its block and the blocks inside it; the file is the outermost block.
+- Lands on PR #513 (batch/brumate-release-0.8), not a new PR.
