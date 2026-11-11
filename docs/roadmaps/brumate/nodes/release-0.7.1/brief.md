@@ -39,6 +39,9 @@ depends_on:
   - on: key-letter-case
     kind: hard
     why: prevent(fn, 'Mod+K') never matches Cmd+K (added 2026-11-11)
+  - on: popover-tab-out
+    kind: hard
+    why: Tab out of a non-modal popover panel leaves it open (added 2026-11-11)
   - on: live-style-scope-id
     kind: hard
     why: live style variables miss elements the browser renders outside the component's render function (added 2026-11-11)
