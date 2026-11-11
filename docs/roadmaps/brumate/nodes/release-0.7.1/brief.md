@@ -30,6 +30,9 @@ depends_on:
   - on: rest-ref-test-wait
     kind: hard
     why: a resume test fails under load on 0.7.0
+  - on: get-event-helper-docs
+    kind: hard
+    why: the getEvent docs do not say a .ts helper needs the event passed in (added 2026-11-11)
   - on: live-style-scope-id
     kind: hard
     why: live style variables miss elements the browser renders outside the component's render function (added 2026-11-11)
