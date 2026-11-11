@@ -1,7 +1,7 @@
 ---
 id: rest-ref-test-wait
 title: The rest-props ref tests wait for the element instead of a fixed time
-status: active
+status: done
 priority: must
 type: fix
 outline: false
@@ -12,10 +12,10 @@ size: S
 spike: false
 verify:
 exclusive: []
-fulfilled_by:
+fulfilled_by: cb12d439 (batch/brumate-main)
 gate: false
 added: 2026-11-09
-spent:
+spent: 25000
 owns: []
 shared:
   - packages/brumate/test/resume.test.ts
