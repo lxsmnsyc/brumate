@@ -21,7 +21,7 @@
 
 ## Gotchas
 
-- Release/0.8 (merge of main): `liveVariableScopes` already applies the same rule for block scopes (`!owner || this.isInside(owner) ? name : name.id`) but not for the component scope. There `owner` is undefined for the component, so the component branch is always `name`. Fix: in the component case use `this.isInside(component) ? name : \`${name}.id\``, i.e. replace `!owner || this.isInside(owner)` with `this.isInside(owner ?? this.plan.graph.model.component)`. The spread path at ~markup.ts:2868 uses the same function, so one change covers both. Add the two resume tests and fixtures; they pass there only with the change.
+- Release/0.8 (merge of main): `liveVariableScopes` already applies the same rule for block scopes (`!owner || this.isInside(owner) ? name : name.id`) but not for the component scope. There `owner` is undefined for the component, so the component branch is always `name`. Fix: in the component case use `this.isInside(component) ? name : \`${name}.id\``, i.e. replace `!owner || this.isInside(owner)`with`this.isInside(owner ?? this.plan.graph.model.component)`. The spread path at ~markup.ts:2868 uses the same function, so one change covers both. Add the two resume tests and fixtures; they pass there only with the change.
 - Adding fixtures to test/render shifts differential-N shard membership; the test names move between files.
 - Output change for packages/ui TreeItem and ColorThumb (expected); not diffed by hand.
 
