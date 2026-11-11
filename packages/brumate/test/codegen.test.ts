@@ -749,14 +749,82 @@ describe('await', () => {
     expect(parseSync('render.ts', render).errors).toEqual([]);
   });
 
-  it('runs the memos of a render through renderMemo, except the ones that never give a promise', () => {
+  it('runs a memo of a render through renderMemo when only a function or a block reads it', () => {
     const { render } = compile(
-      `${header}  const user = $memo(load(id));\n  const twice = $memo(id * 2);\n</script>\n<p>{user.name} {twice}</p>`,
+      `${header}  const user = $memo(load(id));\n  const twice = $memo(id * 2);\n  function show() { return user.name; }\n</script>\n<p>{twice}</p>\n<button onClick=(() => show())>+</button>\n#if (id > 1) {\n  <p>{user.name}</p>\n}`,
       { filename: 'T.brm' },
     );
     expect(render).toContain('const user = $$b.renderMemo(() => (load(id)));');
     expect(render).toContain('const twice = (id * 2);');
     expect(render).toContain('$$b.readMemo(user)');
+  });
+
+  it('throws a memo at its declaration when the markup always reads it', () => {
+    const { render } = compile(
+      `${header}  const user = $memo(load(id));\n  const name = $memo(user.name);\n</script>\n<p>{name}</p>`,
+      { filename: 'T.brm' },
+    );
+    // `name` is read in the markup, so `user`, which `name` reads, is read too.
+    expect(render).toContain('const user = $$b.memoNow(load(id));');
+    expect(render).toContain('const name = $$b.memoNow(user.name);');
+    expect(render).not.toContain('readMemo');
+    expect(render).not.toContain('renderMemo');
+  });
+
+  it('keeps the first read as the first error when memos are read in another order', () => {
+    const { render } = compile(
+      `${header}  const a = $memo(load(id));\n  const b = $memo(load(id + 1));\n</script>\n<p>{b}</p>\n<p>{a}</p>`,
+      { filename: 'T.brm' },
+    );
+    // Thrown at their declarations, `a` would fail before `b`, which is read first.
+    expect(render).toContain('const a = $$b.renderMemo(() => (load(id)));');
+    expect(render).toContain('const b = $$b.renderMemo(() => (load(id + 1)));');
+    expect(render).toContain('$$b.readMemo(b)');
+    expect(render).toContain('$$b.readMemo(a)');
+  });
+
+  it('keeps the error of a memo while a statement that can throw runs before its read', () => {
+    const { render } = compile(
+      `${header}  const a = $memo(load(id));\n  const first = load(id).value;\n  const shown = $memo(first + a);\n</script>\n<p>{shown}</p>`,
+      { filename: 'T.brm' },
+    );
+    expect(render).toContain('const a = $$b.renderMemo(() => (load(id)));');
+  });
+
+  it('holds the error of a memo of an expression that converts a value', () => {
+    const { render } = compile(
+      `${header}  let big = $signal(1n);\n  const sum = $memo({ k: big + 1 });\n  const text = $memo({ k: \`${'$'}{big}\` });\n  function show() { return [sum, text]; }\n</script>\n<button onClick=(() => show())>+</button>`,
+      { filename: 'T.brm' },
+    );
+    expect(render).toContain('const sum = $$b.renderMemo(() => ({ k: big + 1 }));');
+    expect(render).toContain('const text = $$b.renderMemo(() =>');
+    expect(render).not.toContain('memoNow');
+  });
+
+  it('keeps the check of a memo that a #try body or a condition reads', () => {
+    const { render } = compile(
+      `${header}  const user = $memo(load(id));\n  const other = $memo(load(id + 1));\n</script>\n#try {\n  <p>{user.name}</p>\n} #catch {\n  <p>failed</p>\n}\n<p>{id > 1 && other.name}</p>`,
+      { filename: 'T.brm' },
+    );
+    expect(render).toContain('const user = $$b.renderMemo(() => (load(id)));');
+    expect(render).toContain('$$b.readMemo(user)');
+    // The right side of `&&` may not run.
+    expect(render).toContain('const other = $$b.renderMemo(() => (load(id + 1)));');
+    expect(render).toContain('$$b.readMemo(other)');
+  });
+
+  it('reads a memo that cannot throw and a memo with await without a check', () => {
+    const { render } = compile(
+      `${header}  const shown = $memo({ id, flag: id === 1 });\n  const loaded = $memo(await load(id));\n  const risky = $memo(load(id).value);\n  function show() { return [shown.id, risky]; }\n</script>\n<p>{loaded}</p>\n<button onClick=(() => show())>+</button>`,
+      { filename: 'T.brm' },
+    );
+    expect(render).toContain('const shown = $$b.memoNow({ id, flag: id === 1 });');
+    expect(render).toContain('const loaded = $$b.renderMemo(async () => (await load(id)));');
+    expect(render).not.toContain('readMemo(shown)');
+    expect(render).not.toContain('readMemo(loaded)');
+    // A member access can throw, so a memo that reads it holds its error.
+    expect(render).toContain('const risky = $$b.renderMemo(() => (load(id).value));');
+    expect(render).toContain('$$b.readMemo(risky)');
   });
 
   it('renders a component whose memos await promises, and whose handlers await', () => {

@@ -1,9 +1,9 @@
-import type { SFCFile } from '../ast.ts';
+import type { Markup, SFCFile } from '../ast.ts';
 import { copy } from '../sourcemap.ts';
-import type { Declaration, Reference, SemanticModel, Site } from '../model.ts';
+import type { Declaration, Reference, Scope, SemanticModel, Site } from '../model.ts';
 import { children } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
-import { neverPromise } from './primitive.ts';
+import { cannotThrow, neverPromise } from './primitive.ts';
 
 interface Edit {
   start: number;
@@ -87,6 +87,397 @@ function keyName(property: oxc.BindingProperty): string | undefined {
     return property.key.name;
   }
   return property.key.type === 'Literal' ? String(property.key.value) : undefined;
+}
+
+/** The node types that a walk through code that always runs enters. */
+const ALWAYS_RUNS = new Set([
+  'ExpressionStatement',
+  'VariableDeclaration',
+  'VariableDeclarator',
+  'AssignmentExpression',
+  'MemberExpression',
+  'CallExpression',
+  'NewExpression',
+  'BinaryExpression',
+  'UnaryExpression',
+  'TemplateLiteral',
+  'TaggedTemplateExpression',
+  'ObjectExpression',
+  'Property',
+  'ArrayExpression',
+  'SpreadElement',
+  'ParenthesizedExpression',
+  'SequenceExpression',
+  'TSAsExpression',
+  'TSSatisfiesExpression',
+  'TSNonNullExpression',
+]);
+
+/**
+ * Adds the start of each name that the code reads whenever it runs. A function, an optional
+ * chain, the branch of a condition and the right side of `&&`, `||` and `??` may not run.
+ */
+function addAlwaysRead(node: oxc.Node, into: Set<number>): void {
+  if (node.type === 'Identifier') {
+    into.add(node.start);
+    return;
+  }
+  if (node.type === 'ConditionalExpression') {
+    addAlwaysRead(node.test, into);
+    return;
+  }
+  if (node.type === 'LogicalExpression') {
+    addAlwaysRead(node.left, into);
+    return;
+  }
+  if (
+    node.type === 'CallExpression' &&
+    (calleeName(node) === '$isPending' || calleeName(node) === '$isBound')
+  ) {
+    return;
+  }
+  if (!ALWAYS_RUNS.has(node.type)) {
+    return;
+  }
+  for (const [, child] of children(node)) {
+    addAlwaysRead(child, into);
+  }
+}
+
+/**
+ * The expressions of markup that run when the body around them renders: text, and the values of
+ * attributes and props. The children of a component and the bodies of blocks render apart.
+ */
+function addAlwaysMarkup(nodes: Markup[], into: Set<oxc.Node>): void {
+  for (const node of nodes) {
+    if (node.kind === 'insert') {
+      into.add(node.expression.ast);
+    } else if (node.kind === 'element' || node.kind === 'dynamic' || node.kind === 'component') {
+      for (const attribute of node.attributes) {
+        if (attribute.kind === 'value') {
+          into.add(attribute.value.ast);
+        }
+      }
+      if (node.kind !== 'component') {
+        addAlwaysMarkup(node.children, into);
+      }
+    } else if (node.kind === 'fragment') {
+      addAlwaysMarkup(node.children, into);
+    }
+  }
+}
+
+/** The site kinds whose code does not run when a render runs. */
+const NOT_RUN = new Set(['function', 'server-function', 'effect', 'client', 'event']);
+
+/** The site kinds of markup, which run after the script of their scope. */
+const MARKUP_SITES = new Set([
+  'insert',
+  'attribute',
+  'prop',
+  'spread',
+  'tag',
+  'block',
+  'title',
+  'style',
+]);
+
+/** The first step of evaluating `node` up to the name at `target` that can throw, if any. */
+function throwsBefore(
+  node: oxc.Node,
+  target: number,
+  safe: (name: oxc.Node) => boolean,
+): boolean | undefined {
+  if (target < node.start || target >= node.end) {
+    return undefined;
+  }
+  if (node.type === 'Identifier') {
+    return false;
+  }
+  const parts: oxc.Node[] = [];
+  for (const [, child] of children(node)) {
+    // The pattern of a declaration is bound after its value is computed.
+    if (node.type === 'VariableDeclarator' && child === node.id) {
+      continue;
+    }
+    parts.push(child);
+  }
+  parts.sort((a, b) => a.start - b.start);
+  for (const part of parts) {
+    const found = throwsBefore(part, target, safe);
+    if (found !== undefined) {
+      return found;
+    }
+    if (part.end <= target && !cannotThrow(part, safe)) {
+      return true;
+    }
+  }
+  return undefined;
+}
+
+/** True when the markup holds a component or a dynamic tag, at any depth. */
+function hasChildren(value: unknown): boolean {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      if (hasChildren(item)) {
+        return true;
+      }
+    }
+    return false;
+  }
+  if (value === null || typeof value !== 'object') {
+    return false;
+  }
+  const node = value as { kind?: string };
+  if (node.kind === 'component' || node.kind === 'dynamic') {
+    return true;
+  }
+  for (const [key, child] of Object.entries(value)) {
+    // The code of an expression is not markup.
+    if (key !== 'ast' && key !== 'script' && key !== 'styles' && hasChildren(child)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * The memos that the browser render runs through `renderMemo`, so each holds its error until a
+ * read throws it. The others add to `settled`, since they hold none:
+ * - a memo that cannot throw, such as `{ show: wanted }`, if it reads no memo that holds an error;
+ * - a memo that the render always reads, in code that always runs. It throws at its declaration,
+ *   which is the throw of the read to the nearest `#try`, so no read needs a check. A memo of
+ *   another memo that always runs counts too. The error must also be the first one: nothing that
+ *   can throw runs between the declaration and the first read.
+ * A memo with `await` is a promise at once, and a promise holds its error.
+ */
+function heldMemos(
+  file: SFCFile,
+  sites: Site[],
+  inline: Set<Declaration>,
+  settled: Set<Declaration>,
+): Set<Declaration> {
+  // The memos whose expression can give a promise or throw.
+  const candidates = new Set<Declaration>();
+  for (const site of sites) {
+    if (site.kind === 'memo' && site.declaration && !inline.has(site.declaration)) {
+      if (!site.awaits && !neverPromise(site.node as oxc.Node)) {
+        candidates.add(site.declaration);
+      }
+    }
+  }
+  // The starts of the reads of those memos, which can throw.
+  const candidateReads = new Set<number>();
+  for (const memo of candidates) {
+    for (const read of memo.reads) {
+      candidateReads.add(read.range.start);
+    }
+  }
+  // The expressions of markup that run with their body.
+  const markup = new Set<oxc.Node>();
+  addAlwaysMarkup(file.children, markup);
+  const bodies = new Set<unknown>();
+  for (const site of sites) {
+    const body = site.scope.body;
+    if (site.scope.kind === 'body' && body && !bodies.has(body)) {
+      bodies.add(body);
+      addAlwaysMarkup(body.children, markup);
+    }
+  }
+  // Whether the site runs when the render of its scope runs, and the names it always reads.
+  const reached = new Map<Site, Set<number>>();
+  function alwaysReads(site: Site): Set<number> {
+    let starts = reached.get(site);
+    if (!starts) {
+      starts = new Set();
+      const runs =
+        (site.scope.kind === 'component' || site.scope.kind === 'body') &&
+        (site.kind === 'memo' ||
+          site.kind === 'provide' ||
+          (site.kind === 'setup' && (site.label === 'setup' || site.label.startsWith('signal '))) ||
+          ((site.kind === 'insert' || site.kind === 'attribute' || site.kind === 'prop') &&
+            markup.has(site.node)));
+      if (runs) {
+        addAlwaysRead(site.node as oxc.Node, starts);
+      }
+      reached.set(site, starts);
+    }
+    return starts;
+  }
+  // The memos that must stay held, since they would throw before another error.
+  const blocked = new Set<Declaration>();
+  let held = new Set<Declaration>();
+  // The memos that the render always reads, with the read that comes first.
+  let thrown = new Map<Declaration, Reference>();
+  for (;;) {
+    held = new Set(candidates);
+    thrown = new Map();
+    settled.clear();
+    settle();
+    let again = false;
+    for (const [memo, read] of thrown) {
+      if (!inOrder(memo, read)) {
+        blocked.add(memo);
+        again = true;
+      }
+    }
+    if (!again) {
+      return held;
+    }
+  }
+
+  // Whether the declaration of the memo runs its expression once the render reaches it.
+  function runsAtOnce(site: Site): boolean {
+    const owner = site.declaration;
+    return !!owner && !held.has(owner) && !site.awaits;
+  }
+  // The reads of the memo in code that always runs.
+  function alwaysRead(memo: Declaration): Reference[] {
+    const result: Reference[] = [];
+    for (const read of memo.reads) {
+      const site = read.site;
+      if (
+        site.scope === memo.scope &&
+        alwaysReads(site).has(read.range.start) &&
+        (site.kind !== 'memo' || runsAtOnce(site))
+      ) {
+        result.push(read);
+      }
+    }
+    return result;
+  }
+  // A memo that settles lets the memos around it settle, so repeat until none does.
+  function settle(): void {
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const site of sites) {
+        const memo = site.declaration;
+        if (site.kind !== 'memo' || !memo || !held.has(memo)) {
+          continue;
+        }
+        let settles = false;
+        if (!memo.gate && cannotThrow(site.node as oxc.Node)) {
+          // The expression cannot throw, and reads no memo that holds an error.
+          settles = true;
+          for (const read of site.reads) {
+            if (held.has(read.declaration)) {
+              settles = false;
+            }
+          }
+        }
+        if (!settles && !blocked.has(memo)) {
+          const reads = alwaysRead(memo);
+          if (reads.length > 0) {
+            settles = true;
+            thrown.set(memo, reads.toSorted(compareReads)[0]!);
+          }
+        }
+        if (settles) {
+          held.delete(memo);
+          settled.add(memo);
+          changed = true;
+        }
+      }
+    }
+  }
+  // Markup runs after the script of its scope.
+  function phase(site: Site): number {
+    return MARKUP_SITES.has(site.kind) ? 1 : 0;
+  }
+  function compareReads(a: Reference, b: Reference): number {
+    return phase(a.site) - phase(b.site) || a.range.start - b.range.start;
+  }
+  // Whether the code of the site can throw when the render runs it.
+  function mayThrow(site: Site, own: Declaration): boolean {
+    const owner = site.kind === 'memo' ? site.declaration : undefined;
+    if (owner) {
+      if (site.awaits || (held.has(owner) && !thrown.has(owner))) {
+        return false;
+      }
+      if (thrown.has(owner)) {
+        return true;
+      }
+    }
+    // A name that reads a memo can throw its error, unless the memo is the one being checked.
+    const ownReads = new Set<number>();
+    let firstOwn = Infinity;
+    for (const read of own.reads) {
+      ownReads.add(read.range.start);
+      if (read.site === site && alwaysReads(site).has(read.range.start)) {
+        firstOwn = Math.min(firstOwn, read.range.start);
+      }
+    }
+    const safe = (name: oxc.Node): boolean =>
+      ownReads.has(name.start) || !candidateReads.has(name.start);
+    // A site that reads the memo first throws the error of the memo, which is the error to show.
+    if (firstOwn < Infinity && throwsBefore(site.node as oxc.Node, firstOwn, safe) === false) {
+      return false;
+    }
+    return !cannotThrow(site.node as oxc.Node, safe);
+  }
+  // Whether the scope is inside `outer`.
+  function isInside(scope: Scope | undefined, outer: Scope): boolean {
+    for (let at = scope?.parent; at; at = at.parent) {
+      if (at === outer) {
+        return true;
+      }
+    }
+    return false;
+  }
+  // Whether nothing that can throw runs between the declaration of the memo, which throws
+  // there, and the read that throws first in the program of the base.
+  function inOrder(memo: Declaration, read: Reference): boolean {
+    const declared = memo.site;
+    if (!declared) {
+      return false;
+    }
+    const own = new Set<number>();
+    for (const other of memo.reads) {
+      own.add(other.range.start);
+    }
+    // The code before the name in the site of the read.
+    if (
+      throwsBefore(
+        read.site.node as oxc.Node,
+        read.range.start,
+        (name) => own.has(name.start) || !candidateReads.has(name.start),
+      )
+    ) {
+      return false;
+    }
+    const atMarkup = phase(read.site) === 1;
+    // A child component in the markup renders in place and can throw before the read.
+    if (
+      atMarkup &&
+      hasChildren(memo.scope.kind === 'body' ? memo.scope.body?.children : file.children)
+    ) {
+      return false;
+    }
+    for (const site of sites) {
+      if (site === declared || site === read.site || NOT_RUN.has(site.kind)) {
+        continue;
+      }
+      let between = false;
+      if (site.scope === memo.scope) {
+        if (phase(site) === 0) {
+          between =
+            site.node.start > declared.node.start &&
+            (atMarkup || site.node.start < read.range.start);
+        } else {
+          // The markup of a scope has no order that is known here.
+          between = atMarkup;
+        }
+      } else if (atMarkup && isInside(site.scope, memo.scope)) {
+        // The bodies that the markup renders run as it places them.
+        between = true;
+      }
+      if (between && mayThrow(site, memo)) {
+        return false;
+      }
+    }
+    return true;
+  }
 }
 
 export function addValueEdits(
@@ -226,17 +617,11 @@ export function addValueEdits(
       }
     }
   }
+  // The memos that hold no error in a render: the declaration of one gives its value or throws.
+  const settled = new Set<Declaration>();
   if (mode === 'render') {
-    // The memos that the render runs through `renderMemo`. A read of one throws the error that
-    // it holds, as the server's does.
-    const held = new Set<Declaration>();
-    for (const site of sites) {
-      if (site.kind === 'memo' && site.declaration && !inline.has(site.declaration)) {
-        if (site.awaits || !neverPromise(site.node as oxc.Node)) {
-          held.add(site.declaration);
-        }
-      }
-    }
+    const held = heldMemos(file, sites, inline, settled);
+    // A read of a memo that holds an error throws the error, as the server's does.
     for (const site of sites) {
       readMemos(site, site.node as oxc.Node, site.declaration, held);
     }
@@ -380,18 +765,21 @@ export function addValueEdits(
           // and the name of the memo, for the trace of the devtools.
           patch.replace(argument.end, node.end, `), $$ctx, ${JSON.stringify(declaration.name)})`);
         } else if (mode === 'render' && declaration?.gate) {
-          // A promise is an error here, held until a read.
-          patch.replace(node.start, argument.start, '$$b.renderMemo(() => $$b.gateValue(');
-          patch.replace(argument.end, node.end, '))');
+          // A promise is an error here. It is held until a read, or thrown at once.
+          const open = settled.has(declaration)
+            ? '$$b.gateValue('
+            : '$$b.renderMemo(() => $$b.gateValue(';
+          patch.replace(node.start, argument.start, open);
+          patch.replace(argument.end, node.end, settled.has(declaration) ? ')' : '))');
         } else if (mode === 'render' && declaration && (site!.awaits || !neverPromise(argument))) {
-          // The render runs the memo through a helper, which holds a throw as a rejected promise
-          // and marks a promise, so `setSlots` starts the load.
-          patch.replace(
-            node.start,
-            argument.start,
-            site!.awaits ? '$$b.renderMemo(async () => (' : '$$b.renderMemo(() => (',
-          );
-          patch.replace(argument.end, node.end, '))');
+          // The render marks a promise, so `setSlots` starts the load. A throw is held as a
+          // value, unless the memo cannot throw, or throws at once.
+          let open = site!.awaits ? '$$b.renderMemo(async () => (' : '$$b.renderMemo(() => (';
+          if (settled.has(declaration)) {
+            open = '$$b.memoNow(';
+          }
+          patch.replace(node.start, argument.start, open);
+          patch.replace(argument.end, node.end, settled.has(declaration) ? ')' : '))');
         } else if (site?.awaits) {
           // `await` needs an async function, and then it does not hold up the code after it.
           patch.replace(node.start, argument.start, '(async () => (');

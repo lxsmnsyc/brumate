@@ -1,0 +1,7 @@
+<script>
+  import { bad } from './orderData.ts';
+
+  const value = bad('child');
+</script>
+
+<p>{value}</p>

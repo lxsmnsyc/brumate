@@ -1,0 +1,15 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import ConvertKid from './ConvertKid.brm';
+
+  let show = $signal(false);
+</script>
+
+<button class="show" onClick=(() => (show = true))>Show</button>
+#try {
+  #if (show) {
+    <ConvertKid />
+  }
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

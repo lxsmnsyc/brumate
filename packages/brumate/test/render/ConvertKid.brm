@@ -1,0 +1,12 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  let big = $signal(1n);
+  const sum = $memo({ k: big + 1 });
+  function show() {
+    return [sum];
+  }
+</script>
+
+<button class="read" onClick=(() => show())>Read</button>
+<p class="kid">kid</p>
