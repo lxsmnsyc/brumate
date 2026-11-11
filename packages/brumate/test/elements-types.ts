@@ -445,3 +445,24 @@ export const shadowParts: ElementProps<'div'> = { exportparts: 'label: lbl', aut
 export const svgNamespaced: ElementProps<'use'> = { 'xlink:href': '#icon', 'xml:lang': 'en' };
 // @ts-expect-error `xlink:src` is not an attribute.
 export const svgBadNamespaced: ElementProps<'use'> = { 'xlink:src': '#icon' };
+
+// An enumerated attribute takes its keywords in any letter case, as HTML matches them.
+export const keywordCase: ElementProps<'div'> = { dir: 'LTR', contenteditable: 'Plaintext-Only' };
+export const keywordCaseButton: ElementProps<'button'> = { type: 'Submit', formmethod: 'POST' };
+export const keywordCaseInput: ElementProps<'input'> = { type: 'DATETIME-LOCAL' };
+export const keywordCaseLong: ElementProps<'form'> = { enctype: 'MULTIPART/FORM-DATA' };
+// The empty string is a valid state of these attributes.
+export const emptyStates: ElementProps<'div'> = {
+  translate: '',
+  contenteditable: '',
+  spellcheck: '',
+  autocapitalize: '',
+  popover: '',
+  hidden: '',
+};
+// @ts-expect-error A wrong keyword fails in any case.
+export const wrongKeyword: ElementProps<'div'> = { dir: 'Sideways' };
+// @ts-expect-error `Submt` is not a keyword in any case.
+export const wrongButtonType: ElementProps<'button'> = { type: 'Submt' };
+// @ts-expect-error An empty `dir` is an invalid value.
+export const emptyDir: ElementProps<'div'> = { dir: '' };
