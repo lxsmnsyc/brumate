@@ -41,15 +41,11 @@ export type PropsOf<C> = C extends (props: infer P, ...rest: any[]) => unknown ?
 type Attr<T> = T | null | undefined;
 
 /**
- * The keywords `S` in any letter case, as HTML matches an enumerated attribute: `'submit'` takes
- * `'Submit'` and `'SUBMIT'`. The first 12 characters of a keyword take any case. The rest of a
- * longer keyword is all lower or all upper case, so the union stays small.
+ * The keywords `S` as HTML matches an enumerated attribute, without regard to case: in lower
+ * case, in upper case, or with a capital first letter, so `'submit'` also takes `'SUBMIT'` and
+ * `'Submit'`. Other mixes of case are left out, so a type error lists a short union.
  */
-type Keyword<S extends string, N extends unknown[] = []> = S extends `${infer H}${infer R}`
-  ? N['length'] extends 12
-    ? Lowercase<S> | Uppercase<S>
-    : `${Lowercase<H> | Uppercase<H>}${Keyword<R, [...N, 0]>}`
-  : S;
+type Keyword<S extends string> = S | Uppercase<S> | Capitalize<S>;
 
 /**
  * The events of an element, by the name of the event. An app that sends its own events from
