@@ -1,7 +1,7 @@
 ---
 id: block-styles-scope
 title: Styles in blocks, scoping and first render
-status: todo
+status: active
 priority: must
 type: feature
 story:
