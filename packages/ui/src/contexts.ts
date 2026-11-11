@@ -312,6 +312,8 @@ export interface OverlayTriggerState {
   keepsContent?: boolean;
   /** The IDs that name a Dialog in the overlay with no Heading of its own, such as of a DatePicker. */
   labelledBy?: string;
+  /** The overlay opens at this point of the viewport, in place of next to the trigger, such as a context menu. */
+  point?: { x: number; y: number };
 }
 
 /** What an overlay calls on its trigger. */

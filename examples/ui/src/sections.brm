@@ -21,6 +21,7 @@
   import ModalSection from './sections/ModalSection.brm';
   import ListBoxSection from './sections/ListBoxSection.brm';
   import MenuSection from './sections/MenuSection.brm';
+  import ContextMenuSection from './sections/ContextMenuSection.brm';
   import SelectSection from './sections/SelectSection.brm';
   import ComboBoxSection from './sections/ComboBoxSection.brm';
   import AutocompleteSection from './sections/AutocompleteSection.brm';
@@ -74,6 +75,7 @@
 <ModalSection />
 <ListBoxSection />
 <MenuSection />
+<ContextMenuSection />
 <SelectSection />
 <ComboBoxSection />
 <AutocompleteSection />

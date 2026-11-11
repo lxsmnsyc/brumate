@@ -1,0 +1,55 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Autocomplete from '@brumate/ui/Autocomplete.brm';
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Menu from '@brumate/ui/Menu.brm';
+  import MenuItem from '@brumate/ui/MenuItem.brm';
+  import MenuTrigger from '@brumate/ui/MenuTrigger.brm';
+  import Modal from '@brumate/ui/Modal.brm';
+  import ModalOverlay from '@brumate/ui/ModalOverlay.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import SearchField from '@brumate/ui/SearchField.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let contextAction = $signal<Key>('none');
+  let paletteOpen = $signal(false);
+  let paletteAction = $signal('none');
+</script>
+
+<section aria-labelledby="context-menu">
+  <h2 id="context-menu">Context menu and shortcut</h2>
+  <MenuTrigger trigger="contextmenu">
+    <div class="context-area" tabindex="0" aria-label="Notes">Right click here</div>
+    <Popover class="popover context-popover">
+      <Menu class="action-menu context-menu" aria-label="Note actions" onAction=((key) => (contextAction = key))>
+        <MenuItem id="open" class="option">Open</MenuItem>
+        <MenuItem id="rename" class="option">Rename</MenuItem>
+      </Menu>
+    </Popover>
+  </MenuTrigger>
+  <p class="context-state">{contextAction}</p>
+  <DialogTrigger shortcut="Mod+K" isOpen=$bind(paletteOpen)>
+    <Button class="press palette-trigger">Commands</Button>
+    <ModalOverlay class="backdrop">
+      <Modal class="modal">
+        <Dialog class="dialog palette" aria-label="Commands">
+          <Autocomplete>
+            <SearchField>
+              <Label>Find a command</Label>
+              <Input class="palette-input" autofocus />
+            </SearchField>
+            <Menu class="action-menu palette-menu" aria-label="Commands" onAction=((key) => { paletteAction = String(key); paletteOpen = false; })>
+              <MenuItem id="new" class="option">New file</MenuItem>
+              <MenuItem id="save" class="option">Save</MenuItem>
+            </Menu>
+          </Autocomplete>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  </DialogTrigger>
+  <p class="palette-state">{paletteAction}</p>
+</section>

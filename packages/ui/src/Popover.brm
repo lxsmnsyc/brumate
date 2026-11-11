@@ -57,7 +57,7 @@
     release,
     takesText,
   } from './overlay.ts';
-  import { followTrigger, keepArrows, readLength } from './position.ts';
+  import { followTrigger, keepArrows, pointAnchor, readLength } from './position.ts';
   import { mergeStyle } from './style.ts';
   import { TransitionContext, enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
   import type { TransitionParent } from './transition.ts';
@@ -162,18 +162,21 @@
       return;
     }
     const anchor = trigger ? document.getElementById(trigger.triggerId) : null;
+    // A context menu opens at a point, with no element to follow.
+    const point = trigger?.point;
+    const placed = point ? pointAnchor(point.x, point.y) : anchor;
     const stops: (() => void)[] = [];
     hold(element, stops, returnTo, trigger?.triggerId, Boolean(trigger?.isPreview));
-    if (anchor) {
+    if (placed) {
       const arrows = keepArrows(element);
       stops.push(
         arrows.stop,
         followTrigger(
-          anchor,
+          placed,
           element,
           {
             placement: getPlacement(),
-            offset: offsetPassed ? offset : (readLength(element, '--anchor-gap') ?? offset),
+            offset: offsetPassed ? offset : (readLength(element, '--anchor-gap') ?? (point ? 0 : offset)),
             crossOffset: crossOffsetPassed
               ? crossOffset
               : (readLength(element, '--anchor-offset') ?? crossOffset),

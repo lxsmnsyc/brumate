@@ -19,6 +19,7 @@ export const parts = [
   () => import('./preview-trigger.mjs'),
   () => import('./list-box.mjs'),
   () => import('./menu.mjs'),
+  () => import('./context-menu.mjs'),
   () => import('./select.mjs'),
   () => import('./combo-box.mjs'),
   () => import('./autocomplete.mjs'),

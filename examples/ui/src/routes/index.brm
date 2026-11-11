@@ -14,6 +14,16 @@
 
 <style>
   /* The page's own look for the parts, from their data attributes. */
+  :global(.context-area) {
+    display: grid;
+    place-items: center;
+    padding: 1.5rem;
+    border: 2px dashed #888;
+    border-radius: 0.5rem;
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+
   :global(.press) {
     padding: 0.5rem 1rem;
     border: 1px solid #555;

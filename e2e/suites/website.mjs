@@ -1268,6 +1268,16 @@ export async function run({ browser, url, runner }) {
       await page.keyboard.press('Escape');
       await settle();
       assert((await focused()) === 'Rename', `focus is on "${await focused()}" after Escape`);
+      // A shortcut of a DialogTrigger opens its own dialog only, not the search of the site.
+      await visit('autocomplete');
+      await page.keyboard.press('ControlOrMeta+j');
+      await page.waitForSelector('[role=dialog][aria-label=Commands]');
+      assert(
+        (await page.locator('[role=dialog]').count()) === 1,
+        `${await page.locator('[role=dialog]').count()} dialogs are open after the shortcut`,
+      );
+      await page.keyboard.press('ControlOrMeta+j');
+      await page.waitForFunction(() => document.querySelectorAll('[role=dialog]').length === 0);
       // Modal: a second modal opens over the first, and Escape closes only the top one.
       await visit('modal');
       await page.locator('button.ui-button', { hasText: /^Edit the greeting$/ }).click();

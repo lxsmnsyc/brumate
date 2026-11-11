@@ -27,6 +27,17 @@ export type Placement =
 type Side = 'top' | 'bottom' | 'left' | 'right';
 type Align = 'center' | 'start' | 'end';
 
+/** What an overlay is placed by: an element, or a rectangle that something else measures, such as a point. */
+export interface Anchor {
+  getBoundingClientRect(): DOMRect;
+}
+
+/** An anchor with no size, at a point of the viewport, such as where a context menu opens. */
+export function pointAnchor(x: number, y: number): Anchor {
+  const rect = new DOMRect(x, y, 0, 0);
+  return { getBoundingClientRect: () => rect };
+}
+
 export interface PositionOptions {
   placement: Placement;
   /** The space between the trigger and the overlay, in pixels. */
@@ -159,11 +170,11 @@ export function computePosition(
 }
 
 /**
- * Keeps the overlay next to its trigger: now, as the page scrolls or resizes, and as either of
+ * Keeps the overlay next to its trigger, or at a point: now, as the page scrolls or resizes, and as either of
  * them changes size. Returns the function that stops it.
  */
 export function followTrigger(
-  trigger: Element,
+  trigger: Element | Anchor,
   overlay: HTMLElement,
   options: PositionOptions,
   placed: (position: Position) => void,
@@ -225,7 +236,10 @@ export function followTrigger(
   document.addEventListener('scroll', update, { capture: true, passive: true });
   window.addEventListener('resize', update);
   const sizes = new ResizeObserver(update);
-  sizes.observe(trigger);
+  // A point has no size to observe.
+  if (trigger instanceof Element) {
+    sizes.observe(trigger);
+  }
   sizes.observe(overlay);
   return () => {
     cancelAnimationFrame(frame);

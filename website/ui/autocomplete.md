@@ -103,11 +103,40 @@ This stylesheet styles the field, its clear button and the Menu: rest, hover, fo
 
 ### A command palette in a dialog
 
-An Autocomplete in a Dialog of a Modal gives a palette. The Dialog takes focus when it opens, so the Input has `autofocus` to move it to the field. The arrow keys and Enter act on the commands while focus stays in the field. The action closes the dialog through the signal of the `DialogTrigger`. The first Escape clears the text, and the second closes the dialog.
+An Autocomplete in a Dialog of a Modal gives a palette, and `shortcut="Mod+K"` on the `DialogTrigger` opens it from anywhere in the page. `Mod` is Ctrl or Meta, so the keys are Ctrl+K and Cmd+K. The Button stays, for readers who do not use the keyboard.
 
-```brm demo AutocompletePaletteDemo
+```brm
+<DialogTrigger shortcut="Mod+K" isOpen=$bind(shown)>
+  <Button>Commands</Button>
+  <ModalOverlay>
+    <Modal>
+      <Dialog aria-label="Commands">
+        <Autocomplete>
+          <SearchField>
+            <Label>Find a command</Label>
+            <Input autofocus />
+          </SearchField>
+          <Menu aria-label="Commands" onAction=((key) => { run(key); shown = false; })>
+            <MenuItem id="save">Save</MenuItem>
+          </Menu>
+        </Autocomplete>
+      </Dialog>
+    </Modal>
+  </ModalOverlay>
+</DialogTrigger>
+```
+
+The Dialog takes focus when it opens, so the Input has `autofocus` to move it to the field. The arrow keys and Enter act on the commands while focus stays in the field. The action closes the dialog through the signal of the `DialogTrigger`. The first Escape clears the text, and the second closes the dialog. The site search uses Ctrl+K and Cmd+K, so the demo on this page uses Ctrl+J and Cmd+J, or press the Button. A page should give each action one key: use `Mod+K` for the palette where nothing else takes it.
+
+```brm demo CommandPaletteDemo
 
 ```
+
+- The shortcut toggles the dialog: the same keys close it when it is open, wherever focus is. Focus goes back to the element that had it before the dialog opened.
+- A letter matches in either case, and Shift does not count. `Ctrl+K`, `Meta+K`, `Alt+K` and a key alone work too.
+- The page keeps the key when something handled it first, such as a field that calls `preventDefault` on it, and while a text field has focus. `shortcutInInput` opens the dialog from a text field too.
+- Two triggers with the same shortcut: only the first one that is registered opens, since it prevents the key and the other leaves a key that was handled.
+- The shortcut is a key of the page, not a key of an element, so a screen reader finds it through the Button. Name the key in the label of the Button, as the demo does.
 
 ### A ListBox that picks several
 
