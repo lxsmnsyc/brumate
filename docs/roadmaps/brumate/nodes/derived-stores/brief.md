@@ -1,7 +1,7 @@
 ---
 id: derived-stores
 title: derived() for module-level stores
-status: active
+status: done
 priority: must
 type: feature
 story:
@@ -17,10 +17,10 @@ spike: false
 hypothesis:
 verify: pnpm --filter brumate exec vitest run test/stores/derived.test.ts
 exclusive: []
-fulfilled_by:
+fulfilled_by: e5329008 (batch/brumate-release-0.8)
 gate: false
 added: 2026-11-05
-spent:
+spent: 260000
 owns:
   - packages/brumate/test/stores/derived.test.ts
 shared:
