@@ -80,6 +80,23 @@ A response that is not a page, such as a file or JSON, opens in the browser as a
 
 To turn client navigation off for the whole site, set `navigate: false` in the plugin options.
 
+## Scripts in the head
+
+A script in the head runs when the page loads. A client navigation keeps the scripts that the next page has too, with the same HTML, and does not run them again. Add `data-rerun` to a script that must run after every navigation to a page that has it, such as one that reads state of the page:
+
+```brm
+<head>
+  {raw(`<script data-rerun>document.documentElement.dataset.visits = String(Number(localStorage.visits || 0) + 1)</script>`)}
+</head>
+```
+
+- The script is written inside an HTML string, since `<script>` is not markup in a `.brm` file. `raw()` sends it as it is.
+- It runs once per navigation, after the new body is in the page, so it reads the new body and the new URL. It is added at the end of the head.
+- A page without the script removes it, as for any other head element.
+- A script with `src` is requested again from the cache, and runs when it loads. Two such scripts run in no fixed order. A module script does not run again, because the browser keeps modules by URL.
+- The first load of the site runs head scripts as the browser does, with or without the attribute.
+- Scripts without the attribute keep their behavior.
+
 ## Navigating from code
 
 `navigate(href, options)` from `brumate/routes` loads a page as a link does: the layouts that stay keep their state. It returns when the page shows.

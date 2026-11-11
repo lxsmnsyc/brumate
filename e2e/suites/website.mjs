@@ -522,6 +522,50 @@ export async function run({ browser, url, runner }) {
         'the page still shows the state page',
       );
     });
+    await flow(
+      '/docs: a head script with data-rerun runs on a link and on the back button',
+      async () => {
+        // The website has no such script, so the pages get one from the route.
+        await page.route('**/*', async (route) => {
+          const response = await route.fetch();
+          const type = response.headers()['content-type'] ?? '';
+          if (!type.includes('text/html')) {
+            await route.fulfill({ response });
+            return;
+          }
+          const script =
+            '<script data-rerun>window.__e2eRerun = (window.__e2eRerun || 0) + 1</script>';
+          const body = (await response.text()).replace(/<head[^>]*>/, (head) => head + script);
+          await route.fulfill({ response, body });
+        });
+        try {
+          await page.goto(`${url}/docs`, { waitUntil: 'load' });
+          await page.evaluate(() => (window.__e2eSamePage = true));
+          const count = () => page.evaluate(() => window.__e2eRerun);
+          assert((await count()) === 1, `the first load ran the script ${await count()} times`);
+          await page.locator('.sidebar a[href="/docs/routing"]').click();
+          await page.waitForURL(`${url}/docs/routing`, { timeout: 5000 });
+          await page.waitForFunction(() => window.__e2eRerun === 2, null, { timeout: 5000 });
+          assert(
+            await page.evaluate(() => window.__e2eSamePage === true),
+            'the link loaded a new page',
+          );
+          await page.goBack();
+          await page.waitForURL(`${url}/docs`, { timeout: 5000 });
+          await page.waitForFunction(() => window.__e2eRerun === 3, null, { timeout: 5000 });
+          assert(
+            await page.evaluate(() => window.__e2eSamePage === true),
+            'the back button loaded a new page',
+          );
+          assert(
+            (await page.locator('script[data-rerun]').count()) === 1,
+            'the head holds more than one copy',
+          );
+        } finally {
+          await page.unroute('**/*');
+        }
+      },
+    );
     await page.close();
   }
 
