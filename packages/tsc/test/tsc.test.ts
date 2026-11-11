@@ -51,7 +51,7 @@ it('reports type errors in .brm files at their place in the file', () => {
     // component that takes none, at the children. `autocorrect`,
     // `webkitdirectory` and the namespaced `xmlns:xlink` and `xlink:href` type-check.
     "Elements.brm(11,6): error TS2353: Object literal may only specify known properties, and 'foo' does not exist in type 'Html<\"div\", {}>'.",
-    'Elements.brm(12,6): error TS2322: Type \'"soon"\' is not assignable to type \'Attr<"eager" | "lazy">\'.',
+    'Elements.brm(12,6): error TS2322: Type \'"soon"\' is not assignable to type \'Attr<Keyword<"eager" | "lazy">>\'.',
     "Elements.brm(13,6): error TS2322: Type 'BoundSignal<HTMLButtonElement | undefined>' is not assignable to type 'BindableMark<unknown> & WritableMark<HTMLDivElement>'.",
     "Elements.brm(14,6): error TS2345: Argument of type '{ tabindex: string; }' is not assignable to parameter of type 'Html<\"div\", {}>'.",
     "Elements.brm(15,6): error TS2418: Type of computed property's value is 'number', which is not assignable to type 'Attr<string>'.",

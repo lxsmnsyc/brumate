@@ -3,7 +3,7 @@ import { copy } from '../sourcemap.ts';
 import type { Declaration, Reference, SemanticModel, Site } from '../model.ts';
 import { children } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
-import { neverPromise } from './primitive.ts';
+import { cannotThrow, neverPromise } from './primitive.ts';
 
 interface Edit {
   start: number;
@@ -87,6 +87,23 @@ function keyName(property: oxc.BindingProperty): string | undefined {
     return property.key.name;
   }
   return property.key.type === 'Literal' ? String(property.key.value) : undefined;
+}
+
+/**
+ * True for a memo expression that the browser render computes in place: it gives no promise, and
+ * it cannot throw, so it has no error to hold. A name that reads a memo may throw, as the memo
+ * may hold an error.
+ */
+function isPlainMemo(site: Site, node: oxc.Node): boolean {
+  const memoReads = new Set<number>();
+  for (const read of site.reads) {
+    if (read.declaration.kind === 'memo' || read.declaration.kind === 'async-memo') {
+      memoReads.add(read.range.start);
+    }
+  }
+  return (
+    !site.awaits && neverPromise(node) && cannotThrow(node, (name) => !memoReads.has(name.start))
+  );
 }
 
 export function addValueEdits(
@@ -232,7 +249,7 @@ export function addValueEdits(
     const held = new Set<Declaration>();
     for (const site of sites) {
       if (site.kind === 'memo' && site.declaration && !inline.has(site.declaration)) {
-        if (site.awaits || !neverPromise(site.node as oxc.Node)) {
+        if (!isPlainMemo(site, site.node as oxc.Node)) {
           held.add(site.declaration);
         }
       }
@@ -383,7 +400,7 @@ export function addValueEdits(
           // A promise is an error here, held until a read.
           patch.replace(node.start, argument.start, '$$b.renderMemo(() => $$b.gateValue(');
           patch.replace(argument.end, node.end, '))');
-        } else if (mode === 'render' && declaration && (site!.awaits || !neverPromise(argument))) {
+        } else if (mode === 'render' && declaration && !isPlainMemo(site!, argument)) {
           // The render runs the memo through a helper, which holds a throw as a rejected promise
           // and marks a promise, so `setSlots` starts the load.
           patch.replace(

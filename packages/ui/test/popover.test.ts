@@ -369,3 +369,32 @@ it('removes its layer and the inert page when the page unmounts with it open', a
   await page.waitFor(() => expect(find('[data-layer]')).toBeNull());
   expect(document.querySelector('[inert]')).toBeNull();
 });
+
+it('moves Tab from the end of a non-modal popover to the element after its trigger, and closes it', async () => {
+  const page = await popovers();
+  pressWith(page.get('.loose-trigger'));
+  await page.waitFor(() => expect(find('.loose-popover')).not.toBeNull());
+  const last = find('.loose-button')!;
+  last.focus();
+  // The handler is there once the code of the page has loaded.
+  await page.waitFor(() => {
+    press('Tab', last);
+    expect(document.activeElement).toBe(page.get('.elsewhere'));
+  });
+  await page.waitFor(() => expect(find('.loose-popover')).toBeNull());
+});
+
+it('moves Shift+Tab from the start of a non-modal popover to its trigger', async () => {
+  const page = await popovers();
+  pressWith(page.get('.loose-trigger'));
+  await page.waitFor(() => expect(find('.loose-popover')).not.toBeNull());
+  const first = find('.loose-button')!;
+  first.focus();
+  await page.waitFor(() => {
+    press('Tab', first, { shiftKey: true });
+    expect(document.activeElement).toBe(page.get('.loose-trigger'));
+  });
+  // Focus on the trigger is not outside, so the popover closes once focus leaves it.
+  page.get('.elsewhere').focus();
+  await page.waitFor(() => expect(find('.loose-popover')).toBeNull());
+});

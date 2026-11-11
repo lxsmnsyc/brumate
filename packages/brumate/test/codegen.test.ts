@@ -729,7 +729,7 @@ describe('await', () => {
 
   it('renders a #loading body in place when it reads no memo that can load', () => {
     const { server } = compile(
-      `${header}  const double = $memo(id * 2);\n</script>\n#loading {\n  <p>{double}</p>\n} #else {\n  <p>…</p>\n}`,
+      `${header}  const double = $memo(id === 2);\n</script>\n#loading {\n  <p>{double}</p>\n} #else {\n  <p>…</p>\n}`,
       { filename: 'T.brm' },
     );
     expect(server).toContain('$$ctx.enter();');
@@ -751,11 +751,13 @@ describe('await', () => {
 
   it('runs the memos of a render through renderMemo, except the ones that never give a promise', () => {
     const { render } = compile(
-      `${header}  const user = $memo(load(id));\n  const twice = $memo(id * 2);\n</script>\n<p>{user.name} {twice}</p>`,
+      `${header}  const user = $memo(load(id));\n  const twice = $memo(id === 2);\n  const thrice = $memo(id * 3);\n</script>\n<p>{user.name} {twice} {thrice}</p>`,
       { filename: 'T.brm' },
     );
     expect(render).toContain('const user = $$b.renderMemo(() => (load(id)));');
-    expect(render).toContain('const twice = (id * 2);');
+    expect(render).toContain('const twice = (id === 2);');
+    // A conversion can throw, so the memo holds the error until a read.
+    expect(render).toContain('const thrice = $$b.renderMemo(() => (id * 3));');
     expect(render).toContain('$$b.readMemo(user)');
   });
 
@@ -961,14 +963,14 @@ describe('memos that no browser code reads', () => {
 
   it('leaves out a memo that only an unread memo reads, and keeps the one that markup reads', () => {
     const { render, client } = build(
-      '  const a = $memo(slow(count));\n  const b = $memo(a + 1);\n  const c = $memo(count * 3);',
+      '  const a = $memo(slow(count));\n  const b = $memo(a + 1);\n  const c = $memo(count === 3);',
       '<button onClick=(() => count++)>{c}</button>',
     );
     expect(render).not.toContain('slow(');
     expect(render).not.toContain('a + 1');
-    expect(render).toContain('const c = (count * 3);');
+    expect(render).toContain('const c = (count === 3);');
     expect(client).not.toContain('slow(');
-    expect(client).toContain('* 3');
+    expect(client).toContain('=== 3');
   });
 
   it('keeps a memo that a handler, an effect or a function reads', () => {
@@ -983,10 +985,10 @@ describe('memos that no browser code reads', () => {
 
   it('keeps the other declarators of a statement', () => {
     const { render } = build(
-      '  const lost = $memo(log(count)), shown = $memo(count + 1);',
+      '  const lost = $memo(log(count)), shown = $memo(count === 1);',
       '<p>{shown}</p>',
     );
-    expect(render).toContain('const shown = (count + 1);');
+    expect(render).toContain('const shown = (count === 1);');
     expect(render).not.toContain('lost');
   });
 

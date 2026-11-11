@@ -445,3 +445,26 @@ export const shadowParts: ElementProps<'div'> = { exportparts: 'label: lbl', aut
 export const svgNamespaced: ElementProps<'use'> = { 'xlink:href': '#icon', 'xml:lang': 'en' };
 // @ts-expect-error `xlink:src` is not an attribute.
 export const svgBadNamespaced: ElementProps<'use'> = { 'xlink:src': '#icon' };
+
+// An enumerated attribute takes its keywords in lower case, upper case or capitalized.
+export const keywordCase: ElementProps<'div'> = { dir: 'LTR', contenteditable: 'Plaintext-only' };
+export const keywordCaseButton: ElementProps<'button'> = { type: 'Submit', formmethod: 'POST' };
+export const keywordCaseInput: ElementProps<'input'> = { type: 'DATETIME-LOCAL' };
+export const keywordCaseLong: ElementProps<'form'> = { enctype: 'MULTIPART/FORM-DATA' };
+// The empty string is a valid state of these attributes.
+export const emptyStates: ElementProps<'div'> = {
+  translate: '',
+  contenteditable: '',
+  spellcheck: '',
+  autocapitalize: '',
+  popover: '',
+  hidden: '',
+};
+// @ts-expect-error A wrong keyword fails in any case.
+export const wrongKeyword: ElementProps<'div'> = { dir: 'Sideways' };
+// @ts-expect-error A mix of case other than capitalized is not taken.
+export const mixedCase: ElementProps<'div'> = { dir: 'lTr' };
+// @ts-expect-error `Submt` is not a keyword in any case.
+export const wrongButtonType: ElementProps<'button'> = { type: 'Submt' };
+// @ts-expect-error An empty `dir` is an invalid value.
+export const emptyDir: ElementProps<'div'> = { dir: '' };

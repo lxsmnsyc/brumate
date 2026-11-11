@@ -73,6 +73,52 @@ export function containTab(overlay: HTMLElement, event: KeyboardEvent): void {
   next?.focus();
 }
 
+/**
+ * Moves Tab out of a panel that sits at the end of the page, to where it would go from its
+ * trigger: the next element after the trigger that is not in a layer, or the trigger for
+ * Shift+Tab. Does nothing in the middle of the panel. Returns whether it moved focus.
+ */
+export function leaveByTab(
+  panel: HTMLElement,
+  trigger: Element | null,
+  event: KeyboardEvent,
+): boolean {
+  if (event.key !== 'Tab' || !trigger) {
+    return false;
+  }
+  const order = tabbables(panel);
+  const active = document.activeElement;
+  // Focus on the panel or its dialog, which Tab does not reach, is before the first element.
+  const at = order.indexOf(active as HTMLElement);
+  const atStart = at <= 0;
+  const atEnd = order.length === 0 || at === order.length - 1;
+  let next: HTMLElement | undefined;
+  if (event.shiftKey) {
+    if (!atStart) {
+      return false;
+    }
+    next = trigger as HTMLElement;
+  } else {
+    if (!atEnd) {
+      return false;
+    }
+    const page = tabbables(document.body);
+    const from = page.indexOf(trigger as HTMLElement);
+    for (let i = from + 1; i < page.length; i += 1) {
+      if (!page[i]!.closest('[data-layer]')) {
+        next = page[i];
+        break;
+      }
+    }
+  }
+  if (!next) {
+    return false;
+  }
+  event.preventDefault();
+  next.focus();
+  return true;
+}
+
 /** How many open overlays made each element inert, so the last one to close gives it back. */
 const inertCounts = new Map<Element, number>();
 

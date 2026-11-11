@@ -1,0 +1,16 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+  import BigMemoKid from './BigMemoKid.brm';
+
+  const { shown = false } = $props<{ shown?: boolean }>();
+  let show = $signal(shown);
+</script>
+
+<button class="show" onClick=(() => (show = true))>Show</button>
+#try {
+  #if (show) {
+    <BigMemoKid />
+  }
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

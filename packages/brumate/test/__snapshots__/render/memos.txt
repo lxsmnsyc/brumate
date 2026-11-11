@@ -11,15 +11,25 @@ export default async function Memos($$props: Record<string, never>, $$ctx: $$b.C
   const $$s1 = $$ctx.scope(1, undefined, "Memos_1khoa0p");
   let count = (3);
   let items = (['a', 'b']);
-  const double = (count * 2);
-  const quad = (double * 2);
-  const parity = (count % 2 ? 'odd' : 'even');
-  const size = (items.length * 1);
-  const text = (`${quad} and ${size}`);
+  const $$p_double = $$b.memo(() => (count * 2), $$ctx, "double");
+  let double;
+  try { double = (($$t = $$b.ready($$p_double)) instanceof Promise ? await $$t : $$t); } catch {}
+  const $$p_quad = $$b.memo(() => ($$b.read($$p_double) * 2), $$ctx, "quad");
+  let quad;
+  try { quad = (($$t = $$b.ready($$p_quad)) instanceof Promise ? await $$t : $$t); } catch {}
+  const $$p_parity = $$b.memo(() => (count % 2 ? 'odd' : 'even'), $$ctx, "parity");
+  let parity;
+  try { parity = (($$t = $$b.ready($$p_parity)) instanceof Promise ? await $$t : $$t); } catch {}
+  const $$p_size = $$b.memo(() => (items.length * 1), $$ctx, "size");
+  let size;
+  try { size = (($$t = $$b.ready($$p_size)) instanceof Promise ? await $$t : $$t); } catch {}
+  const $$p_text = $$b.memo(() => (`${$$b.read($$p_quad)} and ${$$b.read($$p_size)}`), $$ctx, "text");
+  let text;
+  try { text = (($$t = $$b.ready($$p_text)) instanceof Promise ? await $$t : $$t); } catch {}
   const $$p_named = $$b.memo(() => (label(count)), $$ctx, "named");
   let named;
   try { named = (($$t = $$b.ready($$p_named)) instanceof Promise ? await $$t : $$t); } catch {}
-  const $$p_both = $$b.memo(() => (`${$$b.read($$p_named)} ${quad}`), $$ctx, "both");
+  const $$p_both = $$b.memo(() => (`${$$b.read($$p_named)} ${$$b.read($$p_quad)}`), $$ctx, "both");
   let both;
   try { both = (($$t = $$b.ready($$p_both)) instanceof Promise ? await $$t : $$t); } catch {}
   let steps = (0);
@@ -27,8 +37,8 @@ export default async function Memos($$props: Record<string, never>, $$ctx: $$b.C
   let loaded = (0);
   let typed = ('');
   const same = (copy);
-  const $$p_late = $$b.memo(() => (items.length + double), $$ctx, "late");
-  $$html += "<button b-b=\"" + $$s1 + ":0\" b-on=\"click=Memos_1khoa0p#h15\">" + $$b.insert((count)) + "</button><p class=\"plain\"><!--t" + $$s1 + ":1-->" + $$b.insert((double)) + "<!--/t--> <!--t" + $$s1 + ":2-->" + $$b.insert((quad)) + "<!--/t--> <!--t" + $$s1 + ":3-->" + $$b.insert((parity)) + "<!--/t--> " + $$b.insert((size)) + " <!--t" + $$s1 + ":4-->" + $$b.insert((text)) + "<!--/t--></p><p class=\"memo\"><!--t" + $$s1 + ":5-->" + (typeof ($$t = $$b.insert(($$b.read($$p_named)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--> <!--t" + $$s1 + ":6-->" + (typeof ($$t = $$b.insert(($$b.read($$p_both)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></p> <button b-b=\"" + $$s1 + ":7\" b-on=\"click=Memos_1khoa0p#h24\"><!--t" + $$s1 + ":8-->" + $$b.insert((steps)) + "<!--/t--> <!--t" + $$s1 + ":9-->" + $$b.insert((copy)) + "<!--/t--> <!--t" + $$s1 + ":10-->" + $$b.insert((same)) + "<!--/t--> <!--t" + $$s1 + ":11-->" + (typeof ($$t = $$b.insert((loaded), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></button><input" + (typeof ($$t = $$b.attribute("value", (typed))) === 'string' ? $$t : await $$t) + " b-b=\"" + $$s1 + ":12\" b-on=\"input=Memos_1khoa0p#h30\"><p class=\"literals\">&lt;i&gt; 1.5 10  " + $$b.insert((-1)) + "</p>";
+  const $$p_late = $$b.memo(() => (items.length + $$b.read($$p_double)), $$ctx, "late");
+  $$html += "<button b-b=\"" + $$s1 + ":0\" b-on=\"click=Memos_1khoa0p#h15\">" + $$b.insert((count)) + "</button><p class=\"plain\"><!--t" + $$s1 + ":1-->" + (typeof ($$t = $$b.insert(($$b.read($$p_double)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--> <!--t" + $$s1 + ":2-->" + (typeof ($$t = $$b.insert(($$b.read($$p_quad)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--> <!--t" + $$s1 + ":3-->" + (typeof ($$t = $$b.insert(($$b.read($$p_parity)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--> " + (typeof ($$t = $$b.insert(($$b.read($$p_size)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + " <!--t" + $$s1 + ":4-->" + (typeof ($$t = $$b.insert(($$b.read($$p_text)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></p><p class=\"memo\"><!--t" + $$s1 + ":5-->" + (typeof ($$t = $$b.insert(($$b.read($$p_named)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--> <!--t" + $$s1 + ":6-->" + (typeof ($$t = $$b.insert(($$b.read($$p_both)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></p> <button b-b=\"" + $$s1 + ":7\" b-on=\"click=Memos_1khoa0p#h24\"><!--t" + $$s1 + ":8-->" + $$b.insert((steps)) + "<!--/t--> <!--t" + $$s1 + ":9-->" + $$b.insert((copy)) + "<!--/t--> <!--t" + $$s1 + ":10-->" + $$b.insert((same)) + "<!--/t--> <!--t" + $$s1 + ":11-->" + (typeof ($$t = $$b.insert((loaded), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></button><input" + (typeof ($$t = $$b.attribute("value", (typed))) === 'string' ? $$t : await $$t) + " b-b=\"" + $$s1 + ":12\" b-on=\"input=Memos_1khoa0p#h30\"><p class=\"literals\">&lt;i&gt; 1.5 10  " + $$b.insert((-1)) + "</p>";
   const $$boundary0 = $$ctx.boundary();
   if ($$b.settled([$$p_late]) && $$ctx.mayShow()) {
     $$ctx.enter($$boundary0);
@@ -169,25 +179,25 @@ export default function Memos($$props: Record<string, never>): string | Document
   const $$s1 = $$b.createScope(1, undefined, "Memos_1khoa0p");
   let count = (3);
   let items = (['a', 'b']);
-  const double = (count * 2);
-  const quad = (double * 2);
-  const parity = (count % 2 ? 'odd' : 'even');
-  const size = (items.length * 1);
-  const text = (`${quad} and ${size}`);
+  const double = $$b.renderMemo(() => (count * 2));
+  const quad = $$b.renderMemo(() => ($$b.readMemo(double) * 2));
+  const parity = $$b.renderMemo(() => (count % 2 ? 'odd' : 'even'));
+  const size = $$b.renderMemo(() => (items.length * 1));
+  const text = $$b.renderMemo(() => (`${$$b.readMemo(quad)} and ${$$b.readMemo(size)}`));
   const named = $$b.renderMemo(() => (label(count)));
-  const both = (`${$$b.readMemo(named)} ${quad}`);
+  const both = $$b.renderMemo(() => (`${$$b.readMemo(named)} ${$$b.readMemo(quad)}`));
   let steps = (0);
   let copy = (count);
   let loaded = (0);
   let typed = ('');
   const same = $$b.renderMemo(() => (copy));
-  const late = (items.length + double);
+  const late = $$b.renderMemo(() => (items.length + $$b.readMemo(double)));
   const $$body0 = () => {
     let $$html = '';
     const $$s2 = $$b.createScope(2, $$s1, undefined, 1);
     const $$e = $$b.clone($$t0), $$f = $$e[1];
     $$b.keep($$s2, 0, $$e[0]);
-    $$b.setContent($$e[0], (late), $$s2);
+    $$b.setContent($$e[0], ($$b.readMemo(late)), $$s2);
     return $$f;
   };
   const $$body1 = () => {
@@ -198,13 +208,13 @@ export default function Memos($$props: Record<string, never>): string | Document
   const $$e = $$b.clone($$t2), $$f = $$e[15];
   $$b.keep($$s1, 0, $$e[0]);
   $$b.setContent($$e[0], (count), $$s1);
-  $$b.keepText($$s1, 1, $$e[1], (double));
-  $$b.keepText($$s1, 2, $$e[2], (quad));
-  $$b.keepText($$s1, 3, $$e[3], (parity));
-  $$b.putText($$e[4], (size));
-  $$b.appendText($$s1, 4, $$e[5], (text));
+  $$b.keepText($$s1, 1, $$e[1], ($$b.readMemo(double)));
+  $$b.keepText($$s1, 2, $$e[2], ($$b.readMemo(quad)));
+  $$b.keepText($$s1, 3, $$e[3], ($$b.readMemo(parity)));
+  $$b.putText($$e[4], ($$b.readMemo(size)));
+  $$b.appendText($$s1, 4, $$e[5], ($$b.readMemo(text)));
   $$b.keepText($$s1, 5, $$e[6], ($$b.readMemo(named)));
-  $$b.appendText($$s1, 6, $$e[7], (both));
+  $$b.appendText($$s1, 6, $$e[7], ($$b.readMemo(both)));
   $$b.keep($$s1, 7, $$e[8]);
   $$b.appendText($$s1, 11, $$e[8], (loaded));
   $$b.keepText($$s1, 8, $$e[9], (steps));

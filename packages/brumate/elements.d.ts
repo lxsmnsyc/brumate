@@ -41,6 +41,13 @@ export type PropsOf<C> = C extends (props: infer P, ...rest: any[]) => unknown ?
 type Attr<T> = T | null | undefined;
 
 /**
+ * The keywords `S` as HTML matches an enumerated attribute, without regard to case: in lower
+ * case, in upper case, or with a capital first letter, so `'submit'` also takes `'SUBMIT'` and
+ * `'Submit'`. Other mixes of case are left out, so a type error lists a short union.
+ */
+type Keyword<S extends string> = S | Uppercase<S> | Capitalize<S>;
+
+/**
  * The events of an element, by the name of the event. An app that sends its own events from
  * an element adds them: `interface ElementEvents { itemaction: CustomEvent<string> }`.
  */
@@ -501,23 +508,27 @@ export type GlobalAttributes<E> = Handlers<E> &
     role?: Attr<AriaRole | `${AriaRole} ${string}`>;
     title?: Attr<string>;
     lang?: Attr<string>;
-    dir?: Attr<'ltr' | 'rtl' | 'auto'>;
+    dir?: Attr<Keyword<'ltr' | 'rtl' | 'auto'>>;
     nonce?: Attr<string>;
     accesskey?: Attr<string>;
-    autocapitalize?: Attr<'off' | 'none' | 'on' | 'sentences' | 'words' | 'characters'>;
+    autocapitalize?: Attr<
+      '' | Keyword<'off' | 'none' | 'on' | 'sentences' | 'words' | 'characters'>
+    >;
     autofocus?: Attr<boolean>;
-    contenteditable?: Attr<boolean | 'true' | 'false' | 'plaintext-only'>;
-    draggable?: Attr<boolean | 'true' | 'false'>;
-    enterkeyhint?: Attr<'enter' | 'done' | 'go' | 'next' | 'previous' | 'search' | 'send'>;
-    hidden?: Attr<boolean | 'hidden' | 'until-found'>;
+    contenteditable?: Attr<boolean | '' | Keyword<'true' | 'false' | 'plaintext-only'>>;
+    draggable?: Attr<boolean | Keyword<'true' | 'false'>>;
+    enterkeyhint?: Attr<Keyword<'enter' | 'done' | 'go' | 'next' | 'previous' | 'search' | 'send'>>;
+    hidden?: Attr<boolean | '' | Keyword<'hidden' | 'until-found'>>;
     inert?: Attr<boolean>;
-    inputmode?: Attr<'none' | 'text' | 'tel' | 'url' | 'email' | 'numeric' | 'decimal' | 'search'>;
-    popover?: Attr<boolean | 'auto' | 'manual' | 'hint'>;
-    spellcheck?: Attr<boolean | 'true' | 'false'>;
+    inputmode?: Attr<
+      Keyword<'none' | 'text' | 'tel' | 'url' | 'email' | 'numeric' | 'decimal' | 'search'>
+    >;
+    popover?: Attr<boolean | '' | Keyword<'auto' | 'manual' | 'hint'>>;
+    spellcheck?: Attr<boolean | '' | Keyword<'true' | 'false'>>;
     tabindex?: Attr<Num>;
-    translate?: Attr<'yes' | 'no'>;
-    writingsuggestions?: Attr<boolean | 'true' | 'false'>;
-    autocorrect?: Attr<boolean | 'on' | 'off'>;
+    translate?: Attr<'' | Keyword<'yes' | 'no'>>;
+    writingsuggestions?: Attr<boolean | '' | Keyword<'true' | 'false'>>;
+    autocorrect?: Attr<boolean | '' | Keyword<'on' | 'off'>>;
     exportparts?: Attr<string>;
     itemid?: Attr<string>;
     itemprop?: Attr<string>;
@@ -528,7 +539,7 @@ export type GlobalAttributes<E> = Handlers<E> &
     [attribute: `aria-${string}`]: Attr<string | number | boolean>;
   };
 
-type Referrer =
+type Referrer = Keyword<
   | 'no-referrer'
   | 'no-referrer-when-downgrade'
   | 'origin'
@@ -536,8 +547,9 @@ type Referrer =
   | 'same-origin'
   | 'strict-origin'
   | 'strict-origin-when-cross-origin'
-  | 'unsafe-url';
-type CrossOrigin = boolean | 'anonymous' | 'use-credentials';
+  | 'unsafe-url'
+>;
+type CrossOrigin = boolean | '' | Keyword<'anonymous' | 'use-credentials'>;
 type Size = number | string;
 
 // A value of a list of tokens: one token or more, with other text after it.
@@ -671,7 +683,7 @@ interface MediaOwn {
   autoplay?: Attr<boolean>;
   loop?: Attr<boolean>;
   muted?: Attr<boolean>;
-  preload?: Attr<'none' | 'metadata' | 'auto' | ''>;
+  preload?: Attr<'' | Keyword<'none' | 'metadata' | 'auto'>>;
   crossorigin?: Attr<CrossOrigin>;
   controlslist?: Attr<string>;
   disableremoteplayback?: Attr<boolean>;
@@ -684,15 +696,17 @@ interface FormControlOwn {
 }
 
 interface ButtonOwn extends FormControlOwn {
-  type?: Attr<'button' | 'submit' | 'reset'>;
+  type?: Attr<Keyword<'button' | 'submit' | 'reset'>>;
   value?: Attr<string | number>;
   formaction?: Attr<string | ServerFunction>;
-  formenctype?: Attr<'application/x-www-form-urlencoded' | 'multipart/form-data' | 'text/plain'>;
-  formmethod?: Attr<'get' | 'post' | 'dialog'>;
+  formenctype?: Attr<
+    Keyword<'application/x-www-form-urlencoded' | 'multipart/form-data' | 'text/plain'>
+  >;
+  formmethod?: Attr<Keyword<'get' | 'post' | 'dialog'>>;
   formnovalidate?: Attr<boolean>;
   formtarget?: Attr<string>;
   popovertarget?: Attr<string>;
-  popovertargetaction?: Attr<'show' | 'hide' | 'toggle'>;
+  popovertargetaction?: Attr<Keyword<'show' | 'hide' | 'toggle'>>;
   command?: Attr<
     | 'show-modal'
     | 'close'
@@ -708,35 +722,37 @@ interface ButtonOwn extends FormControlOwn {
 
 interface InputOwn extends FormControlOwn {
   type?: Attr<
-    | 'button'
-    | 'checkbox'
-    | 'color'
-    | 'date'
-    | 'datetime-local'
-    | 'email'
-    | 'file'
-    | 'hidden'
-    | 'image'
-    | 'month'
-    | 'number'
-    | 'password'
-    | 'radio'
-    | 'range'
-    | 'reset'
-    | 'search'
-    | 'submit'
-    | 'tel'
-    | 'text'
-    | 'time'
-    | 'url'
-    | 'week'
+    Keyword<
+      | 'button'
+      | 'checkbox'
+      | 'color'
+      | 'date'
+      | 'datetime-local'
+      | 'email'
+      | 'file'
+      | 'hidden'
+      | 'image'
+      | 'month'
+      | 'number'
+      | 'password'
+      | 'radio'
+      | 'range'
+      | 'reset'
+      | 'search'
+      | 'submit'
+      | 'tel'
+      | 'text'
+      | 'time'
+      | 'url'
+      | 'week'
+    >
   >;
   value?: Attr<string | number | BoundValue>;
   checked?: Attr<boolean | BoundChecked>;
   accept?: Attr<string>;
   alt?: Attr<string>;
   autocomplete?: Attr<Autocomplete>;
-  capture?: Attr<boolean | 'user' | 'environment'>;
+  capture?: Attr<boolean | '' | Keyword<'user' | 'environment'>>;
   dirname?: Attr<string>;
   webkitdirectory?: Attr<boolean>;
   list?: Attr<string>;
@@ -755,12 +771,14 @@ interface InputOwn extends FormControlOwn {
   width?: Attr<Size>;
   height?: Attr<Size>;
   formaction?: Attr<string | ServerFunction>;
-  formenctype?: Attr<'application/x-www-form-urlencoded' | 'multipart/form-data' | 'text/plain'>;
-  formmethod?: Attr<'get' | 'post' | 'dialog'>;
+  formenctype?: Attr<
+    Keyword<'application/x-www-form-urlencoded' | 'multipart/form-data' | 'text/plain'>
+  >;
+  formmethod?: Attr<Keyword<'get' | 'post' | 'dialog'>>;
   formnovalidate?: Attr<boolean>;
   formtarget?: Attr<string>;
   popovertarget?: Attr<string>;
-  popovertargetaction?: Attr<'show' | 'hide' | 'toggle'>;
+  popovertargetaction?: Attr<Keyword<'show' | 'hide' | 'toggle'>>;
 }
 
 interface TextareaOwn extends FormControlOwn {
@@ -773,7 +791,7 @@ interface TextareaOwn extends FormControlOwn {
   readonly?: Attr<boolean>;
   required?: Attr<boolean>;
   rows?: Attr<Num>;
-  wrap?: Attr<'hard' | 'soft' | 'off'>;
+  wrap?: Attr<Keyword<'hard' | 'soft' | 'off'>>;
   value?: Attr<string | BoundValue>;
 }
 
@@ -1018,7 +1036,7 @@ export interface Elements {
   dfn: Html<'dfn'>;
   dialog: Html<
     'dialog',
-    { open?: Attr<boolean>; closedby?: Attr<'any' | 'closerequest' | 'none'> }
+    { open?: Attr<boolean>; closedby?: Attr<Keyword<'any' | 'closerequest' | 'none'>> }
   >;
   div: Html<'div'>;
   dl: Html<'dl'>;
@@ -1036,11 +1054,13 @@ export interface Elements {
     'form',
     {
       action?: Attr<string | ServerFunction>;
-      method?: Attr<'get' | 'post' | 'dialog'>;
-      enctype?: Attr<'application/x-www-form-urlencoded' | 'multipart/form-data' | 'text/plain'>;
+      method?: Attr<Keyword<'get' | 'post' | 'dialog'>>;
+      enctype?: Attr<
+        Keyword<'application/x-www-form-urlencoded' | 'multipart/form-data' | 'text/plain'>
+      >;
       target?: Attr<string>;
       novalidate?: Attr<boolean>;
-      autocomplete?: Attr<boolean | 'on' | 'off'>;
+      autocomplete?: Attr<boolean | Keyword<'on' | 'off'>>;
       name?: Attr<string>;
       rel?: Attr<string>;
       'accept-charset'?: Attr<string>;
@@ -1068,7 +1088,7 @@ export interface Elements {
       height?: Attr<Size>;
       allow?: Attr<string>;
       allowfullscreen?: Attr<boolean>;
-      loading?: Attr<'eager' | 'lazy'>;
+      loading?: Attr<Keyword<'eager' | 'lazy'>>;
       referrerpolicy?: Attr<Referrer>;
       sandbox?: Attr<'' | Tokens<SandboxToken> | (string & {})>;
     }
@@ -1082,13 +1102,13 @@ export interface Elements {
       sizes?: Attr<string>;
       width?: Attr<Size>;
       height?: Attr<Size>;
-      loading?: Attr<'eager' | 'lazy'>;
-      decoding?: Attr<'sync' | 'async' | 'auto'>;
+      loading?: Attr<Keyword<'eager' | 'lazy'>>;
+      decoding?: Attr<Keyword<'sync' | 'async' | 'auto'>>;
       crossorigin?: Attr<CrossOrigin>;
       usemap?: Attr<string>;
       ismap?: Attr<boolean>;
       referrerpolicy?: Attr<Referrer>;
-      fetchpriority?: Attr<'high' | 'low' | 'auto'>;
+      fetchpriority?: Attr<Keyword<'high' | 'low' | 'auto'>>;
     }
   >;
   input: Html<'input', InputOwn>;
@@ -1112,7 +1132,7 @@ export interface Elements {
       imagesrcset?: Attr<string>;
       imagesizes?: Attr<string>;
       referrerpolicy?: Attr<Referrer>;
-      fetchpriority?: Attr<'high' | 'low' | 'auto'>;
+      fetchpriority?: Attr<Keyword<'high' | 'low' | 'auto'>>;
       disabled?: Attr<boolean>;
       blocking?: Attr<'render' | (string & {})>;
     }
@@ -1200,7 +1220,7 @@ export interface Elements {
       crossorigin?: Attr<CrossOrigin>;
       integrity?: Attr<string>;
       referrerpolicy?: Attr<Referrer>;
-      fetchpriority?: Attr<'high' | 'low' | 'auto'>;
+      fetchpriority?: Attr<Keyword<'high' | 'low' | 'auto'>>;
       blocking?: Attr<'render' | (string & {})>;
     }
   >;
@@ -1249,7 +1269,7 @@ export interface Elements {
   template: Html<
     'template',
     {
-      shadowrootmode?: Attr<'open' | 'closed'>;
+      shadowrootmode?: Attr<Keyword<'open' | 'closed'>>;
       shadowrootclonable?: Attr<boolean>;
       shadowrootdelegatesfocus?: Attr<boolean>;
       shadowrootserializable?: Attr<boolean>;
@@ -1260,7 +1280,10 @@ export interface Elements {
   tfoot: Html<'tfoot'>;
   th: Html<
     'th',
-    TableCellOwn & { scope?: Attr<'row' | 'col' | 'rowgroup' | 'colgroup'>; abbr?: Attr<string> }
+    TableCellOwn & {
+      scope?: Attr<Keyword<'row' | 'col' | 'rowgroup' | 'colgroup'>>;
+      abbr?: Attr<string>;
+    }
   >;
   thead: Html<'thead'>;
   time: Html<'time', { datetime?: Attr<string> }>;
@@ -1270,7 +1293,7 @@ export interface Elements {
     'track',
     {
       default?: Attr<boolean>;
-      kind?: Attr<'subtitles' | 'captions' | 'descriptions' | 'chapters' | 'metadata'>;
+      kind?: Attr<Keyword<'subtitles' | 'captions' | 'descriptions' | 'chapters' | 'metadata'>>;
       label?: Attr<string>;
       src?: Attr<string>;
       srclang?: Attr<string>;

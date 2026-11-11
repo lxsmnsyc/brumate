@@ -1,0 +1,19 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import LiveStyleInner from './LiveStyleInner.brm';
+
+  let open = $signal(false);
+  let w = $signal(10);
+</script>
+
+<style>
+  .x {
+    width: ${w}px;
+  }
+</style>
+
+<button class="open" onClick=(() => (open = true))>Open</button>
+<button class="wider" onClick=(() => (w = 20))>Wider</button>
+#if (open) {
+  <LiveStyleInner><span class="x">hi</span></LiveStyleInner>
+}
