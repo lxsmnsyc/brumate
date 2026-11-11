@@ -1,7 +1,7 @@
 ---
 id: color-scheme
 title: A color scheme part without a first-paint flash
-status: active
+status: done
 priority: must
 type: feature
 outline: false
@@ -12,7 +12,7 @@ size: M
 spike: false
 verify: pnpm --filter @brumate/ui exec vitest run test/color-scheme.test.ts
 exclusive: []
-fulfilled_by: 
+fulfilled_by: 3ce058a0 (batch/brumate-release-0.8)
 gate: false
 added: 
 owns:
