@@ -234,3 +234,34 @@ A memo can hold a promise, such as the result of a server function. Markup and o
 ```
 
 `createContext` comes from `brumate/context`: `export const Theme = createContext<'light' | 'dark'>('theme');` in a `.ts` file. It takes only a key and has no default. A component reads the context of the nearest component above it, children included, and `$getContext` throws when none provides it. Give a fallback for a read that may have no provider: `$getContext(Theme, 'light')`.
+
+## Derived stores
+
+A value at module level, outside any component, that is computed from stores is `derived(sources, fn)` of `brumate/store`. Inside a component, use a `$memo`. A component reads it with `$store`.
+
+```ts module="cart.ts"
+import { derived, store } from 'brumate/store';
+import type { Store, StoreLike } from 'brumate/store';
+
+export const cart: Store<number[]> = store([12, 8]);
+
+export const total: StoreLike<number> = derived(cart, (items) =>
+  items.reduce((sum, price) => sum + price, 0),
+);
+```
+
+```brm uses
+<script>
+  import { $store } from 'brumate/signals';
+  import { cart, total } from './cart.ts';
+
+  const sum = $store(total);
+</script>
+
+<button onClick=(() => cart.set([...cart.get(), 5]))>Add 5</button>
+<p>Total {sum}</p>
+```
+
+- `sources` is a store or an array of stores, and `fn` gets the value or an array of values: `derived([cart, total], ([items, sum]) => …)`. With two or three parameters, `fn(values, set, update)` calls `set(value)`.
+- The result has no `set`. Read it with `const`: `let x = $store(total)` throws a `TypeError`.
+- It is not part of the page state. Read it from an import or `<script module>`. Never put it in a provided value or a prop.
