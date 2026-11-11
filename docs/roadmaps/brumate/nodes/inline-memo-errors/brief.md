@@ -1,7 +1,7 @@
 ---
 id: inline-memo-errors
 title: An inline memo keeps its error until a read
-status: todo
+status: active
 priority: must
 type: fix
 story:
