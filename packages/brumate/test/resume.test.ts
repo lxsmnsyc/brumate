@@ -1545,7 +1545,7 @@ describe('resume', () => {
   it('prevents only the keys that :prevent names, before the handler loads', async () => {
     const server = await import(file('preventKeys.brm.ts'));
     const { html } = await renderParts(server.default, {});
-    expect(html).toContain('b-on="keydown:prevent(ArrowDown,ArrowUp,Space,Mod+ArrowUp)=');
+    expect(html).toContain('b-on="keydown:prevent(ArrowDown,ArrowUp,Space,Mod+ArrowUp,Mod+K,Z)=');
     await resume('preventKeys', {});
     // The first press is prevented at once, while the handler's code still loads.
     expect(press('ArrowDown').defaultPrevented).toBe(true);
@@ -1564,8 +1564,17 @@ describe('resume', () => {
     expect(press('ArrowUp', { metaKey: true }).defaultPrevented).toBe(true);
     expect(press('ArrowUp', { ctrlKey: true }).defaultPrevented).toBe(true);
     expect(press('ArrowUp', { altKey: true }).defaultPrevented).toBe(false);
-    // The handler still runs for every key, the last of which is ArrowUp with Alt.
-    await waitFor(() => expect(text('.last')).toBe('ArrowUp'));
+    // A letter after a modifier matches either case, as the browser sends `k` for Cmd+K.
+    expect(press('k', { metaKey: true }).defaultPrevented).toBe(true);
+    expect(press('k', { ctrlKey: true }).defaultPrevented).toBe(true);
+    expect(press('K', { ctrlKey: true, shiftKey: true }).defaultPrevented).toBe(true);
+    expect(press('k', { altKey: true }).defaultPrevented).toBe(false);
+    expect(press('k').defaultPrevented).toBe(false);
+    // A letter alone keeps its case.
+    expect(press('Z').defaultPrevented).toBe(true);
+    expect(press('z').defaultPrevented).toBe(false);
+    // The handler still runs for every key, the last of which is z.
+    await waitFor(() => expect(text('.last')).toBe('z'));
   });
 
   it('runs a handler that a component passes on with a spread, in the scope of its owner', async () => {
