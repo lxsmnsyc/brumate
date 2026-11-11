@@ -8716,6 +8716,27 @@ describe('a memo that nothing reads, in a browser render', () => {
   }
 });
 
+describe('a memo that cannot hold a value, in a browser render', () => {
+  it('keeps its error until a read, for a bare binary, array or template expression', async () => {
+    await resume('bigMemoTry', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(document.querySelector('.kid')).not.toBeNull());
+    expect(document.querySelector('.caught')).toBeNull();
+    // The read of the memo throws the error that it holds, to the #catch.
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.caught')).toContain('Cannot mix BigInt'));
+  });
+
+  it('renders the child on the server too', async () => {
+    const server = await import(file('bigMemoTry.brm.ts'));
+    const { html } = await renderParts(server.default, { shown: true }, { dev: true });
+    expect(html).toContain('class="kid"');
+    expect(html).not.toContain('class="caught"');
+  });
+});
+
 describe('a #try around a child component', () => {
   const fixtures = [
     'tryAroundChildSibling',

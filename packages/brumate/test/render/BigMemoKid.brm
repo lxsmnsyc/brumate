@@ -1,0 +1,15 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  let big = $signal(1n);
+  const next = $memo(big + 1);
+  const list = $memo([big]);
+  const label = $memo(`Hi ${big}`);
+
+  function read() {
+    return [next];
+  }
+</script>
+
+<p class="kid">kid</p>
+<button class="read" onClick=(() => read())>Read</button>

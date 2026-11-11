@@ -10,17 +10,19 @@ export default async function UsesCounter($$props: Record<string, never>, $$ctx:
   const $$s1 = $$ctx.scope(1, undefined, "UsesCounter_1euyiut");
   let base = (10);
   let count = (1);
-  const double = (count * 2);
+  const $$p_double = $$b.memo(() => (count * 2), $$ctx, "double");
+  let double;
+  try { double = (($$t = $$b.ready($$p_double)) instanceof Promise ? await $$t : $$t); } catch {}
   function increment() {
       count += STEP;
     }
   let other = (base);
-  const counter_double = (other * 2);
+  const $$p_counter_double = $$b.memo(() => (other * 2), $$ctx, "counter_double");
   function bump() {
       other += STEP;
     }
   const reset = () => (other = base);
-  $$html += "<button class=\"a\" b-b=\"" + $$s1 + ":0\" b-on=\"click=UsesCounter_1euyiut#h8\"><!--t" + $$s1 + ":1-->" + $$b.insert((count)) + "<!--/t--> <!--t" + $$s1 + ":2-->" + $$b.insert((double)) + "<!--/t--></button><button class=\"b\" b-b=\"" + $$s1 + ":3\" b-on=\"click=UsesCounter_1euyiut#h11\">" + $$b.insert((other)) + "</button><button class=\"base\" b-b=\"" + $$s1 + ":4\" b-on=\"click=UsesCounter_1euyiut#h13\">" + $$b.insert((base)) + "</button><button class=\"reset\" b-b=\"" + $$s1 + ":5\" b-on=\"click=UsesCounter_1euyiut#h15\">Reset</button>";
+  $$html += "<button class=\"a\" b-b=\"" + $$s1 + ":0\" b-on=\"click=UsesCounter_1euyiut#h8\"><!--t" + $$s1 + ":1-->" + $$b.insert((count)) + "<!--/t--> <!--t" + $$s1 + ":2-->" + (typeof ($$t = $$b.insert(($$b.read($$p_double)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--></button><button class=\"b\" b-b=\"" + $$s1 + ":3\" b-on=\"click=UsesCounter_1euyiut#h11\">" + $$b.insert((other)) + "</button><button class=\"base\" b-b=\"" + $$s1 + ":4\" b-on=\"click=UsesCounter_1euyiut#h13\">" + $$b.insert((base)) + "</button><button class=\"reset\" b-b=\"" + $$s1 + ":5\" b-on=\"click=UsesCounter_1euyiut#h15\">Reset</button>";
   $$ctx.slots($$s1, [base, count, double, other], ["base","count","double","other"]);
   return $$html;
 }
@@ -92,7 +94,7 @@ export default function UsesCounter($$props: Record<string, never>): string | Do
   const $$s1 = $$b.createScope(1, undefined, "UsesCounter_1euyiut");
   let base = (10);
   let count = (1);
-  const double = (count * 2);
+  const double = $$b.renderMemo(() => (count * 2));
   function increment() {
       count += STEP;
     }
@@ -103,7 +105,7 @@ export default function UsesCounter($$props: Record<string, never>): string | Do
   const reset = () => (other = base);
   const $$e = $$b.clone($$t0), $$f = $$e[5];
   $$b.keep($$s1, 0, $$e[0]);
-  $$b.appendText($$s1, 2, $$e[0], (double));
+  $$b.appendText($$s1, 2, $$e[0], ($$b.readMemo(double)));
   $$b.keepText($$s1, 1, $$e[1], (count));
   $$b.keep($$s1, 3, $$e[2]);
   $$b.setContent($$e[2], (other), $$s1);
