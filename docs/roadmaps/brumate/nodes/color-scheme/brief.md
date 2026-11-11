@@ -1,7 +1,7 @@
 ---
 id: color-scheme
 title: A color scheme part without a first-paint flash
-status: todo
+status: active
 priority: must
 type: feature
 outline: false

@@ -1,7 +1,7 @@
 ---
 id: render-memo-reads
 title: The browser render wraps only the memo reads that need it
-status: todo
+status: active
 priority: must
 type: refactor
 outline: false
