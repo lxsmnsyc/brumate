@@ -24,6 +24,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: skill-0-8-apis
+    kind: hard
+    why: the skill must teach the 0.8 APIs before the release (added 2026-11-11)
   - on: render-memo-reads
     kind: hard
     why: a must of 0.8.0 (added 2026-11-10)
