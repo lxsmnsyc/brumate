@@ -5596,15 +5596,13 @@ describe('refs forwarded through components', () => {
   it('a ref left in the rest props reaches the element that spreads them', async () => {
     await resume('restRefPage', {});
     click(document.querySelector('.read')!);
-    await new Promise((done) => setTimeout(done, 300));
-    expect(text('.seen')).toBe('BUTTON');
+    await waitFor(() => expect(text('.seen')).toBe('BUTTON'));
   });
 
   it('a ref left in the rest props reaches the element of a spread through a cast', async () => {
     await resume('restRefCastPage', {});
     click(document.querySelector('.read')!);
-    await new Promise((done) => setTimeout(done, 300));
-    expect(text('.seen')).toBe('BUTTON');
+    await waitFor(() => expect(text('.seen')).toBe('BUTTON'));
   });
 
   it('a ref left in the rest props reaches the element of a spread in a block that the browser renders', async () => {
