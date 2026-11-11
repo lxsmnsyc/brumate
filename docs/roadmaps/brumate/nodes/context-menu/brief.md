@@ -1,7 +1,7 @@
 ---
 id: context-menu
 title: A context menu, and a shortcut that opens a dialog
-status: todo
+status: active
 priority: must
 type: feature
 outline: false

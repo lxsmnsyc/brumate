@@ -1,7 +1,7 @@
 ---
 id: head-rerun-scripts
 title: A head script can ask to run again after each client navigation
-status: todo
+status: active
 priority: must
 type: feature
 story:

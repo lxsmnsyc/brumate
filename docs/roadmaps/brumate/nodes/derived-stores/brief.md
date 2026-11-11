@@ -1,7 +1,7 @@
 ---
 id: derived-stores
 title: derived() for module-level stores
-status: todo
+status: active
 priority: must
 type: feature
 story:
