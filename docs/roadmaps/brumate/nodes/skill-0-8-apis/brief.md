@@ -1,7 +1,7 @@
 ---
 id: skill-0-8-apis
 title: The brumate skill teaches the 0.8 APIs
-status: active
+status: done
 priority: must
 type: docs
 story:
@@ -17,10 +17,10 @@ spike: false
 hypothesis:
 verify: node packages/brumate/skills/run-tasks.mjs --reference
 exclusive: []
-fulfilled_by:
+fulfilled_by: e15b707c (batch/brumate-release-0.8)
 gate: false
 added: 2026-11-11
-spent:
+spent: 70000
 owns:
   - packages/brumate/skills/brumate/**
 shared:
