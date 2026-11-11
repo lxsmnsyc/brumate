@@ -33,23 +33,6 @@ The light, dark or system choice of the page, which the server renders with the 
 - `value` is `light`, `dark` or `system`. `resolved` is `light` or `dark`, and undefined for `system` until the browser knows the preference. `setValue(next)` changes the choice.
 - Destructure what it returns, and call it at the top level of a script, inside a `ColorScheme`. Without one around it, `value` is `system`, `resolved` is undefined, and `setValue` does nothing.
 
-## In a layout
-
-```brm
-<script>
-  import ColorScheme from '@brumate/ui/ColorScheme.brm';
-
-  const { children } = $props();
-</script>
-
-<ColorScheme as="html" lang="en">
-  <head>…</head>
-  <body>{children}</body>
-</ColorScheme>
-```
-
-The server renders `<html class="dark" data-color-scheme="dark" style="color-scheme: dark" lang="en">` for a cookie of `dark`. A page that the server renders on each request can read the cookie, so a prerendered page cannot have the class from it.
-
 ## Props
 
 ```props ColorScheme
@@ -84,10 +67,6 @@ The class is `light` or `dark`. For `system` it is missing until the script of t
 
 - A page with more than one ColorScheme gives each a `cookieName`, or they share one cookie. Give a plain name, since it is written as it is.
 
-## The script of the head
-
-The script is inline. It carries the nonce of the render (`getEvent().nonce`, from the `nonce` option of `render` or `handle`), so a page with a Content Security Policy that uses a nonce runs it. Give the part a `nonce` of your own to use another, or `script=(false)` to leave the script out. Without it, `system` shows no class until the code loads, so also draw `@media (prefers-color-scheme: dark)` for `[data-color-scheme='system']` if the first paint matters. A policy with hashes needs the hash of the script, which `colorSchemeScript()` returns.
-
 ## Styling
 
 Style the class `dark` (or `light`) on the element. The tokens of the page are custom properties, so the rest follows. The element sets `color-scheme`, so `light-dark(a, b)` and the system colors pick their side from the choice. See [Styling](./styling.md).
@@ -116,3 +95,24 @@ The demo draws its box with these rules, and its buttons show the choice with a 
 - `colorSchemeCookie(name, choice, secure)` gives the string to assign to `document.cookie`.
 - `colorSchemeScript(nonce)` gives the script of the head.
 - `resolveColorScheme(choice, prefersDark)` gives `light` or `dark`.
+
+## In a layout
+
+```brm
+<script>
+  import ColorScheme from '@brumate/ui/ColorScheme.brm';
+
+  const { children } = $props();
+</script>
+
+<ColorScheme as="html" lang="en">
+  <head>…</head>
+  <body>{children}</body>
+</ColorScheme>
+```
+
+The server renders `<html class="dark" data-color-scheme="dark" style="color-scheme: dark" lang="en">` for a cookie of `dark`. A page that the server renders on each request can read the cookie, so a prerendered page cannot have the class from it.
+
+## The script of the head
+
+The script is inline. It carries the nonce of the render (`getEvent().nonce`, from the `nonce` option of `render` or `handle`), so a page with a Content Security Policy that uses a nonce runs it. Give the part a `nonce` of your own to use another, or `script=(false)` to leave the script out. Without it, `system` shows no class until the code loads, so also draw `@media (prefers-color-scheme: dark)` for `[data-color-scheme='system']` if the first paint matters. A policy with hashes needs the hash of the script, which `colorSchemeScript()` returns.

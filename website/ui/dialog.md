@@ -64,10 +64,6 @@ The overlay is a `Popover` or a `Modal`. The `Heading` and the close `Button` ar
 | `Shift + Tab`      | In the overlay, moves focus to the previous element. A modal overlay wraps at its start.                                                                                    |
 | `Escape`           | Closes the overlay around the dialog. A `Modal` with `isKeyboardDismissDisabled` stays open, and so does a part inside that used the key. A tooltip that shows hides first. |
 
-## Shortcut
-
-`shortcut="Mod+K"` on the `DialogTrigger` toggles the overlay from anywhere in the page, and `shortcutInInput` lets it open from a text field too. The key goes to a field or a handler that used it first, and when two triggers have the same shortcut only the first one registered opens. The [command palette](./autocomplete.md#a-command-palette-in-a-dialog) shows it with its rules.
-
 ## Controlled and uncontrolled
 
 A `Dialog` has no state. The `DialogTrigger` around it holds whether the overlay is open:
@@ -120,3 +116,7 @@ Opens an overlay from a `Button` inside it.
 - `isOpen` is the state. See [State](./state.md).
 - It renders only its children.
 - An overlay inside another one needs a `DialogTrigger` of its own, or its own `isOpen`.
+
+## Shortcut
+
+`shortcut="Mod+K"` on the `DialogTrigger` toggles the overlay from anywhere in the page, and `shortcutInInput` lets it open from a text field too. The key goes to a field or a handler that used it first, and when two triggers have the same shortcut only the first one registered opens. The [command palette](./autocomplete.md#a-command-palette-in-a-dialog) shows it with its rules.
