@@ -1,0 +1,29 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import PopoverGroup from '@brumate/ui/PopoverGroup.brm';
+</script>
+
+<PopoverGroup class="ui-stack" aria-label="Site menus">
+  <DialogTrigger>
+    <Button class="ui-button">Products</Button>
+    <Popover class="ui-popover" isNonModal>
+      <Dialog class="ui-dialog" aria-label="Products">
+        <p><a href="#widgets">Widgets</a></p>
+        <p><a href="#gadgets">Gadgets</a></p>
+      </Dialog>
+    </Popover>
+  </DialogTrigger>
+  <DialogTrigger>
+    <Button class="ui-button">Company</Button>
+    <Popover class="ui-popover" isNonModal>
+      <Dialog class="ui-dialog" aria-label="Company">
+        <p><a href="#team">Team</a></p>
+        <p><a href="#press">Press</a></p>
+      </Dialog>
+    </Popover>
+  </DialogTrigger>
+</PopoverGroup>
+<p>Open Products, then press Tab until Company has focus: Products stays open. Press Enter on Company and Products closes.</p>

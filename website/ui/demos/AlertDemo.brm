@@ -1,0 +1,30 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Alert from '@brumate/ui/Alert.brm';
+  import Button from '@brumate/ui/Button.brm';
+
+  let failed = $signal(false);
+  let count = $signal(0);
+</script>
+
+<div class="ui-stack">
+  <Button class="ui-button" onPress=(() => { failed = true; count += 1; })>Save</Button>
+  <Button class="ui-button" onPress=(() => (failed = false))>Dismiss</Button>
+</div>
+<div class="alert-slot" style="min-height: 2.5rem">
+  #if (failed) {
+    #key (count) {
+      <Alert class="alert-demo">The draft was not saved.</Alert>
+    }
+  }
+</div>
+
+<style global>
+  .alert-demo {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid color-mix(in srgb, CanvasText 40%, Canvas);
+    border-radius: 0.5rem;
+    background: color-mix(in srgb, CanvasText 6%, Canvas);
+    color: CanvasText;
+  }
+</style>

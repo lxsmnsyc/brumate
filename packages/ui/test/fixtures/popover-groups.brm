@@ -1,0 +1,55 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Dialog from '../../src/Dialog.brm';
+  import DialogTrigger from '../../src/DialogTrigger.brm';
+  import Popover from '../../src/Popover.brm';
+  import PopoverGroup from '../../src/PopoverGroup.brm';
+  import Alert from '../../src/Alert.brm';
+
+  let message = $signal('');
+  let count = $signal(0);
+</script>
+
+<main>
+  <PopoverGroup class="nav" aria-label="Menus">
+    <DialogTrigger>
+      <Button class="a-trigger">Products</Button>
+      <Popover class="a-popover" isNonModal>
+        <Dialog class="a-dialog" aria-label="Products">
+          <button class="a-first" type="button">First</button>
+          <button class="a-last" type="button">Last</button>
+        </Dialog>
+      </Popover>
+    </DialogTrigger>
+    <DialogTrigger>
+      <Button class="b-trigger">Company</Button>
+      <Popover class="b-popover" isNonModal>
+        <Dialog class="b-dialog" aria-label="Company">
+          <button class="b-first" type="button">Team</button>
+        </Dialog>
+      </Popover>
+    </DialogTrigger>
+    <a class="group-link" href="#x">Link</a>
+  </PopoverGroup>
+  <button class="after" type="button">After</button>
+  <button class="elsewhere" type="button">Elsewhere</button>
+  <DialogTrigger>
+    <Button class="solo-trigger">Solo</Button>
+    <Popover class="solo-popover" isNonModal>
+      <Dialog class="solo-dialog" aria-label="Solo">
+        <button class="solo-button" type="button">Inside</button>
+      </Dialog>
+    </Popover>
+  </DialogTrigger>
+  <button class="say" type="button" onClick=(() => { message = 'Saved'; count += 1; })>Say</button>
+  <button class="clear" type="button" onClick=(() => (message = ''))>Clear</button>
+  <div class="slot">
+    #if (message) {
+      #key (count) {
+        <Alert class="alert">{message}</Alert>
+      }
+    }
+  </div>
+  <Alert class="plain" as="p" aria-live="assertive">Plain</Alert>
+</main>

@@ -39,7 +39,13 @@
   import { store } from 'brumate/store';
   import { $client, $effect, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
-  import { ButtonContext, DialogContext, LinkContext, OverlayTriggerContext } from './contexts.ts';
+  import {
+    ButtonContext,
+    DialogContext,
+    LinkContext,
+    OverlayTriggerContext,
+    PopoverGroupContext,
+  } from './contexts.ts';
   import type { DialogState } from './contexts.ts';
   import { LayerContext } from './layer.ts';
   import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
@@ -48,9 +54,12 @@
     containTab,
     escapeOutside,
     focusInto,
+    closeOthersInGroup,
     hold,
+    inPopoverGroup,
     inertOutside,
     keepFocus,
+    leaveByTab,
     lockScroll,
     pressOutside,
     queueLoad,
@@ -81,6 +90,9 @@
    *   as it is, and Tab can leave the popover.
    * - `transition` lets CSS animate it, with `data-closed`, `data-enter` and `data-leave`. It
    *   waits for its leave before it leaves the page, and is inert while it leaves.
+   * - Inside a PopoverGroup, a non-modal popover stays open for focus that moves to the trigger or
+   *   the panel of another popover of the group, one that opens closes the others, and Tab leaves its panel for the next element
+   *   after its trigger.
    * - In a Select, its content stays in the page while it is closed, out of sight, so the
    *   Select knows its items.
    */
@@ -104,6 +116,7 @@
   const triggerGiven = $getContext(OverlayTriggerContext, undefined);
   const trigger = triggerGiven ? $store(triggerGiven.state) : undefined;
   const parentLayer = $getContext(LayerContext, undefined);
+  const group = $getContext(PopoverGroupContext, undefined);
   const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
   const locale = $memo(localeValue ?? DEFAULT_LOCALE);
   const own = $isPassed(isOpen);
@@ -127,6 +140,8 @@
   let layer = $signal<HTMLElement>();
 
   $setContext(LayerContext, { id: layerId });
+  // A popover inside this one is not a member of the group of this one.
+  $setContext(PopoverGroupContext, null);
   const dialogState = $memo<DialogState>({ labelledBy: trigger?.labelledBy });
   $setContext(DialogContext, { state: $toStore(dialogState), close });
   const transitionGiven = $memo<TransitionParent>({ show: wanted, entered: rested });
@@ -191,6 +206,10 @@
         ),
       );
     }
+    // Inside a group, a popover that opens closes the others, as one that is pressed open does.
+    if (group) {
+      stops.push(closeOthersInGroup(group.id, holder, close));
+    }
     // A preview is never modal, and a submenu is not either. A modal popover makes the page inert
     // and locks its scroll, and closes on a press outside. One that
     // is not modal closes when focus leaves it.
@@ -201,7 +220,15 @@
     if (modal) {
       stops.push(pressOutside(holder, anchor, close));
     } else {
-      stops.push(blurOutside(holder, anchor, close));
+      const groupId = group?.id;
+      stops.push(
+        blurOutside(
+          holder,
+          anchor,
+          close,
+          groupId ? (target) => inPopoverGroup(groupId, target) : undefined,
+        ),
+      );
       if (isNonModal) {
         stops.push(escapeOutside(holder, anchor, close));
       }
@@ -309,6 +336,13 @@
 
   // A part inside that used Escape prevents it, such as a SearchField that clears its text.
   function keyDown(event: KeyboardEvent) {
+    // In a group, Tab leaves the panel, which is at the end of the page, for the page after the trigger.
+    if (event.key === 'Tab' && group && (isNonModal || trigger?.isNonModal) && !event.defaultPrevented) {
+      const element = ref as HTMLElement | undefined;
+      if (element && trigger) {
+        leaveByTab(element, document.getElementById(trigger.triggerId), event);
+      }
+    }
     if (event.key === 'Escape' && !event.defaultPrevented) {
       close();
     }
@@ -341,7 +375,13 @@
       The layer: the element of this floating part, which the overlays inside it render into.
       It has no box of its own, so it clips, moves and contains nothing.
     -->
-    <div ref=$bind(layer) id=layerId data-layer style="display: contents">
+    <div
+      ref=$bind(layer)
+      id=layerId
+      data-layer
+      data-popover-group-panel=(group?.id)
+      style="display: contents"
+    >
       #if (isNonModal || trigger?.isPreview || trigger?.isNonModal) {
         {content()}
       } #else {

@@ -12,6 +12,7 @@ export const parts = [
   () => import('./accessibility-fixes.mjs'),
   () => import('./disclosure.mjs'),
   () => import('./popover.mjs'),
+  () => import('./popover-group.mjs'),
   () => import('./modal.mjs'),
   () => import('./sheet.mjs'),
   () => import('./tooltip.mjs'),

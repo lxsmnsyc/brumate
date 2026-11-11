@@ -330,6 +330,14 @@ export interface OverlayTriggerGiven extends Partial<OverlayTriggerHandlers> {
 export const OverlayTriggerContext: Context<OverlayTriggerGiven> =
   createContext<OverlayTriggerGiven>('brumate-ui:overlay-trigger');
 
+/** What a PopoverGroup gives the popovers inside it: the ID that marks its elements. */
+export interface PopoverGroupGiven {
+  id: string;
+}
+
+export const PopoverGroupContext: Context<PopoverGroupGiven | null> =
+  createContext<PopoverGroupGiven | null>('brumate-ui:popover-group');
+
 /** What an overlay gives the Dialog inside it: the IDs that name it. */
 export interface DialogState {
   /** The IDs that name the Dialog when it has no Heading, from the trigger of the overlay. */

@@ -22,6 +22,7 @@
   import ListBoxSection from './sections/ListBoxSection.brm';
   import MenuSection from './sections/MenuSection.brm';
   import ContextMenuSection from './sections/ContextMenuSection.brm';
+  import PopoverGroupSection from './sections/PopoverGroupSection.brm';
   import SelectSection from './sections/SelectSection.brm';
   import ComboBoxSection from './sections/ComboBoxSection.brm';
   import AutocompleteSection from './sections/AutocompleteSection.brm';
@@ -72,6 +73,7 @@
 <DropZoneSection />
 <DisclosureSection />
 <PopoverSection />
+<PopoverGroupSection />
 <ModalSection />
 <ListBoxSection />
 <MenuSection />
