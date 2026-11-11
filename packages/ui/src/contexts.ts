@@ -2,6 +2,7 @@
 // each part reads its own with `slotProps`.
 import { createContext } from 'brumate/context';
 import type { Color } from './color.ts';
+import type { ColorSchemeChoice } from './color-scheme.ts';
 import type { Placement } from './position.ts';
 import type { Context } from 'brumate/context';
 import type { StoreLike } from 'brumate/store';
@@ -385,3 +386,18 @@ export interface ColorPickerGiven {
 
 export const ColorPickerContext: Context<ColorPickerGiven> =
   createContext<ColorPickerGiven>('brumate-ui:color-picker');
+
+/** The color scheme that a ColorScheme gives: the choice, and `light` or `dark` once known. */
+export interface ColorSchemeState {
+  value: ColorSchemeChoice;
+  resolved: 'light' | 'dark' | undefined;
+}
+
+export interface ColorSchemeGiven {
+  state: StoreLike<ColorSchemeState | null>;
+  /** Changes the choice, as a Button inside does. */
+  setValue: (next: ColorSchemeChoice) => void;
+}
+
+export const ColorSchemeContext: Context<ColorSchemeGiven> =
+  createContext<ColorSchemeGiven>('brumate-ui:color-scheme');

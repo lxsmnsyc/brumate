@@ -1,0 +1,8 @@
+<script>
+  import ColorScheme from '../../src/ColorScheme.brm';
+</script>
+
+<ColorScheme as="html" lang="en" cookieName="theme" script=(false)>
+  <head><title>t</title></head>
+  <body>page</body>
+</ColorScheme>

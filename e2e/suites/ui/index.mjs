@@ -45,5 +45,6 @@ export const parts = [
   () => import('./color-field.mjs'),
   () => import('./color-swatch-picker.mjs'),
   () => import('./color-picker.mjs'),
+  () => import('./color-scheme.mjs'),
   () => import('./axe.mjs'),
 ];

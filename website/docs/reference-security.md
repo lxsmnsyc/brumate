@@ -95,6 +95,8 @@ response?.headers.set('content-security-policy', `script-src 'self' 'nonce-${non
 
 The client code loads as modules from your origin, which `'self'` allows.
 
+A component that writes an inline script of its own with `raw()` gives it `getEvent().nonce`, which is the nonce of the render, or undefined without one.
+
 A policy from a header stays for the whole visit, so the client router gives the state records and swap scripts of each later page the nonce of the page that the browser loaded. Each response can still make its own nonce.
 
 A policy with hashes instead of a nonce does not work for the state records. Their code holds the values of the page, so each page has other hashes, and the records that stream later are not known when the headers are sent. Use a nonce, or `'unsafe-inline'`.

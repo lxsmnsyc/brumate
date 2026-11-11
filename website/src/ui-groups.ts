@@ -73,5 +73,5 @@ export const groups: { title: string; pages: string[] }[] = [
   { title: 'Status', pages: ['meter', 'progress-bar'] },
   { title: 'Layout', pages: ['group', 'separator', 'heading'] },
   { title: 'Animation', pages: ['transition'] },
-  { title: 'Utilities', pages: ['visually-hidden', 'keyboard', 'i18n-provider'] },
+  { title: 'Utilities', pages: ['visually-hidden', 'keyboard', 'i18n-provider', 'color-scheme'] },
 ];

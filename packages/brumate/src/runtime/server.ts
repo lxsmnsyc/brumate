@@ -2852,6 +2852,10 @@ export async function render<P>(
           onError: options.onError,
         })
       : undefined);
+  // Components read the nonce of the render from the event, for the inline scripts they write.
+  if (event && options.nonce !== undefined) {
+    event.nonce = options.nonce;
+  }
   ctx.event = event;
   ctx.errors = event ? event.errors : errorSink(options.onError);
   // The first part of each component runs with the event, and so do memos, which the compiler gives `$$ctx`.
@@ -4472,6 +4476,9 @@ export async function handleRoute(
       prerender: options.prerender,
       onError: options.onError,
     });
+  if (options.nonce !== undefined) {
+    event.nonce = options.nonce;
+  }
   // Rate limits count by the pattern of the route, so `/api/1` and `/api/2` share a count.
   event.route = match?.route;
   const answer = await routeAnswer(tree, match, url, { ...options, event });

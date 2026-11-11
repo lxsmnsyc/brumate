@@ -1,0 +1,6 @@
+<script>
+  import ColorScheme from '../../src/ColorScheme.brm';
+  import Choices from './ColorSchemeChoices.brm';
+</script>
+
+<ColorScheme class="app" cookieName="theme"><Choices /></ColorScheme>

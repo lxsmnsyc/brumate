@@ -20,23 +20,24 @@ The modules that app code imports, other than `brumate/signals`. Most apps use o
 
 `getEvent()` returns the `RequestEvent` of the request being handled. Call it in a server function, middleware or an endpoint before their first `await`, or anywhere in a component's script while a page renders with a request. Elsewhere it throws. See [The request](./server-functions.md#the-request).
 
-| `RequestEvent` member                   | What it does                                                                                                    |
-| --------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `request`                               | The web `Request`.                                                                                              |
-| `address`                               | The address of the client as the server saw it, when the server passed it.                                      |
-| `kind`                                  | What the request is for: `'page'`, `'endpoint'`, `'call'` or `'defer'`.                                         |
-| `call`                                  | For a call, and a page that a form posted to: the ID of the server function and its arguments.                  |
-| `route`                                 | The pattern of the route that matched, such as `/todos/[id]`. Undefined for a path that no route matches.       |
-| `prerender`                             | True while the build prerenders the page.                                                                       |
-| `locals`                                | Values for this request, which middleware writes. Add fields to the `Locals` interface.                         |
-| `waitUntil(promise)`                    | Keeps work going after the response ends. Passes the promise to the host through the `waitUntil` option.        |
-| `signal`                                | Aborts when the request no longer needs an answer: its own signal aborts, or the reader of the response left.   |
-| `headers`                               | Headers to add to the response.                                                                                 |
-| `setStatus(status)`                     | The status of the page response, such as 404. Works during the first render of a page only.                     |
-| `refresh(fn)`                           | Asks the browser to load again the memos that call the server function `fn`.                                    |
-| `getCookie(name)`, `getCookies()`       | Cookies of the request, with the ones that this request set.                                                    |
-| `setCookie(name, value, options?)`      | Sets a cookie: `HttpOnly`, `SameSite=Lax` and path `/` unless the options say otherwise, and `Secure` on HTTPS. |
-| `deleteCookie(name, { path, domain }?)` | Deletes a cookie.                                                                                               |
+| `RequestEvent` member                   | What it does                                                                                                      |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `request`                               | The web `Request`.                                                                                                |
+| `address`                               | The address of the client as the server saw it, when the server passed it.                                        |
+| `kind`                                  | What the request is for: `'page'`, `'endpoint'`, `'call'` or `'defer'`.                                           |
+| `call`                                  | For a call, and a page that a form posted to: the ID of the server function and its arguments.                    |
+| `route`                                 | The pattern of the route that matched, such as `/todos/[id]`. Undefined for a path that no route matches.         |
+| `prerender`                             | True while the build prerenders the page.                                                                         |
+| `nonce`                                 | The nonce of the render, or undefined. A component that writes an inline script with `raw()` gives it this nonce. |
+| `locals`                                | Values for this request, which middleware writes. Add fields to the `Locals` interface.                           |
+| `waitUntil(promise)`                    | Keeps work going after the response ends. Passes the promise to the host through the `waitUntil` option.          |
+| `signal`                                | Aborts when the request no longer needs an answer: its own signal aborts, or the reader of the response left.     |
+| `headers`                               | Headers to add to the response.                                                                                   |
+| `setStatus(status)`                     | The status of the page response, such as 404. Works during the first render of a page only.                       |
+| `refresh(fn)`                           | Asks the browser to load again the memos that call the server function `fn`.                                      |
+| `getCookie(name)`, `getCookies()`       | Cookies of the request, with the ones that this request set.                                                      |
+| `setCookie(name, value, options?)`      | Sets a cookie: `HttpOnly`, `SameSite=Lax` and path `/` unless the options say otherwise, and `Secure` on HTTPS.   |
+| `deleteCookie(name, { path, domain }?)` | Deletes a cookie.                                                                                                 |
 
 | Export                                              | What it does                                                                                                                                           |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |

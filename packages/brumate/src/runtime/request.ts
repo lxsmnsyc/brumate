@@ -157,6 +157,11 @@ export class RequestEvent {
   /** True while the build prerenders the page. */
   readonly prerender: boolean;
   /**
+   * The Content Security Policy nonce of the render, from its `nonce` option. Undefined without
+   * one. A component that writes an inline script with `raw()` gives it this nonce.
+   */
+  nonce?: string;
+  /**
    * The pattern of the route files that matched the path, such as
    * `/todos/[id]`. `handleRoute` sets it. Undefined for a path that no route
    * matches.
