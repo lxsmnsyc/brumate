@@ -281,6 +281,24 @@ function bridge<S, T>(options: {
 
 Makes a store of another library that crosses the page state in a context, a prop or a script value. `$store` reads it like any store. The page sends the data from `get` and the name of the bridge, and the browser runs `create(snapshot)` once, at the first subscriber. `BridgedStore<S, T>` has `get`, `subscribe`, an optional `set` and `.source`, the library's store, which is `undefined` in the browser until the store has a subscriber and its module has loaded. Resume never calls `set`. `get` must give data that the page can send. The value must be a module-level export of a script file or of `<script module>` ([BRM200](./errors.md#brm200)). See [Outside stores](./context.md#outside-stores).
 
+## `derived`
+
+```ts
+// brumate/store
+function derived<S extends Stores, T>(sources: S, fn: (values: StoresValues<S>) => T, initial?: T): StoreLike<T>;
+function derived<S extends Stores, T>(
+  sources: S,
+  fn: (
+    values: StoresValues<S>,
+    set: (value: T) => void,
+    update: (change: (value: T) => T) => void,
+  ) => (() => void) | void,
+  initial?: T,
+): StoreLike<T>;
+```
+
+A read-only store computed from a store or an array of stores, for state at module level. The form follows Svelte 4's `derived`: `fn` with one parameter returns the value, `fn` with two or more calls `set` or `update` and may return a cleanup. It follows its sources only while it has subscribers, and does not notify for a result that is `Object.is` equal. It has no `set`. `$store` reads it from an import. See [Derived stores](./context.md#derived-stores).
+
 ## `$id`
 
 ```ts

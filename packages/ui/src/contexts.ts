@@ -2,6 +2,7 @@
 // each part reads its own with `slotProps`.
 import { createContext } from 'brumate/context';
 import type { Color } from './color.ts';
+import type { ColorSchemeChoice } from './color-scheme.ts';
 import type { Placement } from './position.ts';
 import type { Context } from 'brumate/context';
 import type { StoreLike } from 'brumate/store';
@@ -311,6 +312,8 @@ export interface OverlayTriggerState {
   keepsContent?: boolean;
   /** The IDs that name a Dialog in the overlay with no Heading of its own, such as of a DatePicker. */
   labelledBy?: string;
+  /** The overlay opens at this point of the viewport, in place of next to the trigger, such as a context menu. */
+  point?: { x: number; y: number };
 }
 
 /** What an overlay calls on its trigger. */
@@ -326,6 +329,14 @@ export interface OverlayTriggerGiven extends Partial<OverlayTriggerHandlers> {
 
 export const OverlayTriggerContext: Context<OverlayTriggerGiven> =
   createContext<OverlayTriggerGiven>('brumate-ui:overlay-trigger');
+
+/** What a PopoverGroup gives the popovers inside it: the ID that marks its elements. */
+export interface PopoverGroupGiven {
+  id: string;
+}
+
+export const PopoverGroupContext: Context<PopoverGroupGiven | null> =
+  createContext<PopoverGroupGiven | null>('brumate-ui:popover-group');
 
 /** What an overlay gives the Dialog inside it: the IDs that name it. */
 export interface DialogState {
@@ -385,3 +396,18 @@ export interface ColorPickerGiven {
 
 export const ColorPickerContext: Context<ColorPickerGiven> =
   createContext<ColorPickerGiven>('brumate-ui:color-picker');
+
+/** The color scheme that a ColorScheme gives: the choice, and `light` or `dark` once known. */
+export interface ColorSchemeState {
+  value: ColorSchemeChoice;
+  resolved: 'light' | 'dark' | undefined;
+}
+
+export interface ColorSchemeGiven {
+  state: StoreLike<ColorSchemeState | null>;
+  /** Changes the choice, as a Button inside does. */
+  setValue: (next: ColorSchemeChoice) => void;
+}
+
+export const ColorSchemeContext: Context<ColorSchemeGiven> =
+  createContext<ColorSchemeGiven>('brumate-ui:color-scheme');

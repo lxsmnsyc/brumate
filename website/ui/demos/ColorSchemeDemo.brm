@@ -1,0 +1,34 @@
+<script>
+  import ColorScheme from '@brumate/ui/ColorScheme.brm';
+  import ColorSchemeChoices from './ColorSchemeChoices.brm';
+</script>
+
+<ColorScheme class="color-scheme-demo" cookieName="demo-color-scheme">
+  <ColorSchemeChoices />
+</ColorScheme>
+
+<style global>
+  .color-scheme-demo {
+    padding: 1rem;
+    border: 1px solid color-mix(in srgb, CanvasText 30%, Canvas);
+    border-radius: 0.5rem;
+    background: #fff;
+    color: #1b1b1f;
+  }
+
+  .color-scheme-demo.dark {
+    background: #1b1b1f;
+    color: #f2f2f5;
+  }
+
+  .color-scheme-demo .color-scheme-demo-choice {
+    border-color: currentColor;
+    background: transparent;
+    color: inherit;
+  }
+
+  .color-scheme-demo .color-scheme-demo-choice[aria-pressed='true'] {
+    background: color-mix(in srgb, currentColor 18%, transparent);
+    outline: 2px solid currentColor;
+  }
+</style>

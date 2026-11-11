@@ -20,23 +20,24 @@ The modules that app code imports, other than `brumate/signals`. Most apps use o
 
 `getEvent()` returns the `RequestEvent` of the request being handled. Call it in a server function, middleware or an endpoint before their first `await`, or anywhere in a component's script while a page renders with a request. Elsewhere it throws. See [The request](./server-functions.md#the-request).
 
-| `RequestEvent` member                   | What it does                                                                                                    |
-| --------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `request`                               | The web `Request`.                                                                                              |
-| `address`                               | The address of the client as the server saw it, when the server passed it.                                      |
-| `kind`                                  | What the request is for: `'page'`, `'endpoint'`, `'call'` or `'defer'`.                                         |
-| `call`                                  | For a call, and a page that a form posted to: the ID of the server function and its arguments.                  |
-| `route`                                 | The pattern of the route that matched, such as `/todos/[id]`. Undefined for a path that no route matches.       |
-| `prerender`                             | True while the build prerenders the page.                                                                       |
-| `locals`                                | Values for this request, which middleware writes. Add fields to the `Locals` interface.                         |
-| `waitUntil(promise)`                    | Keeps work going after the response ends. Passes the promise to the host through the `waitUntil` option.        |
-| `signal`                                | Aborts when the request no longer needs an answer: its own signal aborts, or the reader of the response left.   |
-| `headers`                               | Headers to add to the response.                                                                                 |
-| `setStatus(status)`                     | The status of the page response, such as 404. Works during the first render of a page only.                     |
-| `refresh(fn)`                           | Asks the browser to load again the memos that call the server function `fn`.                                    |
-| `getCookie(name)`, `getCookies()`       | Cookies of the request, with the ones that this request set.                                                    |
-| `setCookie(name, value, options?)`      | Sets a cookie: `HttpOnly`, `SameSite=Lax` and path `/` unless the options say otherwise, and `Secure` on HTTPS. |
-| `deleteCookie(name, { path, domain }?)` | Deletes a cookie.                                                                                               |
+| `RequestEvent` member                   | What it does                                                                                                      |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `request`                               | The web `Request`.                                                                                                |
+| `address`                               | The address of the client as the server saw it, when the server passed it.                                        |
+| `kind`                                  | What the request is for: `'page'`, `'endpoint'`, `'call'` or `'defer'`.                                           |
+| `call`                                  | For a call, and a page that a form posted to: the ID of the server function and its arguments.                    |
+| `route`                                 | The pattern of the route that matched, such as `/todos/[id]`. Undefined for a path that no route matches.         |
+| `prerender`                             | True while the build prerenders the page.                                                                         |
+| `nonce`                                 | The nonce of the render, or undefined. A component that writes an inline script with `raw()` gives it this nonce. |
+| `locals`                                | Values for this request, which middleware writes. Add fields to the `Locals` interface.                           |
+| `waitUntil(promise)`                    | Keeps work going after the response ends. Passes the promise to the host through the `waitUntil` option.          |
+| `signal`                                | Aborts when the request no longer needs an answer: its own signal aborts, or the reader of the response left.     |
+| `headers`                               | Headers to add to the response.                                                                                   |
+| `setStatus(status)`                     | The status of the page response, such as 404. Works during the first render of a page only.                       |
+| `refresh(fn)`                           | Asks the browser to load again the memos that call the server function `fn`.                                      |
+| `getCookie(name)`, `getCookies()`       | Cookies of the request, with the ones that this request set.                                                      |
+| `setCookie(name, value, options?)`      | Sets a cookie: `HttpOnly`, `SameSite=Lax` and path `/` unless the options say otherwise, and `Secure` on HTTPS.   |
+| `deleteCookie(name, { path, domain }?)` | Deletes a cookie.                                                                                                 |
 
 | Export                                              | What it does                                                                                                                                           |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -230,18 +231,10 @@ See [Testing](./testing.md).
 
 ## `brumate/devtools`
 
-`installDevtools(endpoint = '/__brumate/inspect')` adds the devtools grip to a page. The dev server calls it. See [Inspect and devtools](./inspect.md#devtools).
+`installDevtools(endpoint = '/__brumate/inspect')` adds the devtools grip to a page. The plugin calls it on the dev server for every client entry that starts the loader, so you do not. A call of your own is harmless: a second install does nothing. See [Inspect and devtools](./inspect.md#devtools).
 
 ## `brumate/hot`
 
-`hotLoad(import.meta.hot, load)` returns a `load` for the loader that loads the new code of a component that changed on the dev server, and replaces its styles. The start module of the plugin uses it. A custom client entry that calls `start` itself passes it:
-
-```ts
-import { hotLoad } from 'brumate/hot';
-import { start } from 'brumate/loader';
-import { load } from 'virtual:brumate/manifest';
-
-start({ load: hotLoad(import.meta.hot, load) });
-```
+`hotLoad(import.meta.hot, load)` returns a `load` for the loader that loads the new code of a component that changed on the dev server, and replaces its styles. The plugin wraps the `load` of every client entry that calls `start` from `brumate/loader`, so you do not call it. A call of your own is harmless: a load that is wrapped stays as it is. It stays exported for code that starts the loader some other way.
 
 Outside the dev server, `import.meta.hot` is undefined and `hotLoad` returns `load` as it is. See [Edit while it runs](./getting-started.md#edit-while-it-runs).

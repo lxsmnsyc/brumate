@@ -43,18 +43,21 @@ A call is a `POST` to `<rpc prefix>/<encoded ID>`. The prefix is `/_brumate` by 
 
 ## Chunk stream
 
-A value answer is a stream of seroval cross-reference JSON nodes, from `toCrossJSONStream`. Each chunk is a 12-byte header and the data:
+A value answer is a byte stream of [`@seroval/transport`](https://github.com/lxsmnsyc/seroval) frames. The server writes it with `createJSONWriter` and `toWebStream`, and the client reads it with `createJSONReader` and `fromWebStream`. Each frame is a 12-byte header and the data:
 
 ```
-;0x0000001f;{"t":10,"i":0,"p":{…}}
+;0x00000021;[0,"answer",{"t":10,"i":0,"p":{…}}]
 ```
 
 - The header is `;0x`, the size of the data in bytes as 8 hex digits, and `;`.
-- The first chunk is the value. The client reads it with `fromCrossJSON`, and returns it from the call.
-- Later chunks settle the promises and the async iterables in the value. The client reads them in the background with the same `refs` map.
+- The data is a transport message: `[0, key, node]` carries a seroval cross-reference JSON node, `[1, key]` says the value and everything in it settled, and `[2, key]` says the writer failed or cancelled the value.
+- The key is `answer`. The first data message is the value, and the client returns it from the call.
+- Later data messages settle the promises and the async iterables in the value. The client reads them in the background.
 - When the stream ends, any promise or iterable that still waits fails. A promise that fails with nothing reading it does not report an unhandled rejection.
+- The reader refuses a frame over 64 MiB.
+- A value that cannot be serialized, such as a function, fails the answer on the client, and the error goes to the `onError` of the app on the server.
 
-The size in the header lets the reader wait for exactly the bytes of one chunk. The format follows the one of SolidStart.
+The size in the header lets the reader wait for exactly the bytes of one frame. A page and a server of different builds cannot read each other's frames. The skew check answers 409 first, so the page loads again.
 
 ## Forms
 

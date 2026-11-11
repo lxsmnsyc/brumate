@@ -73,6 +73,52 @@ export function containTab(overlay: HTMLElement, event: KeyboardEvent): void {
   next?.focus();
 }
 
+/**
+ * Moves Tab out of a panel that sits at the end of the page, to where it would go from its
+ * trigger: the next element after the trigger that is not in a layer, or the trigger for
+ * Shift+Tab. Does nothing in the middle of the panel. Returns whether it moved focus.
+ */
+export function leaveByTab(
+  panel: HTMLElement,
+  trigger: Element | null,
+  event: KeyboardEvent,
+): boolean {
+  if (event.key !== 'Tab' || !trigger) {
+    return false;
+  }
+  const order = tabbables(panel);
+  const active = document.activeElement;
+  // Focus on the panel or its dialog, which Tab does not reach, is before the first element.
+  const at = order.indexOf(active as HTMLElement);
+  const atStart = at <= 0;
+  const atEnd = order.length === 0 || at === order.length - 1;
+  let next: HTMLElement | undefined;
+  if (event.shiftKey) {
+    if (!atStart) {
+      return false;
+    }
+    next = trigger as HTMLElement;
+  } else {
+    if (!atEnd) {
+      return false;
+    }
+    const page = tabbables(document.body);
+    const from = page.indexOf(trigger as HTMLElement);
+    for (let i = from + 1; i < page.length; i += 1) {
+      if (!page[i]!.closest('[data-layer]')) {
+        next = page[i];
+        break;
+      }
+    }
+  }
+  if (!next) {
+    return false;
+  }
+  event.preventDefault();
+  next.focus();
+  return true;
+}
+
 /** How many open overlays made each element inert, so the last one to close gives it back. */
 const inertCounts = new Map<Element, number>();
 
@@ -206,17 +252,46 @@ export function pressOutside(
 }
 
 /**
+ * Whether a node belongs to the popover group: it is inside the element of the group, such as a
+ * trigger, or inside the layer of a popover of the group.
+ */
+export function inPopoverGroup(group: string, target: Node): boolean {
+  const element = target instanceof Element ? target : target.parentElement;
+  return Boolean(
+    element?.closest(`[data-popover-group="${group}"], [data-popover-group-panel="${group}"]`),
+  );
+}
+
+/**
+ * Tells the other popovers of a group that this one opened, so they close. Returns the function
+ * that stops listening for the others.
+ */
+export function closeOthersInGroup(group: string, layer: Element, close: () => void): () => void {
+  document.dispatchEvent(new CustomEvent('brumate-popover-open', { detail: { group, layer } }));
+  function listener(event: Event): void {
+    const detail = (event as CustomEvent<{ group: string; layer: Element }>).detail;
+    if (detail.group === group && detail.layer !== layer) {
+      close();
+    }
+  }
+  document.addEventListener('brumate-popover-open', listener);
+  return () => document.removeEventListener('brumate-popover-open', listener);
+}
+
+/**
  * Calls `close` when focus moves outside the layer and the trigger, for an overlay that is not
- * modal. Returns the function that stops it.
+ * modal. Focus on a node that `keeps` returns true for closes nothing, such as the trigger of
+ * another popover of the group. Returns the function that stops it.
  */
 export function blurOutside(
   layer: Element,
   trigger: Element | null,
   close: () => void,
+  keeps?: (target: Node) => boolean,
 ): () => void {
   function listener(event: FocusEvent): void {
     const target = event.target as Node | null;
-    if (target && !layer.contains(target) && !trigger?.contains(target)) {
+    if (target && !layer.contains(target) && !trigger?.contains(target) && !keeps?.(target)) {
       close();
     }
   }

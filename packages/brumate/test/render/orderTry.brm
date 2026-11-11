@@ -1,0 +1,15 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import OrderKid from './OrderKid.brm';
+
+  let show = $signal(false);
+</script>
+
+<button class="show" onClick=(() => (show = true))>Show</button>
+#try {
+  #if (show) {
+    <OrderKid />
+  }
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

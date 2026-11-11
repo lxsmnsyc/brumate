@@ -10,14 +10,27 @@
     children?: unknown;
     /** Whether the menu is open. Alone it holds its own state, which starts closed, and `$bind` writes your signal. A start value of `true` opens the menu once the page has loaded. */
     isOpen?: Bindable<boolean>;
+    /** What opens the menu. `press` opens it from the `Button`. `contextmenu` opens it at the pointer on a right click, at a long press of a touch, and at the focused element on the context menu key or Shift+F10. The children are then the area and a `Popover` with a `Menu`, with no `Button`. */
+    trigger?: 'press' | 'contextmenu';
   }
 </script>
 
 <script>
-  import { $id, $memo, $props, $setContext, $signal, $toStore } from 'brumate/signals';
-  import { prevent } from 'brumate/events';
+  import { $client, $effect, $id, $memo, $props, $setContext, $signal, $toStore, $untrack } from 'brumate/signals';
+  import { prevent, stop } from 'brumate/events';
   import { ButtonContext, OverlayTriggerContext } from './contexts.ts';
   import type { OverlayTriggerState } from './contexts.ts';
+  import {
+    cancelLongPress,
+    forgetInput,
+    keepBrowserMenuAway,
+    keyboardPoint,
+    openOnceFree,
+    markInput,
+    startLongPress,
+    usedKeyboard,
+  } from './context-menu.ts';
+  import type { Point } from './context-menu.ts';
   import { MenuTriggerContext } from './menu.ts';
 
   /**
@@ -28,14 +41,23 @@
    * - A press opens the menu. From a key, focus goes to its first item. From a pointer, it goes
    *   to the menu, and the arrow keys move to an item.
    * - ArrowDown on the Button opens the menu at its first item, and ArrowUp at its last.
+   * - `trigger="contextmenu"` opens it where the pointer is, on a right click, and where a touch
+   *   rests for half a second. The context menu key and Shift+F10 open it under the focused
+   *   element, so give the area `tabindex="0"`. The children are then the area and a Popover, with
+   *   no Button. The menu is the same Menu, with its keys, and Escape gives focus back to the
+   *   element that had it. The menu of the browser does not show on the area, nor on the menu. A
+   *   context menu inside another one wins on its own area.
    * - `isOpen` alone holds its own state, which starts closed, and `isOpen=$bind(signal)` writes the caller's. A start value of `true` opens the menu once the page has loaded.
    */
-  const { onOpenChange, children } = $props<MenuTriggerProps>();
+  const { onOpenChange, children, trigger = 'press' } = $props<MenuTriggerProps>();
   let { isOpen = false } = $props<MenuTriggerProps>();
 
   const triggerId = $id();
   const overlayId = $id();
+  const areaId = $id();
   let focusStrategy = $signal<FocusStrategy>('first');
+  // Where a context menu opens, in the viewport.
+  let point = $signal<Point>();
 
   function setOpen(next: boolean) {
     if (next === isOpen) {
@@ -54,6 +76,9 @@
   }
 
   function pressed(event: PressEvent) {
+    if (trigger === 'contextmenu') {
+      return;
+    }
     focusStrategy =
       event.pointerType === 'keyboard' || event.pointerType === 'virtual' ? 'first' : 'none';
     setOpen(!isOpen);
@@ -70,12 +95,74 @@
     }
   }
 
-  const buttonState = $memo({
-    id: triggerId,
-    'aria-expanded': isOpen ? 'true' : 'false',
-    'aria-haspopup': 'menu',
-    'aria-controls': isOpen ? overlayId : undefined,
+  function openAt(next: Point, strategy: FocusStrategy) {
+    if (isOpen) {
+      return;
+    }
+    point = next;
+    focusStrategy = strategy;
+    setOpen(true);
+  }
+
+  // The browser menu is always kept away, and the menu opens at the pointer, or under the focus for a key.
+  // Handlers of an inner context menu stop the event, so the inner area wins.
+  function contextMenu(event: MouseEvent) {
+    cancelLongPress(triggerId);
+    if (usedKeyboard(triggerId)) {
+      openAt(keyboardPoint(event), 'first');
+    } else {
+      openAt({ x: event.clientX, y: event.clientY }, 'none');
+    }
+  }
+
+  function pointerDown(event: PointerEvent) {
+    markInput(triggerId, false);
+    if (event.pointerType === 'touch') {
+      startLongPress(triggerId, event, (next) => openAt(next, 'none'));
+    }
+  }
+
+  function pointerEnd(event: PointerEvent) {
+    cancelLongPress(triggerId, event);
+  }
+
+  function typed() {
+    markInput(triggerId, true);
+  }
+
+  // A right click elsewhere moves the menu: it closes, and opens again at the new point when the point is on the area.
+  function moveTo(next: Point) {
+    openOnceFree(
+      () => document.getElementById(areaId),
+      next,
+      () => openAt(next, 'none'),
+    );
+  }
+
+  // While a context menu is open, the menu of the browser stays away, and a right click outside closes it.
+  $effect(() => {
+    if (trigger !== 'contextmenu' || !isOpen) {
+      return undefined;
+    }
+    return $untrack(keepBrowserMenuAway(overlayId, close, moveTo));
   });
+
+  $client(() => () => {
+    cancelLongPress(triggerId);
+    forgetInput(triggerId);
+  }, 'idle');
+
+  // A context menu has no Button, so a Button inside is a plain one.
+  const buttonState = $memo(
+    trigger === 'contextmenu'
+      ? {}
+      : {
+          id: triggerId,
+          'aria-expanded': isOpen ? 'true' : 'false',
+          'aria-haspopup': 'menu',
+          'aria-controls': isOpen ? overlayId : undefined,
+        },
+  );
   $setContext(ButtonContext, {
     state: $toStore(buttonState),
     handlers: {
@@ -86,10 +173,30 @@
     isOpen,
     triggerId,
     overlayId,
+    point: trigger === 'contextmenu' ? point : undefined,
+    placement: trigger === 'contextmenu' ? 'bottom start' : undefined,
   });
   $setContext(OverlayTriggerContext, { state: $toStore(overlayState), open, close });
-  const menuTrigger = $memo<MenuTriggerState>({ triggerId, focusStrategy, isSubmenu: false });
+  const menuTrigger = $memo<MenuTriggerState>({
+    triggerId: trigger === 'contextmenu' ? undefined : triggerId,
+    focusStrategy,
+    isContextMenu: trigger === 'contextmenu',
+    isSubmenu: false,
+  });
   $setContext(MenuTriggerContext, { state: $toStore(menuTrigger), closeAll: close });
 </script>
 
-<div style="display: contents" onKeyDown=(prevent(keyDown, 'ArrowDown', 'ArrowUp'))>{children}</div>
+#if (trigger === 'contextmenu') {
+  <div
+    id=areaId
+    style="display: contents"
+    onContextMenu=(stop(prevent(contextMenu)))
+    onPointerDown=pointerDown
+    onPointerUp=pointerEnd
+    onPointerCancel=pointerEnd
+    onPointerMove=pointerEnd
+    onKeyDown=typed
+  >{children}</div>
+} #else {
+  <div style="display: contents" onKeyDown=(prevent(keyDown, 'ArrowDown', 'ArrowUp'))>{children}</div>
+}

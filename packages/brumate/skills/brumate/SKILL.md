@@ -39,15 +39,18 @@ A `.brm` file is a component: scripts for its state, an optional `<style>`, and 
 - Markup is never a value in code or in an attribute. Use `#template name(parameters) { … }` and call it as `{name(arguments)}`.
 - Browser wrappers of a handler come from `brumate/events`: `prevent`, `stop`, `once`, `capture`, `transition`. Write them in the attribute, with keys as string literals. `prevent(handler, 'Enter')` prevents only Enter with Ctrl, Meta and Alt up. `'Mod+ArrowDown'` names Ctrl or Meta. Calling `event.preventDefault()` in a handler is too late.
 - A server function is an `async` function with `'use server'` on its first line. It reads no variable of the instance script. Pass values as arguments.
+- A store computed from other stores is `derived(sources, fn)` of `brumate/store`, read with `$store`. It is one-way, and never goes in a provided value or a prop.
+- An inline script is `raw('<script nonce=… data-rerun>…</script>')` in `#head`, with `getEvent().nonce` of `brumate/server` as the nonce. `data-rerun` runs it after each client navigation.
+- The light and dark choice of the page is `ColorScheme` and `colorScheme()` of `@brumate/ui`, not a signal and an effect.
 - Do not use `$ref`, `$watch`, `$settled`, `$cleanup`, `$get`, `$set`, or modifiers such as `onSubmit:prevent`.
 
 ## References
 
 Read the file for the part of the work that you do.
 
-- [references/syntax.md](references/syntax.md): the parts of a file, attributes, props, children, templates and control flow.
+- [references/syntax.md](references/syntax.md): the parts of a file, attributes, props, children, templates, control flow, head scripts and `ColorScheme`.
 - [references/signals.md](references/signals.md): every function of `brumate/signals`, with what it returns and where it goes.
-- [references/state.md](references/state.md): signals, memos, async data, effects, `$client` and refs.
+- [references/state.md](references/state.md): signals, memos, async data, effects, `$client`, refs, context and derived stores.
 - [references/events.md](references/events.md): handlers, the wrappers of `brumate/events`, and `$handler`.
 - [references/errors.md](references/errors.md): every compile error, its cause, and the form to write instead.
 

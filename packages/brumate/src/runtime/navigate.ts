@@ -506,8 +506,12 @@ function append(nodes: Node[], shift: Shift | undefined): void {
   }
 }
 
-/** Makes the head of the page match the new one, keeping elements that are in both. */
-function updateHead(next: Document): void {
+/**
+ * Makes the head of the page match the new one, keeping elements that are in both.
+ * Returns the scripts that ask to run again, which the caller adds once the body is in place.
+ */
+function updateHead(next: Document): HTMLScriptElement[] {
+  const rerun: HTMLScriptElement[] = [];
   const keep = new Map<string, Element>();
   for (const element of document.head.children) {
     keep.set(element.outerHTML, element);
@@ -516,7 +520,10 @@ function updateHead(next: Document): void {
   // oxlint-disable-next-line unicorn/no-useless-spread
   for (const element of [...next.head.children]) {
     const html = element.outerHTML;
-    if (keep.has(html)) {
+    if (element.matches('script[data-rerun]')) {
+      // Never kept: the old copy leaves and a new one runs after the body.
+      rerun.push(element as HTMLScriptElement);
+    } else if (keep.has(html)) {
       keep.delete(html);
     } else {
       document.head.append(document.adoptNode(element));
@@ -526,12 +533,14 @@ function updateHead(next: Document): void {
     // Module scripts stay, because removing them does not unload them, and so do the stylesheets
     // of the bundles that the loader added, whose code stays too.
     if (
-      !(element.tagName === 'SCRIPT' && (element as HTMLScriptElement).src) &&
-      !element.hasAttribute('b-bundle')
+      element.matches('script[data-rerun]') ||
+      (!(element.tagName === 'SCRIPT' && (element as HTMLScriptElement).src) &&
+        !element.hasAttribute('b-bundle'))
     ) {
       element.remove();
     }
   }
+  return rerun;
 }
 
 function scroll(url: URL, saved: number | undefined): void {
@@ -830,7 +839,7 @@ export async function navigate(visit: Visit): Promise<void> {
       title ||
       next.body.querySelector('h1')?.textContent ||
       '';
-    updateHead(next);
+    const rerun = updateHead(next);
     document.title = title;
     const same = url.href === location.href;
     // A change of only the query string, such as a filter, keeps the focus, so typing goes on.
@@ -852,6 +861,10 @@ export async function navigate(visit: Visit): Promise<void> {
       history.pushState({}, '', url);
     } else if (!same) {
       history.replaceState(history.state, '', url);
+    }
+    // Scripts that ask to run again read the new body and the new URL.
+    for (const script of rerun) {
+      document.head.append(runnable(script));
     }
     visit.enter();
     if (visit.scroll === false || ((visit.init || visit.reload) && same)) {

@@ -295,9 +295,9 @@ export async function readCall(input: CallInput): Promise<CallRecord> {
     ...(error ? { error } : {}),
   };
   const [{ fromJSON }, { callPlugins, serialOptions }, { fromChunkStream }] = await Promise.all([
-    import('seroval'),
+    import('seroval/read'),
     import('./serial.ts'),
-    import('./stream.ts'),
+    import('./stream-read.ts'),
   ]);
   // The arguments: seroval JSON, or form data that holds it, or the fields of a form.
   try {

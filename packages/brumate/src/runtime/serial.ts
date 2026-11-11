@@ -4,7 +4,8 @@
 // is code that makes its values with `stateValues`, so seroval loads in the
 // browser only with the first server function call.
 
-import { Feature, createPlugin } from 'seroval';
+import { Feature, createPlugin } from 'seroval/shared';
+import * as v from 'seroval/validator';
 import {
   AbortSignalPlugin,
   CustomEventPlugin,
@@ -24,7 +25,7 @@ import type {
   SerovalNode,
   StreamParsePluginContext,
   SyncParsePluginContext,
-} from 'seroval';
+} from 'seroval/shared';
 import { type Internal, isInternal, isRaw, rawHTML } from './html.ts';
 import type { Raw } from './html.ts';
 import { functionReferences, isBlob } from './calls.ts';
@@ -93,6 +94,24 @@ function parsers<T, K extends string>(
   };
 }
 
+/** A scope ID, which is a number or a string. */
+const scopeId = v.union(v.string, v.number);
+
+/** The index of a file in the form: a whole number from 0. */
+function isIndex(value: unknown): value is number {
+  return Number.isSafeInteger(value) && (value as number) >= 0;
+}
+
+/** An array whose items are not checked: the plugin that reads them checks them. */
+function isArray(value: unknown): value is unknown[] {
+  return Array.isArray(value);
+}
+
+/** The arguments of a handler: an array, or null when only modifiers follow. */
+function isArgs(value: unknown): value is unknown[] | null {
+  return value === null || Array.isArray(value);
+}
+
 // In the page state, each value is a call of `stateValues`, which the code of a record gets as `$b`.
 
 // No plugin here matches a plain object, so each one sets skipPlainObjects and seroval
@@ -105,6 +124,7 @@ const ElementPlugin = createPlugin<ElementReference, ReferenceNode>({
   serialize: (node, ctx) => `$b.e(${ctx.serialize(node.a)},${ctx.serialize(node.b)})`,
   deserialize: (node, ctx) =>
     stateValues.e(ctx.deserialize<number>(node.a), ctx.deserialize<number>(node.b)),
+  validate: { a: scopeId, b: v.number },
 });
 
 const SlotPlugin = createPlugin<SlotReference, ReferenceNode>({
@@ -115,6 +135,7 @@ const SlotPlugin = createPlugin<SlotReference, ReferenceNode>({
   serialize: (node, ctx) => `$b.l(${ctx.serialize(node.a)},${ctx.serialize(node.b)})`,
   deserialize: (node, ctx) =>
     stateValues.l(ctx.deserialize<number>(node.a), ctx.deserialize<number>(node.b)),
+  validate: { a: scopeId, b: v.number },
 });
 
 /** A binding that a rest prop holds: its value, and the scope and the slot it writes. */
@@ -138,6 +159,7 @@ const BindingPlugin = createPlugin<Binding, ReferenceNode>({
       ctx.deserialize<number>(node.c!),
       node.d === undefined ? undefined : ctx.deserialize(node.d),
     ),
+  validate: { b: scopeId, c: v.number },
 });
 
 const FunctionPlugin = createPlugin<object, ReferenceNode>({
@@ -166,6 +188,7 @@ const FunctionPlugin = createPlugin<object, ReferenceNode>({
       node.c === undefined ? undefined : ctx.deserialize<unknown[] | null>(node.c),
       node.d === undefined ? undefined : ctx.deserialize<string[]>(node.d),
     ),
+  validate: { a: v.string, b: scopeId, c: isArgs, d: v.array(v.string) },
 });
 
 /** A handler that merges the handlers of one event, as the parts that refer to client functions. */
@@ -184,6 +207,7 @@ const MergedPlugin = createPlugin<object, { a: SerovalNode }>({
   }),
   serialize: (node, ctx) => `$b.m(${ctx.serialize(node.a)})`,
   deserialize: (node, ctx) => stateValues.m(ctx.deserialize(node.a)),
+  validate: { a: isArray },
 });
 
 /**
@@ -223,6 +247,7 @@ const ChildrenPlugin = createPlugin<object, ReferenceNode>({
       node.c === undefined ? undefined : ctx.deserialize<ScopeId>(node.c),
       node.d === undefined ? undefined : ctx.deserialize<number>(node.d),
     ),
+  validate: { a: v.string, b: scopeId, c: scopeId, d: v.number },
 });
 
 /**
@@ -259,6 +284,7 @@ const RawPlugin = createPlugin<Raw, { h: SerovalNode }>({
   parse: parsers((value) => ({ h: rawHTML(value) })),
   serialize: (node, ctx) => `$b.r(${ctx.serialize(node.h)})`,
   deserialize: (node, ctx) => stateValues.r(ctx.deserialize<string>(node.h)),
+  validate: { h: v.string },
 });
 
 /** A component in the page state, such as the value of a dynamic tag. See `stateValues.c`. */
@@ -270,6 +296,7 @@ const ComponentPlugin = createPlugin<ComponentValue, { c: SerovalNode }>({
   parse: parsers((value) => ({ c: value.brumateId })),
   serialize: (node, ctx) => `$b.c(${ctx.serialize(node.c)})`,
   deserialize: (node, ctx) => stateValues.c(ctx.deserialize<string>(node.c)),
+  validate: { c: v.string },
 });
 
 /**
@@ -299,6 +326,7 @@ const StorePlugin = createPlugin<Store<unknown>, ReferenceNode>({
       node.c === undefined ? undefined : ctx.deserialize<number>(node.c),
       node.d === undefined ? undefined : ctx.deserialize<number>(node.d),
     ),
+  validate: { b: scopeId, c: v.number, d: v.number },
 });
 
 /**
@@ -350,21 +378,16 @@ export function uploadPlugin(sent?: Blob[], received?: FormData): Plugin<Blob, U
       if (node.t === undefined) {
         return file;
       }
-      const type = ctx.deserialize(node.t);
-      if (typeof type !== 'string') {
-        throw new TypeError('A file of the call is malformed');
-      }
+      const type = ctx.deserialize<string>(node.t);
       // The new blob or file refers to the bytes of the part instead of copying them.
       if (node.n === undefined) {
         return new Blob([file], { type });
       }
-      const name = ctx.deserialize(node.n);
-      const lastModified = node.l === undefined ? undefined : ctx.deserialize(node.l);
-      if (typeof name !== 'string' || typeof lastModified !== 'number') {
-        throw new TypeError('A file of the call is malformed');
-      }
+      const name = ctx.deserialize<string>(node.n);
+      const lastModified = node.l === undefined ? undefined : ctx.deserialize<number>(node.l);
       return new File([file], name, { type, lastModified });
     },
+    validate: { i: isIndex, t: v.string, n: v.string, l: v.number },
   });
 }
 

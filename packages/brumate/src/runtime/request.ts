@@ -1,4 +1,4 @@
-import { toJSON } from 'seroval';
+import { toJSON } from 'seroval/write';
 import { deleteCookie, getCookies, setCookie } from './cookies.ts';
 import type { CookieOptions } from './cookies.ts';
 import { serialOptions, syncPlugins } from './serial.ts';
@@ -156,6 +156,11 @@ export class RequestEvent {
   readonly address?: string;
   /** True while the build prerenders the page. */
   readonly prerender: boolean;
+  /**
+   * The Content Security Policy nonce of the render, from its `nonce` option. Undefined without
+   * one. A component that writes an inline script with `raw()` gives it this nonce.
+   */
+  nonce?: string;
   /**
    * The pattern of the route files that matched the path, such as
    * `/todos/[id]`. `handleRoute` sets it. Undefined for a path that no route

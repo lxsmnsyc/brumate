@@ -218,6 +218,22 @@ A file uses another component by importing it, and renders it with a capitalized
 - `$id()` gives an ID that is the same on the server and in the browser: `const field = $id();`, then `<label for=field>` and `<input id=field>`.
 - `<script>` can export nothing. A value that other files import goes in `<script module>`.
 - `#head { <title>{title}</title> <meta name="description" content="…"> }` sets the head of the page. A `<title>` outside `#head` is an error.
+- A script in the head is HTML in a string, since `<script>` is not markup in a `.brm` file. Send it with `raw()` from `brumate/html`, and give it the nonce of the render, which is `undefined` without one: `getEvent().nonce` of `brumate/server`. A client navigation does not run a head script again. Add `data-rerun` to one that must run after each navigation.
+
+```brm
+<script>
+  import { getEvent } from 'brumate/server';
+  import { raw } from 'brumate/html';
+
+  const nonce = getEvent().nonce;
+  const attribute = nonce ? ` nonce="${nonce}"` : '';
+</script>
+
+#head {
+  {raw(`<script${attribute} data-rerun>document.documentElement.dataset.visits = '1'</script>`)}
+}
+```
+
 - A value that changes in a `<textarea>` or `<title>` must be its whole content: `<textarea>{text}</textarea>`.
 
 ## Modules of reactive logic
@@ -249,3 +265,30 @@ export function counter(start: number) {
 
 - The function ends with `return { … }`, an object of plain keys, and returns nowhere else.
 - A component calls it at the top level of its script, and destructures the result with plain names.
+
+## Parts of @brumate/ui
+
+The light, dark or system choice of the page is `ColorScheme` of `@brumate/ui`. It keeps the choice in a cookie, so the server renders the first response with it. `colorScheme()` reads and changes it from a component inside, at the top level of its script.
+
+```brm
+<script>
+  import ColorScheme from '@brumate/ui/ColorScheme.brm';
+  import ThemeToggle from './ThemeToggle.brm';
+</script>
+
+<ColorScheme class="app" cookieName="theme"><ThemeToggle /></ColorScheme>
+```
+
+```brm uses
+<script>
+  import { colorScheme } from '@brumate/ui/color-scheme.brm.ts';
+
+  const { value, resolved, setValue } = colorScheme();
+</script>
+
+<button onClick=(() => setValue(resolved === 'dark' ? 'light' : 'dark'))>Scheme: {value}</button>
+```
+
+- `value` is `light`, `dark` or `system`. `resolved` is `light` or `dark`, and undefined for `system` until the browser knows the preference.
+- Destructure what `colorScheme()` returns. Outside a `ColorScheme`, `setValue` does nothing.
+- `as="html"` in the root layout puts the class on `<html>`.

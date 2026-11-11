@@ -216,8 +216,50 @@ export const Level = createContext<{ level: Store<number>; reset: () => void }>(
 - `const x = $store(source)` follows the store. `let x = $store(source)` also writes it: `x = next` calls `set(next)`. A store without `set`, such as one from a memo, throws a `TypeError` when the variable registers. The guard on a value is `const` only ([BRM197](./errors.md#brm197)).
 - The provider has one store for each `$toStore`, and a reader updates in the same ordered pass as the props and memos around it.
 - The page sends only the value of a store from `brumate/store`. The server refuses a store of another library inside a provided value, with an error that names the context. [`bridge()`](#outside-stores) makes a store of another library that the page can send.
-- `import { store } from 'brumate/store'` makes a store for a module: `export const theme = store('light')`. `Store` calls its listeners only when the value changes (`Object.is`).
+- `import { store } from 'brumate/store'` makes a store for a module: `export const theme = store('light')`. `Store` calls its listeners only when the value changes (`Object.is`). To compute a store from other stores, use [`derived`](#derived-stores).
 - Keep functions for handlers. A reader renders from the store, not from a function that reads a signal.
+
+## Derived stores
+
+A value at module level, outside any component, can be computed from stores with `derived` of `brumate/store`. Inside a component, a `$memo` over the store's variable does the same, and `$toStore(memo)` shares it through a context. A component reads a derived store with `$store`, as any store.
+
+```brm live
+<script>
+  import { $store } from 'brumate/signals';
+  import { cart, label, total } from './cart.ts';
+
+  const sum = $store(total);
+  const text = $store(label);
+</script>
+
+<button onClick=(() => cart.set([...cart.get(), 5]))>Add 5</button>
+<p>Total {sum}</p>
+<p>{text}</p>
+```
+
+```ts live cart.ts
+import { derived, store } from 'brumate/store';
+import type { Store, StoreLike } from 'brumate/store';
+
+export const cart: Store<number[]> = store([12, 8]);
+export const total: StoreLike<number> = derived(cart, (items) =>
+  items.reduce((sum, price) => sum + price, 0),
+);
+export const label: StoreLike<string> = derived(
+  [cart, total],
+  ([items, sum]) => `${items.length} items, ${sum}`,
+);
+```
+
+`derived(sources, fn, initial?)` follows Svelte 4's `derived`:
+
+- `sources` is a store or an array of stores. `fn` gets the value, or an array of values. Any value with `get()` and `subscribe(listener)` is a source.
+- With one parameter, `fn` returns the new value. With two or three, `fn(values, set, update)` calls `set(value)` or `update(change)`, and may return a function that runs before the next call and when the last subscriber leaves. `initial` is the value until the first `set`.
+- It follows its sources only while it has subscribers. `get()` without subscribers computes from the sources once.
+- Unlike Svelte, a result that is `Object.is` equal to the last one does not notify, and `subscribe` does not call the listener at once.
+- When a source and a derived store that reads it both change, `fn` runs once, after the derived store it reads. This holds for stores of `brumate/store` and derived stores. A store of another library has no end of its listeners to wait for, so `fn` runs at each of its notices, and two such sources that change together can run it twice.
+- The result has no `set`, so `$store(total)` is one-way and `let x = $store(total)` throws a `TypeError`.
+- A derived store is not part of the page state. The server renders it from its sources, and the browser computes it again from them. It is a store of another library for the page state: read it from an import or `<script module>`, and do not put it in a provided value or a prop.
 
 ## Outside stores
 

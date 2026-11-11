@@ -1,5 +1,11 @@
-import { crossSerialize, crossSerializeStream, fromJSON } from 'seroval';
-import type { SerovalJSON } from 'seroval';
+import { fromJSON } from 'seroval/read';
+import {
+  SerovalDeserializationError,
+  SerovalMissingPluginError,
+  SerovalPluginValidationError,
+} from 'seroval/read';
+import type { SerovalJSON } from 'seroval/read';
+import { crossSerialize, crossSerializeStream } from 'seroval/write';
 import { cacheStore, tagVersions } from './cache.ts';
 import {
   VOID_ELEMENTS,
@@ -2852,6 +2858,10 @@ export async function render<P>(
           onError: options.onError,
         })
       : undefined);
+  // Components read the nonce of the render from the event, for the inline scripts they write.
+  if (event && options.nonce !== undefined) {
+    event.nonce = options.nonce;
+  }
   ctx.event = event;
   ctx.errors = event ? event.errors : errorSink(options.onError);
   // The first part of each component runs with the event, and so do memos, which the compiler gives `$$ctx`.
@@ -3689,17 +3699,32 @@ async function handleForm(invoke: () => unknown, event: RequestEvent): Promise<R
  * `file<index>`, whose index stands in the JSON.
  */
 async function readArgs(request: Request): Promise<unknown[]> {
-  if (!request.headers.has('x-brumate-args')) {
-    return fromJSON<unknown[]>((await request.json()) as SerovalJSON, {
-      plugins,
+  try {
+    if (!request.headers.has('x-brumate-args')) {
+      return fromJSON<unknown[]>((await request.json()) as SerovalJSON, {
+        plugins,
+        ...serialOptions(),
+      });
+    }
+    const form = await request.formData();
+    return fromJSON<unknown[]>(JSON.parse(String(form.get('args'))) as SerovalJSON, {
+      plugins: callPlugins(undefined, form),
       ...serialOptions(),
     });
+  } catch (error) {
+    // A value that a plugin refused, such as a scope that is not a number, or a plugin that the
+    // server does not have, is the fault of the caller.
+    if (
+      error instanceof SerovalDeserializationError &&
+      (error.cause instanceof SerovalPluginValidationError ||
+        error.cause instanceof SerovalMissingPluginError)
+    ) {
+      throw new ServerError(`The arguments of the call are malformed: ${error.cause.message}`, {
+        status: 400,
+      });
+    }
+    throw error;
   }
-  const form = await request.formData();
-  return fromJSON<unknown[]>(JSON.parse(String(form.get('args'))) as SerovalJSON, {
-    plugins: callPlugins(undefined, form),
-    ...serialOptions(),
-  });
 }
 
 export interface RequestOptions {
@@ -3875,7 +3900,11 @@ async function answerCall(
     }
     headers.set('content-type', STREAM_TYPE);
     return respond(
-      toChunkStream(result, (reason) => event.abort(reason)),
+      toChunkStream(
+        result,
+        (reason) => event.abort(reason),
+        (error) => logError(error, 'call', event.errors, event),
+      ),
       { headers },
     );
   } catch (error) {
@@ -4472,6 +4501,9 @@ export async function handleRoute(
       prerender: options.prerender,
       onError: options.onError,
     });
+  if (options.nonce !== undefined) {
+    event.nonce = options.nonce;
+  }
   // Rate limits count by the pattern of the route, so `/api/1` and `/api/2` share a count.
   event.route = match?.route;
   const answer = await routeAnswer(tree, match, url, { ...options, event });

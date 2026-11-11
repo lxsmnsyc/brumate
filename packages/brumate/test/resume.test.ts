@@ -8709,6 +8709,29 @@ describe('a memo that nothing reads, in a browser render', () => {
   }
 });
 
+describe('the errors of memos in a browser render', () => {
+  it('shows the error of the memo that the markup reads first', async () => {
+    await resume('orderTry', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(document.querySelector('.caught')).not.toBeNull());
+    expect(text('.caught')).toBe('Error: Err B');
+  });
+
+  it('shows the error of a child component that renders before the read of a memo', async () => {
+    await resume('childFirstTry', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(document.querySelector('.caught')).not.toBeNull());
+    expect(text('.caught')).toBe('Error: Err child');
+  });
+
+  it('holds the error of a memo that converts a BigInt until it is read', async () => {
+    await resume('convertTry', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(document.querySelector('.kid')).not.toBeNull());
+    expect(document.querySelector('.caught')).toBeNull();
+  });
+});
+
 describe('a #try around a child component', () => {
   const fixtures = [
     'tryAroundChildSibling',

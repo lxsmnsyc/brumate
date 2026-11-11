@@ -1,0 +1,47 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import Button from '@brumate/ui/Button.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import Select from '@brumate/ui/Select.brm';
+  import SelectValue from '@brumate/ui/SelectValue.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let plan = $signal<Key | null>(null);
+  let result = $signal('');
+  let error = $signal('');
+
+  async function save(name: string) {
+    'use server';
+    return `Saved: ${name}`;
+  }
+
+  async function submit() {
+    if (plan === null) {
+      error = 'Pick a plan';
+      return;
+    }
+    error = '';
+    result = await save(String(plan));
+  }
+</script>
+
+<form onSubmit=(prevent(submit))>
+  <Select class="plan" name="plan" selectedKey=$bind(plan)>
+    <Label>Plan</Label>
+    <Button class="trigger"><SelectValue /></Button>
+    <Popover>
+      <ListBox>
+        <ListBoxItem id="free" class="free">Free</ListBoxItem>
+        <ListBoxItem id="pro" class="pro">Pro</ListBoxItem>
+        <ListBoxItem id="team" class="team">Team</ListBoxItem>
+      </ListBox>
+    </Popover>
+  </Select>
+  <button class="submit" type="submit">Save</button>
+</form>
+<p class="error">{error}</p>
+<p class="result">{result}</p>

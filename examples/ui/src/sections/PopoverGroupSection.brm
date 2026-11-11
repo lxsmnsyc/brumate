@@ -1,0 +1,41 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Alert from '@brumate/ui/Alert.brm';
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import PopoverGroup from '@brumate/ui/PopoverGroup.brm';
+
+  let failed = $signal(false);
+  let attempts = $signal(0);
+</script>
+
+<section aria-labelledby="popover-group">
+  <h2 id="popover-group">PopoverGroup and Alert</h2>
+  <PopoverGroup class="nav-group" aria-label="Menus">
+    <DialogTrigger>
+      <Button class="press group-a-trigger">Products</Button>
+      <Popover class="popover group-a" isNonModal>
+        <Dialog class="group-dialog" aria-label="Products">
+          <Button class="press group-a-first">Widgets</Button>
+          <Button class="press group-a-last">Gadgets</Button>
+        </Dialog>
+      </Popover>
+    </DialogTrigger>
+    <DialogTrigger>
+      <Button class="press group-b-trigger">Company</Button>
+      <Popover class="popover group-b" isNonModal>
+        <Dialog class="group-dialog" aria-label="Company">
+          <Button class="press group-b-first">Team</Button>
+        </Dialog>
+      </Popover>
+    </DialogTrigger>
+  </PopoverGroup>
+  <Button class="press group-save" onPress=(() => { failed = true; attempts += 1; })>Save</Button>
+  #if (failed) {
+    #key (attempts) {
+      <Alert class="group-alert">Not saved</Alert>
+    }
+  }
+</section>

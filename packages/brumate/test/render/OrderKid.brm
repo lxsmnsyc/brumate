@@ -1,0 +1,10 @@
+<script>
+  import { $memo } from 'brumate/signals';
+  import { bad } from './orderData.ts';
+
+  const a = $memo(bad('A'));
+  const b = $memo(bad('B'));
+</script>
+
+<p>{b}</p>
+<p>{a}</p>

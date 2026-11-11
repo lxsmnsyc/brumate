@@ -20,7 +20,9 @@
     "elements.d.ts",
     "check.d.ts",
     "forms",
-    "skills"
+    "skills",
+    "!skills/tasks",
+    "!skills/run-tasks.mjs"
   ],
   "type": "module",
   "exports": {
@@ -136,6 +138,7 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.elements.json"
   },
   "dependencies": {
+    "@seroval/transport": "^0.1.0",
     "@twinkleplop/core": "0.3.1",
     "@twinkleplop/css": "0.1.7",
     "@twinkleplop/theme-github": "0.2.4",
@@ -143,8 +146,8 @@
     "oxc-parser": "^0.154.0",
     "postcss": "^8.5.31",
     "postcss-selector-parser": "^7.1.6",
-    "seroval": "^1.7.0",
-    "seroval-plugins": "^1.7.0"
+    "seroval": "^1.8.0",
+    "seroval-plugins": "^1.8.0"
   },
   "devDependencies": {
     "@oxc-project/types": "^0.154.0",

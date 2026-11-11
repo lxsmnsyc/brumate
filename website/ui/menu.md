@@ -4,7 +4,7 @@ summary: Actions and options that open from a button, with submenus.
 
 # Menu
 
-A list of actions or options that opens from a button, with the keyboard, a pointer or a screen reader.
+A list of actions or options that opens from a button or at the pointer, with the keyboard, a pointer or a screen reader.
 
 ```brm demo MenuDemo
 
@@ -121,17 +121,18 @@ These are the attributes of a `MenuItem`. The `Button` of the trigger shows [its
 
 ## Keyboard
 
-| Key                | Action                                                                                                          |
-| ------------------ | --------------------------------------------------------------------------------------------------------------- |
-| `Tab`              | Moves focus to the Button, or to the first item of a Menu with no trigger. In an open menu, it closes the menu. |
-| `Enter` or `Space` | On the Button, opens the menu at its first item. On an item, acts on it.                                        |
-| `ArrowDown`        | On the Button, opens the menu at its first item. In the menu, moves to the next item.                           |
-| `ArrowUp`          | On the Button, opens the menu at its last item. In the menu, moves to the previous item.                        |
-| `Home` or `End`    | Moves focus to the first or the last item.                                                                      |
-| `ArrowRight`       | On an item with a submenu, opens it. Right to left, `ArrowLeft` does.                                           |
-| `ArrowLeft`        | In a submenu, closes it. Right to left, `ArrowRight` does.                                                      |
-| `Escape`           | Closes the menu and puts focus back on the Button. In a submenu, closes only the submenu.                       |
-| `a` to `z`         | Moves focus to the item whose text starts with what was typed.                                                  |
+| Key                          | Action                                                                                                          |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `Tab`                        | Moves focus to the Button, or to the first item of a Menu with no trigger. In an open menu, it closes the menu. |
+| `Enter` or `Space`           | On the Button, opens the menu at its first item. On an item, acts on it.                                        |
+| `ArrowDown`                  | On the Button, opens the menu at its first item. In the menu, moves to the next item.                           |
+| `ArrowUp`                    | On the Button, opens the menu at its last item. In the menu, moves to the previous item.                        |
+| `Home` or `End`              | Moves focus to the first or the last item.                                                                      |
+| `ArrowRight`                 | On an item with a submenu, opens it. Right to left, `ArrowLeft` does.                                           |
+| `ArrowLeft`                  | In a submenu, closes it. Right to left, `ArrowRight` does.                                                      |
+| `ContextMenu` or `Shift+F10` | On the area of a context menu, opens the menu at its first item.                                                |
+| `Escape`                     | Closes the menu and puts focus back on the Button. In a submenu, closes only the submenu.                       |
+| `a` to `z`                   | Moves focus to the item whose text starts with what was typed.                                                  |
 
 ## Controlled and uncontrolled
 
@@ -176,12 +177,41 @@ A Menu with `selectionMode="multiple"` keeps the menu open after a press, so sev
 
 ```
 
+### A context menu
+
+`trigger="contextmenu"` on the `MenuTrigger` opens the menu where the pointer is. The children are the area and the `Popover`, with no `Button`. The menu is the same `Menu`, with its keys, its submenus and its selection.
+
+```brm demo ContextMenuDemo
+
+```
+
+```brm
+<MenuTrigger trigger="contextmenu">
+  <div tabindex="0">Right click here</div>
+  <Popover>
+    <Menu aria-label="Actions" onAction=((key) => run(key))>
+      <MenuItem id="open">Open</MenuItem>
+    </Menu>
+  </Popover>
+</MenuTrigger>
+```
+
+- A right click opens the menu with its corner at the pointer. It flips above or to the other side of the pointer when it does not fit, and stays inside the window. Focus goes to the menu, and the arrow keys move to an item.
+- On a touch screen, holding for half a second opens it at the finger. A move of more than a few pixels is a scroll and cancels it. The release does not press anything, and a link under the finger does not navigate. Add `-webkit-touch-callout: none` to the area so Safari does not show its own callout, and `user-select: none` so a held touch does not select the text of the area. The second also keeps readers from selecting that text with a pointer, so use it where that is fine.
+- The context menu key and Shift+F10 open it under the focused element, with focus on the first item. Give the area `tabindex="0"`, or put the menu on a focusable element, so a keyboard reader can reach it.
+- Escape closes it, and focus goes back to the element that had it. A scroll of the page closes it, since the point has moved, and a scroll inside the menu does not. A right click outside the area closes it. A right click on the area moves the menu to the new point. The menu of the browser does not show on the area or on the menu.
+- The area is any element. A context menu inside the area of another one wins on its own area.
+- Name the menu with `aria-label`, since there is no `Button` to name it. Give the area the same kind of label, or text that says what the menu is for.
+- A context menu is an addition: offer the same actions where a reader without a pointer or a long press can find them, such as a `MenuTrigger` with a `Button`.
+
 ## Opening and closing
 
 - A press of the Button opens the menu. From a key, focus goes to the first item. From a pointer, focus goes to the menu, and an arrow key moves to an item.
 - ArrowDown on the Button opens the menu at its first item, and ArrowUp at its last.
 - An action closes the menu, and focus goes back to the Button. `shouldCloseOnSelect=(false)` keeps it open.
 - Escape, Tab and a press outside close it too.
+
+With `trigger="contextmenu"` the menu opens at the pointer instead, see [A context menu](#a-context-menu).
 
 ## Focus and keys
 

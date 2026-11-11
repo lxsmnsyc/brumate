@@ -21,6 +21,8 @@
   import ModalSection from './sections/ModalSection.brm';
   import ListBoxSection from './sections/ListBoxSection.brm';
   import MenuSection from './sections/MenuSection.brm';
+  import ContextMenuSection from './sections/ContextMenuSection.brm';
+  import PopoverGroupSection from './sections/PopoverGroupSection.brm';
   import SelectSection from './sections/SelectSection.brm';
   import ComboBoxSection from './sections/ComboBoxSection.brm';
   import AutocompleteSection from './sections/AutocompleteSection.brm';
@@ -41,6 +43,7 @@
   import ColorSliderSection from './sections/ColorSliderSection.brm';
   import ColorAreaSection from './sections/ColorAreaSection.brm';
   import ColorWheelSection from './sections/ColorWheelSection.brm';
+  import ColorSchemeSection from './sections/ColorSchemeSection.brm';
   import CalendarSection from './sections/CalendarSection.brm';
   import DateFieldSection from './sections/DateFieldSection.brm';
   import TimeFieldSection from './sections/TimeFieldSection.brm';
@@ -70,9 +73,11 @@
 <DropZoneSection />
 <DisclosureSection />
 <PopoverSection />
+<PopoverGroupSection />
 <ModalSection />
 <ListBoxSection />
 <MenuSection />
+<ContextMenuSection />
 <SelectSection />
 <ComboBoxSection />
 <AutocompleteSection />
@@ -93,6 +98,7 @@
 <ColorSliderSection />
 <ColorAreaSection />
 <ColorWheelSection />
+<ColorSchemeSection />
 <CalendarSection />
 <DateFieldSection />
 <TimeFieldSection />

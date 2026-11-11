@@ -45,6 +45,10 @@ for (const { folder, file: page } of pages) {
   }
   for (const { line, files } of groups) {
     samples++;
+    if (![...files.keys()][0].endsWith('.brm')) {
+      console.error(`${name}:${line}: the first file of a live sample must be a .brm file`);
+      failures++;
+    }
     const components = new Map<string, string>();
     for (const [file, source] of files) {
       if (file.endsWith('.brm')) {

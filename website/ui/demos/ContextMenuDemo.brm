@@ -1,0 +1,57 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Menu from '@brumate/ui/Menu.brm';
+  import MenuItem from '@brumate/ui/MenuItem.brm';
+  import MenuTrigger from '@brumate/ui/MenuTrigger.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import Separator from '@brumate/ui/Separator.brm';
+  import SubmenuTrigger from '@brumate/ui/SubmenuTrigger.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let last = $signal<Key>('nothing yet');
+</script>
+
+<div class="ui-stack">
+  <MenuTrigger trigger="contextmenu">
+    <div class="area" tabindex="0" aria-label="A note. Right click, or press the context menu key, for actions.">
+      Right click here, press and hold on a touch screen, or focus this box and press the context menu key.
+    </div>
+    <Popover class="ui-popover">
+      <Menu class="ui-menu" aria-label="Note actions" onAction=((key) => (last = key))>
+        <MenuItem id="open" class="ui-menu-item">Open</MenuItem>
+        <MenuItem id="rename" class="ui-menu-item">Rename</MenuItem>
+        <MenuItem id="delete" class="ui-menu-item" isDisabled>Delete</MenuItem>
+        <Separator />
+        <SubmenuTrigger>
+          <MenuItem id="share" class="ui-menu-item">Share</MenuItem>
+          <Popover class="ui-popover" offset=(-4)>
+            <Menu class="ui-menu" aria-label="Share" onAction=((key) => (last = key))>
+              <MenuItem id="email" class="ui-menu-item">Email</MenuItem>
+              <MenuItem id="messages" class="ui-menu-item">Messages</MenuItem>
+            </Menu>
+          </Popover>
+        </SubmenuTrigger>
+      </Menu>
+    </Popover>
+  </MenuTrigger>
+  <p>Ran: {last}.</p>
+</div>
+
+<style>
+  .area {
+    display: grid;
+    place-items: center;
+    padding: 2rem;
+    width: min(26rem, 100%);
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    text-align: center;
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+
+  .area:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
+</style>

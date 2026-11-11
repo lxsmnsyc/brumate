@@ -116,3 +116,7 @@ Opens an overlay from a `Button` inside it.
 - `isOpen` is the state. See [State](./state.md).
 - It renders only its children.
 - An overlay inside another one needs a `DialogTrigger` of its own, or its own `isOpen`.
+
+## Shortcut
+
+`shortcut="Mod+K"` on the `DialogTrigger` toggles the overlay from anywhere in the page, and `shortcutInInput` lets it open from a text field too. The key goes to a field or a handler that used it first, and when two triggers have the same shortcut only the first one registered opens. The [command palette](./autocomplete.md#a-command-palette-in-a-dialog) shows it with its rules.
