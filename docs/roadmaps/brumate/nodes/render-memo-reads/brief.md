@@ -1,7 +1,7 @@
 ---
 id: render-memo-reads
 title: The browser render wraps only the memo reads that need it
-status: active
+status: done
 priority: must
 type: refactor
 outline: false
@@ -12,7 +12,7 @@ size: M
 spike: false
 verify:
 exclusive: []
-fulfilled_by:
+fulfilled_by: bfd1e98a (batch/brumate-release-0.8)
 gate: false
 added: 2026-11-06
 owns: []
