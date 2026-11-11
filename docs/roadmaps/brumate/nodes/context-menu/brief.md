@@ -1,7 +1,7 @@
 ---
 id: context-menu
 title: A context menu, and a shortcut that opens a dialog
-status: active
+status: done
 priority: must
 type: feature
 outline: false
@@ -12,7 +12,7 @@ size: M
 spike: false
 verify: pnpm --filter @brumate/ui exec vitest run test/context-menu.test.ts
 exclusive: []
-fulfilled_by: 
+fulfilled_by: dac71c43 (batch/brumate-release-0.8)
 gate: false
 added: 
 owns:
