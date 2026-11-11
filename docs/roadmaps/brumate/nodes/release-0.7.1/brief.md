@@ -36,6 +36,9 @@ depends_on:
   - on: inline-memo-errors
     kind: hard
     why: an inline memo throws at its declaration instead of at a read (added 2026-11-11)
+  - on: key-letter-case
+    kind: hard
+    why: prevent(fn, 'Mod+K') never matches Cmd+K (added 2026-11-11)
   - on: live-style-scope-id
     kind: hard
     why: live style variables miss elements the browser renders outside the component's render function (added 2026-11-11)
