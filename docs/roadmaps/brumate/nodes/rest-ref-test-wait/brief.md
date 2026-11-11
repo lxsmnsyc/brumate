@@ -1,7 +1,7 @@
 ---
 id: rest-ref-test-wait
 title: The rest-props ref tests wait for the element instead of a fixed time
-status: todo
+status: active
 priority: must
 type: fix
 outline: false

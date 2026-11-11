@@ -1,7 +1,7 @@
 ---
 id: live-style-scope-id
 title: Live style variables on elements the browser renders outside the component's render function
-status: todo
+status: active
 priority: must
 type: fix
 story:
