@@ -76,3 +76,60 @@ Not a fix.
   - JS before load: base 13.8 kB, branch 13.8 kB. Total JS after counter, toggle, add: 13.8 kB on both.
   - Client JS emitted in dist: 27.7 kB on both.
 - Estimated M, actual M.
+
+## Rework
+
+The goal was misread (maintainer, 2026-11-11): a block style replaces the separate style of the component. The
+`<style>` at the top level of a file is the style of the outermost block, and one rule and one code path cover both.
+
+Built
+
+- `packages/brumate/src/ast.ts`: `fileBody(file)` is the body of the file itself (script, styles, templates,
+  markup). `BodyInfo.template` marks template bodies.
+- `packages/brumate/src/css.ts`: `compileStyles` compiles every body that has CSS in one loop, the file's body first.
+  `StyleOutput.blocks` holds the file's style as its first entry with its names unchanged
+  (`b-c-<hash>`, `--s-<hash>-<k>`); a block keeps `b-c-<hash>-<n>` and `--s-<hash>-<n>-<k>`. `bodyStyles` gives the
+  file's style to every body as an attribute, and as variables to the bodies at the top level of the file. A
+  template counts as top level for the file's style only, since it renders anywhere (as before).
+  `StyleOutput.attribute`, `variables` and `targets` stay and describe the file's style. `hasComponentCss`, the
+  `inBlock` check and `GLOBAL_IN_BLOCK` are gone.
+- `markup.ts` and `client.ts` have no separate component path: `hasScope`, `hasComponentVariables` and the
+  `styles.hasComponentCss`/`styles.variables` branches are replaced by `blockStyles(scope)` (`scope.body ?? fileBody`).
+  `plan.ts`: `liveStyles` is gone; `liveBlocks` holds `fileBody(file)` when the file's style is live.
+- `<style global>` and `:global(…)` work in a block as at the top level. BRM205 and BRM206 are deleted (never
+  released, and the catalog has no retired list, so the numbers stay unused). BRM207 stays: `#reveal` is a
+  fragment with no body scope, so a separate path for the file does not make it moot.
+- Tests: `block-styles.test.ts` replaces the two error tests with "global markers in a block" (a `<style global>` in a
+  `#for` gives the same sheet as at the top level, with no attribute; `:global(…)` in a block style unwraps and
+  scopes the rest). `test/styles.test.ts` is unchanged and passes.
+- Docs: styles.md, control-flow.md, grammar.md, proposals.md, the decisions.md entry (rewritten, one entry), the
+  style-global entry, SKILL.md, references/syntax.md, the changeset. Error docs regenerated with `UPDATE_SKILL=1`.
+
+Proof for files without block styles
+
+Every `.brm` under examples, packages/ui, website, e2e, benchmarks and the brumate test fixtures (697 files, dev
+and build, server, client, render, table, css and parts) compiled on the branch before the rework and after it:
+1378 of 1380 outputs are byte-identical. The two that differ are the `update` part of `ColorThumb` (dev and build),
+one intended difference in a client render function:
+
+- A row that the browser renders inside an element (`<div>{#for …}`) no longer repeats the style variables of the file
+  (and `b-v`) on its own top-level element. The server never wrote them there, and the element around the rows
+  carries them, so the rows inherit the same values and a live change reaches the element around. The old browser
+  path wrote them because each render function restarted its nesting at 0. The block rule (top level of the body
+  only) now covers the file's style too.
+
+The `b-v` of the file's style is still its scope variable, not `.id` (kept so the output is the same).
+In the client prologue the style sites of the file are still read for every render function (`!site.scope.body`),
+since the file's variables also go on the top-level elements of children that a component passes.
+
+Deviations
+
+- None from the brief. `blocks` now includes the file's style (first), which `block-styles` code and tests read
+  through `plan.styles.blocks`; they pass unchanged.
+
+Verification (rework)
+
+- `pnpm --filter brumate exec vitest run test/styles`: 45 tests pass, `test/styles.test.ts` unchanged.
+- Full brumate suite: 3109 passed; load-only failures pass alone (see log.md). lint, format:check, typecheck pass.
+  `check:samples` 69 samples, 0 problems. e2e website 74 passed. Bench todos: 13.8 kB gzip JS before load, 13.8 kB
+  after counter, toggle, add, 27.7 kB emitted: unchanged.

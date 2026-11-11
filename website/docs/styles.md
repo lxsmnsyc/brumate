@@ -69,7 +69,7 @@ A `<style global>` block holds rules that are not scoped, so a stylesheet of man
 - A global block travels with its component, like any other style: the page carries it once, before the first instance, and a page that does not render the component does not carry it.
 - It works with `lang="scss"` and `lang="less"`, as in `<style global lang="scss">`, and with `${expression}`.
 - `:global(…)` inside it is allowed and means nothing more than its content.
-- Like `<style>`, it is only allowed at the top level of the file.
+- Like `<style>`, it is allowed at the top level of the file and of a block body. In a block it is unscoped too, so a global rule applies whether or not the block shows, and it matches elements outside the block.
 
 ## Dynamic values
 
@@ -110,7 +110,7 @@ A `<style global>` block holds rules that are not scoped, so a stylesheet of man
 
 ## A style in a block
 
-A block body can hold a `<style>` too, as it can hold a `<script>`. Its rules match the elements of the block and of the blocks inside it, and its `${}` can read the item and the signals of the block script.
+A block body can hold a `<style>` too, as it can hold a `<script>`. One rule covers every `<style>`: it applies to its block and to the blocks inside it. The file is the outermost block, so the `<style>` at its top level is the style of the file and of every block in it. In a block, its `${}` can read the item and the signals of the block script, and `<style global>` and `:global(…)` work as at the top level.
 
 ```brm live
 <script>
@@ -137,7 +137,7 @@ A block body can hold a `<style>` too, as it can hold a `<script>`. Its rules ma
 }
 ```
 
-- A block style gets its own scope attribute, `b-c-<hash>-<n>`, on its elements and on those of the blocks inside it. The rules of the block join the stylesheet of the component, after its own rules, so the sheet still loads once per page.
+- A block style gets its own scope attribute, `b-c-<hash>-<n>`, on its elements and on those of the blocks inside it. The file's style keeps `b-c-<hash>`. The rules of a block join the stylesheet of the component, after the rules of the blocks around it, so the sheet still loads once per page.
 - The custom properties of a block are `--s-<hash>-<n>-<k>`. They go on the top-level elements of each instance of the block, and a change sets them on the elements of that instance only.
 - The server writes the values with the first render. After that, a value that changes in the browser updates the elements of its instance. A value that never changes ships no client code.
 - Where the style is written decides what it reaches. See [A style in a block](./control-flow.md#a-style-in-a-block) for the scope rules.

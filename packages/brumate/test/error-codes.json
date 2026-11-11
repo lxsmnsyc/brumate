@@ -202,7 +202,5 @@
   "BRM202": "$gate takes a value and a function, as in $gate(value, (prev, next) => next > prev)",
   "BRM203": "$gate takes a value that is ready. Use $memo for a promise or a server function",
   "BRM204": "Declare a gated value with \"const name = $gate(value, (prev, next) => boolean)\" at the top level of a script",
-  "BRM205": "<style global> is not allowed in a block. Put global rules in the <style> of the file",
-  "BRM206": ":global(…) is not allowed in the <style> of a block. Put global rules in the <style> of the file",
   "BRM207": "#reveal has no style of its own"
 }

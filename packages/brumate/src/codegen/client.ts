@@ -10,6 +10,8 @@ import type {
   RepeatBlock,
   SFCFile,
 } from '../ast.ts';
+import { fileBody } from '../ast.ts';
+import type { StyleVariable } from '../css.ts';
 import { tryCatchesClient } from '../graph.ts';
 import type { GraphNode } from '../graph.ts';
 import { isWithin } from '../model.ts';
@@ -1218,15 +1220,15 @@ class ClientGenerator {
       return;
     }
     if (site.kind === 'style') {
-      let variable: (typeof this.plan.styles.variables)[number] | undefined;
-      // The variables of the component, and those of the block styles.
-      const variables = [...this.plan.styles.variables];
+      let variable: StyleVariable | undefined;
       for (const block of this.plan.styles.blocks) {
-        variables.push(...block.variables);
-      }
-      for (const item of variables) {
-        if (item.expression.ast === site.node) {
-          variable = item;
+        for (const item of block.variables) {
+          if (item.expression.ast === site.node) {
+            variable = item;
+            break;
+          }
+        }
+        if (variable) {
           break;
         }
       }
@@ -1296,14 +1298,9 @@ class ClientGenerator {
       }
       // The scope attribute is the element's own. Its style is not: a spread can write one, and
       // an update writes the style variables again with whatever style the spread passes on.
-      if (this.plan.styles.css) {
-        if (this.plan.styles.hasComponentCss) {
-          own.push(this.plan.styles.attribute);
-        }
-        const body = site.scope.body;
-        for (const block of (body && this.plan.styles.bodies.get(body)?.attributes) || []) {
-          own.push(block.attribute);
-        }
+      for (const block of this.plan.styles.bodies.get(site.scope.body ?? fileBody(this.file))
+        ?.attributes ?? []) {
+        own.push(block.attribute);
       }
       // The other spreads of the element, which an update writes too. Each update tracks the
       // attributes that it wrote, so an update of one spread alone would remove the others'.
@@ -2136,15 +2133,15 @@ class ClientGenerator {
     // The block styles whose variables go on the top-level elements that these scopes render.
     const styled = new Set<Body>();
     for (const scope of inside) {
-      for (const block of (scope.body && this.plan.styles.bodies.get(scope.body)?.variables) ||
-        []) {
+      for (const block of this.plan.styles.bodies.get(scope.body ?? fileBody(this.file))
+        ?.variables ?? []) {
         styled.add(block.body);
       }
     }
     const declarations = new Set<Declaration>();
     for (const site of this.model.sites) {
-      // Top-level elements of a body render the style variables of the component, and of the
-      // block styles around it.
+      // Top-level elements of a body render the style variables of the styles around it. Those of
+      // the file go on the children of a component too, whatever body the render function is of.
       const rendered =
         isInside(site.scope) ||
         (site.kind === 'style' && (!site.scope.body || styled.has(site.scope.body)));

@@ -79,7 +79,7 @@ describe('style languages', () => {
       /margin: var\(--s-\w+-0\); color: var\(--s-\w+-1\); width: calc\(var\(--s-\w+-2\) \+ 1rem\); content: "var\(--s-\w+-3\) items"/,
     );
     expect(
-      result.plan.styles.variables.map((variable) => [variable.prefix, variable.suffix]),
+      result.plan.styles.blocks[0]!.variables.map((variable) => [variable.prefix, variable.suffix]),
     ).toEqual([
       ['-', 'px'],
       ['#', ''],
@@ -96,7 +96,7 @@ function tags(markup: string, style: string, hideNames = true): string[] {
     filename: 'Scoped.brm',
     hideNames,
   });
-  const attribute = plan.styles.attribute;
+  const attribute = plan.styles.blocks[0]!.attribute;
   return [...server.matchAll(/(?<=[">])<(\w+)( b-c-\w+)?/g)].map(
     ([, tag, scoped]) => `${tag}${scoped === ` ${attribute}` ? '+' : ''}`,
   );
@@ -187,7 +187,7 @@ describe('<style global>', () => {
     expect(styles.css).toMatch(/\.card\[b-c-\w+\] \{/);
     expect(styles.css).not.toMatch(/p\[b-c/);
     // Only the scoped rule marks elements.
-    expect(styles.targets).toEqual([{ classes: ['card'] }]);
+    expect(styles.blocks[0]!.targets).toEqual([{ classes: ['card'] }]);
   });
 
   it('works with SCSS and interpolations', () => {
@@ -220,10 +220,12 @@ describe('<style global>', () => {
       filename: 'Child.brm',
     });
     // The child's elements carry its own attribute, never the parent's.
-    expect(child.plan.styles.attribute).not.toBe(parent.plan.styles.attribute);
-    expect(child.server).not.toContain(parent.plan.styles.attribute);
+    expect(child.plan.styles.blocks[0]!.attribute).not.toBe(
+      parent.plan.styles.blocks[0]!.attribute,
+    );
+    expect(child.server).not.toContain(parent.plan.styles.blocks[0]!.attribute);
     // The parent's rule is `.item` with no attribute, so it matches the child's `.item` too.
     expect(parent.plan.styles.css).toBe('.item { color: red; }');
-    expect(parent.plan.styles.targets).toEqual([]);
+    expect(parent.plan.styles.blocks[0]!.targets).toEqual([]);
   });
 });

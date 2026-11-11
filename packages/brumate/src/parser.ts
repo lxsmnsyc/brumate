@@ -243,7 +243,7 @@ class Parser {
         if (mode === 'element') {
           this.fail('<style> must be at the top level of the file or of a block', this.pos);
         }
-        const style = this.parseStyle(mode === 'body');
+        const style = this.parseStyle();
         if (styles) {
           styles.push(style);
           this.file.blockStyles.push(style);
@@ -743,7 +743,7 @@ class Parser {
     }
   }
 
-  private parseStyle(inBlock: boolean): Style {
+  private parseStyle(): Style {
     const start = this.pos;
     const { attributes, contentStart } = this.parseBlockTag('style');
     const { contentEnd } = this.readBlockContent('style', contentStart);
@@ -754,12 +754,6 @@ class Parser {
     }
     if (attributes.global !== undefined && attributes.global !== true) {
       this.fail('global takes no value, as in <style global>', start);
-    }
-    if (inBlock && attributes.global !== undefined) {
-      this.fail(
-        '<style global> is not allowed in a block. Put global rules in the <style> of the file',
-        start,
-      );
     }
     const lang = attributes.lang ?? 'css';
     if (lang !== 'css' && lang !== 'scss' && lang !== 'less') {

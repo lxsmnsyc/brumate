@@ -558,40 +558,6 @@ https://brumate-docs.vercel.app/docs/errors#brm189
 </style>
 ```
 
-## BRM205: <style global> is not allowed in a block. Put global rules in the <style> of the file
-
-A `<style global>` is in the body of a block. A style in a block reaches only the elements of the block, so it has no global rules.
-
-https://brumate-docs.vercel.app/docs/errors#brm205
-
-```brm fragment
-<style global>
-  p {
-    margin: 0;
-  }
-</style>
-#if (open) {
-  <p>Open</p>
-}
-```
-
-## BRM206: :global(…) is not allowed in the <style> of a block. Put global rules in the <style> of the file
-
-A `<style>` in a block holds `:global(…)`. A global rule would read as if it applied while the block shows, and it would not.
-
-https://brumate-docs.vercel.app/docs/errors#brm206
-
-```brm fragment
-<style>
-  :global(body) {
-    margin: 0;
-  }
-</style>
-#if (open) {
-  <p>Open</p>
-}
-```
-
 ## BRM207: #reveal has no style of its own
 
 A `<style>` is in the body of a `#reveal`, which only orders the bodies inside it.

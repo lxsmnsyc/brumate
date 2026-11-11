@@ -2,42 +2,27 @@ import { builtin } from './node.ts';
 import { parse } from 'postcss';
 import type { AtRule, Root } from 'postcss';
 import selectorParser from 'postcss-selector-parser';
-import { bodyTree } from './ast.ts';
+import { bodyTree, fileBody } from './ast.ts';
 import type { Body, BodyInfo, Expression, SFCFile, Style } from './ast.ts';
 import type { Diagnostic } from './model.ts';
 
 export interface StyleOutput {
   /**
-   * The CSS of every `<style>` block, the component's and then those of the blocks, scoped
-   * except `<style global>`, or an empty string.
+   * The CSS of every `<style>`, the file's and then those of the blocks, scoped except
+   * `<style global>`, or an empty string.
    */
   css: string;
-  /** True if the `<style>` of the component itself has CSS, so its elements get `attribute`. */
-  hasComponentCss: boolean;
-  /** The attribute that marks the component's elements, such as `b-c-1abc`. */
-  attribute: string;
-  /**
-   * The custom property for each `${…}` interpolation, in source order. Text
-   * right before or after it, such as a unit in `${size}px`, is part of the
-   * value, because `var(--x)px` is not valid CSS.
-   */
-  variables: StyleVariable[];
   diagnostics: Diagnostic[];
   /** Absolute paths of the files that SCSS or Less imported. */
   dependencies: string[];
   /**
-   * The compound selectors that got the scope attribute, by what an element
-   * needs to match one. See `needsScope`.
-   */
-  targets: ScopeTarget[];
-  /**
-   * The `<style>` of the block bodies, one entry for each body that has any, in source order.
-   * Their rules follow those of the component in `css`, outer blocks first.
+   * The style of every body that has CSS, in source order: the file's first, and then the blocks'. Their
+   * rules follow in `css` in this order, so a rule of an inner block comes after an outer one.
    */
   blocks: BlockStyle[];
   /**
-   * What each body of the file takes from `blocks`. Bodies that take nothing are not in it,
-   * and it is empty when no block has a style.
+   * What each body of the file takes from `blocks`, the file's body included. Bodies that take
+   * nothing are not in it, and it is empty when no style has CSS.
    */
   bodies: Map<Body, BodyStyles>;
 }
@@ -49,12 +34,15 @@ export interface StyleVariable {
   suffix: string;
 }
 
-/** The `<style>` of one block body. */
+/**
+ * The `<style>` of one body: a block's, or the file's own (`fileBody`). The file's attribute is
+ * `b-c-<hash>` and its variables `--s-<hash>-<index>`.
+ */
 export interface BlockStyle {
   body: Body;
   /** The attribute that marks the elements its rules reach, such as `b-c-1abc-1`. */
   attribute: string;
-  /** Its `${…}` interpolations, named `--s-<hash>-<n>-<index>`. */
+  /** Its `${…}` interpolations, named `--s-<hash>-<n>-<index>` in a block. */
   variables: StyleVariable[];
   targets: ScopeTarget[];
 }
@@ -379,9 +367,6 @@ function preprocess(
   return css;
 }
 
-const GLOBAL_IN_BLOCK =
-  ':global(…) is not allowed in the <style> of a block. Put global rules in the <style> of the file';
-
 /** What `compileStyle` adds to as it goes. */
 interface StyleState {
   filePath: string | undefined;
@@ -401,7 +386,6 @@ function compileStyle(
   attribute: string,
   name: (index: number) => string,
   state: StyleState,
-  inBlock: boolean,
 ): string | undefined {
   const { variables } = state;
   // Interpolations become custom properties. Offsets in `content` start after `<style>`.
@@ -434,20 +418,6 @@ function compileStyle(
         ? content
         : preprocess(style.lang, content, state.filePath, state.dependencies),
     );
-    if (inBlock) {
-      let global = false;
-      root.walkRules((rule) => {
-        global ||= /:global\b/.test(rule.selector);
-      });
-      if (global) {
-        state.diagnostics.push({
-          severity: 'error',
-          message: GLOBAL_IN_BLOCK,
-          range: { start: style.start, end: style.end },
-        });
-        return undefined;
-      }
-    }
     scopeRules(root, attribute, state.targets, style.global);
     return root.toString().trim();
   } catch (error) {
@@ -464,23 +434,34 @@ function compileStyle(
 }
 
 /**
- * What each body takes from the block styles around it. See `BodyStyles`. A body that no block
- * style reaches is left out.
+ * What each body takes from the styles around it. See `BodyStyles`. A body that no style reaches
+ * is left out. The file's own style reaches every body and the file's body. Its variables go on
+ * the top-level elements of the bodies that sit at the top level of the file, and of a template,
+ * which renders anywhere.
  */
 function bodyStyles(file: SFCFile, blocks: BlockStyle[]): Map<Body, BodyStyles> {
   const result = new Map<Body, BodyStyles>();
   if (blocks.length === 0) {
     return result;
   }
+  const root = fileBody(file);
   const byBody = new Map<Body, BlockStyle>();
   for (const block of blocks) {
     byBody.set(block.body, block);
   }
   const tree = bodyTree(file);
+  const outermost = byBody.get(root);
+  if (outermost) {
+    result.set(root, {
+      attributes: [outermost],
+      variables: outermost.variables.length > 0 ? [outermost] : [],
+    });
+  }
   for (const body of tree.keys()) {
     const attributes: BlockStyle[] = [];
     const variables: BlockStyle[] = [];
     let atTop = true;
+    let atRoot = true;
     let current: Body | undefined = body;
     while (current) {
       const block = byBody.get(current);
@@ -492,7 +473,14 @@ function bodyStyles(file: SFCFile, blocks: BlockStyle[]): Map<Body, BodyStyles> 
       }
       const info: BodyInfo = tree.get(current)!;
       atTop = atTop && info.top;
+      atRoot = atRoot && (info.top || info.template);
       current = info.parent;
+    }
+    if (outermost) {
+      attributes.unshift(outermost);
+      if (atRoot && outermost.variables.length > 0) {
+        variables.unshift(outermost);
+      }
     }
     if (attributes.length > 0) {
       result.set(body, { attributes, variables });
@@ -502,8 +490,8 @@ function bodyStyles(file: SFCFile, blocks: BlockStyle[]): Map<Body, BodyStyles> 
 }
 
 /**
- * Compiles the `<style>` blocks of a file into scoped CSS: the styles of the component, and then
- * those of the block bodies, each with its own attribute.
+ * Compiles the `<style>` elements of a file into scoped CSS, one style for each body that has
+ * any, each with its own attribute. The file's body comes first.
  */
 export function compileStyles(file: SFCFile, scope: string, filePath?: string): StyleOutput {
   // Under `b-`, which the compiler reserves, so markup and data cannot write it.
@@ -515,68 +503,66 @@ export function compileStyles(file: SFCFile, scope: string, filePath?: string): 
     variables: [],
     targets: [],
   };
-  const parts: string[] = [];
-  for (const style of file.styles) {
-    const css = compileStyle(
-      file,
-      style,
-      attribute,
-      (index) => `--s-${scope}-${index}`,
-      state,
-      false,
-    );
-    if (css !== undefined) {
-      parts.push(css);
-    }
-  }
-  const hasComponentCss = parts.join('\n') !== '';
   // A body comes after the body around it, so its rules win at the same specificity.
-  const bodies: Body[] = [];
+  const root = fileBody(file);
+  const bodies: Body[] = [root];
   if (file.blockStyles.length > 0) {
+    const inner: Body[] = [];
     for (const body of bodyTree(file).keys()) {
       if (body.styles.length > 0) {
-        bodies.push(body);
+        inner.push(body);
       }
     }
-    bodies.sort((a, b) => a.start - b.start);
+    inner.sort((a, b) => a.start - b.start);
+    bodies.push(...inner);
   }
   const blocks: BlockStyle[] = [];
+  const parts: string[] = [];
+  let rootStyle: BlockStyle | undefined;
   for (const body of bodies) {
-    const number = blocks.length + 1;
-    const block: BlockStyle = {
-      body,
-      attribute: `${attribute}-${number}`,
-      variables: [],
-      targets: [],
-    };
+    if (body.styles.length === 0) {
+      continue;
+    }
+    // The file's names are the component's, and a block's carry its number.
+    const number = body === root ? undefined : blocks.length - (rootStyle ? 1 : 0) + 1;
+    const block: BlockStyle =
+      body === root
+        ? { body, attribute, variables: state.variables, targets: state.targets }
+        : { body, attribute: `${attribute}-${number}`, variables: [], targets: [] };
     const blockState: StyleState = {
       ...state,
       variables: block.variables,
       targets: block.targets,
     };
+    const own: string[] = [];
     for (const style of body.styles) {
       const css = compileStyle(
         file,
         style,
         block.attribute,
-        (index) => `--s-${scope}-${number}-${index}`,
+        (index) =>
+          number === undefined ? `--s-${scope}-${index}` : `--s-${scope}-${number}-${index}`,
         blockState,
-        true,
       );
       if (css !== undefined) {
-        parts.push(css);
+        own.push(css);
       }
     }
-    blocks.push(block);
+    parts.push(...own);
+    if (body === root) {
+      // A file whose style has no CSS has no style, so its elements do not get the attribute.
+      if (own.join('\n') !== '') {
+        rootStyle = block;
+        blocks.push(block);
+      }
+    } else {
+      blocks.push(block);
+    }
   }
   return {
     css: parts.join('\n'),
-    hasComponentCss,
-    attribute,
-    variables: state.variables,
     diagnostics: state.diagnostics,
     dependencies: state.dependencies,
-    targets: state.targets,
     blocks,
     bodies: bodyStyles(file, blocks),
   };

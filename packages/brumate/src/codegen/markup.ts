@@ -14,7 +14,7 @@ import type {
   TemplateDecl,
   ValueAttribute,
 } from '../ast.ts';
-import { forEachNode } from '../ast.ts';
+import { fileBody, forEachNode } from '../ast.ts';
 import { tryCatchesClient } from '../graph.ts';
 import { isWithin, lookup } from '../model.ts';
 import type { Declaration, Scope, Site } from '../model.ts';
@@ -2154,30 +2154,21 @@ export class Emitter {
     return values;
   }
 
-  /** The block styles that reach the elements written in a scope. */
+  /**
+   * The styles that reach the elements written in a scope: those of its body and of the bodies
+   * around it. A scope of no body is the file's.
+   */
   private blockStyles(scope: Scope): BodyStyles | undefined {
-    return scope.body ? this.plan.styles.bodies.get(scope.body) : undefined;
-  }
-
-  /** True if the component's style variables go on the element that renders now. */
-  private hasComponentVariables(): boolean {
-    return this.plan.styles.variables.length > 0 && this.nesting === 0;
+    return this.plan.styles.bodies.get(scope.body ?? fileBody(this.file));
   }
 
   /**
    * The style variables of the element that renders now and their values, as an object in code, or
-   * undefined for none. A top-level element of the component has those of the component. A
-   * top-level element of a block body has those of the block styles that it is at the top level of.
+   * undefined for none. A top-level element of a body has those of the styles that it is at the
+   * top level of.
    */
   private variableValues(scope: Scope): string | undefined {
     const values: string[] = [];
-    if (this.hasComponentVariables()) {
-      for (const variable of this.plan.styles.variables) {
-        values.push(
-          `${JSON.stringify(variable.name)}: ${variableValue(variable, this.expression(variable.expression))}`,
-        );
-      }
-    }
     if (this.nesting === this.bodyBase) {
       for (const block of this.blockStyles(scope)?.variables ?? []) {
         for (const variable of block.variables) {
@@ -2191,9 +2182,10 @@ export class Emitter {
   }
 
   /**
-   * The names of the scope attributes of an element: the component's, and those of the block
-   * styles around it. In a build, an attribute is left out when no selector of its style could
-   * match the element.
+   * The names of the scope attributes of an element: those of the styles of its body and of the
+   * bodies around it. In a build, an attribute is left out when no selector of its style could
+   * match the element. In development, every element gets it, so a change to the styles applies
+   * without rendering the page again.
    */
   private scopeAttributes(
     scope: Scope,
@@ -2201,9 +2193,6 @@ export class Emitter {
     classes: string[] | undefined,
   ): string[] {
     const names: string[] = [];
-    if (this.hasScope(tag, classes)) {
-      names.push(this.plan.styles.attribute);
-    }
     for (const block of this.blockStyles(scope)?.attributes ?? []) {
       if (!this.plan.hideNames || needsScope(block.targets, tag, classes)) {
         names.push(block.attribute);
@@ -2214,33 +2203,26 @@ export class Emitter {
 
   /**
    * The scopes whose style variables the element that renders now carries and that change on the
-   * client, as code: the IDs of the instances, or undefined for none. A top-level element of the
-   * component carries the component, and one of a body the live block styles that it is the top
-   * level of.
+   * client, as code: the IDs of the instances, or undefined for none. A top-level element of a
+   * body carries the live styles that it is at the top level of.
    */
   private liveVariableScopes(scope: Scope): string | undefined {
-    // A scope that this render creates is its ID. One outside it is the object of the instance.
-    const id = (owner: Scope): string => {
-      const name = this.scopeVar(instanceScope(this.plan, owner));
-      return this.isInside(owner) ? name : `${name}.id`;
-    };
     const ids: string[] = [];
-    let component: string | undefined;
-    if (this.plan.liveStyles && this.hasComponentVariables()) {
-      component = this.scopeVar(this.plan.graph.model.component);
-    }
     if (this.nesting === this.bodyBase) {
       for (const block of this.blockStyles(scope)?.variables ?? []) {
         if (this.plan.liveBlocks.has(block.body)) {
-          ids.push(id(this.plan.bodyScopes.get(block.body)!));
+          const owner = this.plan.bodyScopes.get(block.body);
+          const name = this.scopeVar(
+            instanceScope(this.plan, owner ?? this.plan.graph.model.component),
+          );
+          // The scope of the component is its variable. A scope of a body that this render creates
+          // is its ID, and one outside it is the object of the instance.
+          ids.push(!owner || this.isInside(owner) ? name : `${name}.id`);
         }
       }
     }
     if (ids.length === 0) {
-      return component;
-    }
-    if (component !== undefined) {
-      ids.unshift(id(this.plan.graph.model.component));
+      return undefined;
     }
     // Several IDs make one value, such as `3 5`.
     return ids.length === 1 ? ids[0]! : `[${ids.join(', ')}].join(" ")`;
@@ -2594,20 +2576,6 @@ export class Emitter {
       }
       this.code(`$$b.classAttribute(${pieces.join(' + ')})`);
     }
-  }
-
-  /**
-   * True if an element gets the scope attribute. In a build, only elements
-   * that a scoped selector could match get it. In development, every
-   * element of a component with styles gets it, so a change to the styles
-   * applies without rendering the page again.
-   */
-  private hasScope(tag: string | undefined, classes: string[] | undefined): boolean {
-    const { hasComponentCss, targets } = this.plan.styles;
-    if (!hasComponentCss) {
-      return false;
-    }
-    return !this.plan.hideNames || needsScope(targets, tag, classes);
   }
 
   /** Renders the children of a component or a dynamic tag, for their export in the browser. */

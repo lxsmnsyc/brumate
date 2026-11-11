@@ -324,4 +324,44 @@ describe('live style of a block', { timeout: 10000 }, () => {
     click(document.querySelector('.paint')!);
     await waitFor(() => expect(own()).toEqual(['component=2px', 'block=blue']));
   });
+
+  it('keeps the variable of the file style on every carrier when rows in an element come and go', async () => {
+    await resume(
+      'rowsInElement.brm',
+      `<script>
+  import { $signal } from 'brumate/signals';
+  let w = $signal(1);
+  let rows = $signal([{ id: 1 }, { id: 2 }]);
+  let count = 2;
+</script>
+<button class="wide" onClick=(() => (w += 1))>wide</button>
+<button class="add" onClick=(() => (rows = [...rows, { id: ++count }]))>add</button>
+<button class="reverse" onClick=(() => (rows = [...rows].reverse()))>reverse</button>
+<div class="box">
+  #for (row of rows by row.id) {
+    <p class="row">{row.id}</p>
+  }
+</div>
+<style>
+  .box { width: \${w}px; }
+</style>`,
+    );
+    // Every element that carries the variable, the box and any row, shows the current value.
+    const widths = (): string[] => {
+      const found: string[] = [];
+      for (const element of document.querySelectorAll('[style*="--s-"]')) {
+        found.push(/--s-[\w-]+:\s*([^;]*)/.exec(element.getAttribute('style')!)![1]!.trim());
+      }
+      return found;
+    };
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(document.querySelectorAll('.row')).toHaveLength(3));
+    click(document.querySelector('.wide')!);
+    await waitFor(() => expect(new Set(widths())).toEqual(new Set(['2px'])));
+    click(document.querySelector('.reverse')!);
+    await waitFor(() => expect(document.querySelector('.row')!.textContent).toBe('3'));
+    click(document.querySelector('.wide')!);
+    await waitFor(() => expect(new Set(widths())).toEqual(new Set(['3px'])));
+    expect(widths().length).toBeGreaterThan(0);
+  });
 });

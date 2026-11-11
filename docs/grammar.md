@@ -111,7 +111,7 @@ Block           = IfBlock | ForBlock | RepeatBlock | SwitchBlock | KeyBlock
 
 Body            = "{" [ BlockScript ] { TemplateDecl } { BlockStyle | Markup } "}" ;
 BlockScript     = "<script>" TS<Module> "</script>" ;
-BlockStyle      = "<style" [ ws "lang=" String ] ">" CSS "</style>" ;
+BlockStyle      = "<style" [ ws "global" ] [ ws "lang=" String ] ">" CSS "</style>" ;
 
 IfBlock         = "#if" "(" TS<Expression> ")" Body
                   { "#else" "if" "(" TS<Expression> ")" Body }
@@ -141,7 +141,7 @@ TemplateDecl    = "#template" Ident "(" TS<Parameters> ")" Body ;
 - In `ForBlock`, `by` followed by the index name keys items by position.
 - Only `#case`, `#default`, whitespace and comments are allowed directly inside `#switch`. `#default` is last.
 - A `BlockScript` cannot export and cannot call `$props()`.
-- A `BlockStyle` is at the top level of a body, also after the markup. It takes no `global` (BRM205) and no `:global(…)` (BRM206), and a `RevealBlock` body takes none (BRM207). It matches the elements of its body and of the bodies inside it, and its `${}` reads the values in scope there.
+- A `BlockStyle` is at the top level of a body, also after the markup. It is the same as the `Style` of the file, which is the style of the outermost block: `global` and `:global(…)` work in it. A `RevealBlock` body takes none (BRM207). It matches the elements of its body and of the bodies inside it, and its `${}` reads the values in scope there.
 - A `TemplateDecl` at the top level can be used anywhere in the file. In a body, it can be used in that body.
 - A `DeferBlock` cannot be inside the body of a `ClientBlock`, or in markup that the client renders.
 - Each `Ident` in the header of a `LoadingBlock` names a `$memo` of the component or of a block script around the block, which markup in the body reads (BRM186).

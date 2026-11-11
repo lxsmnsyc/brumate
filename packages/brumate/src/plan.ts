@@ -9,7 +9,7 @@ import type {
   Markup,
   SFCFile,
 } from './ast.ts';
-import { blockBodies } from './ast.ts';
+import { blockBodies, fileBody } from './ast.ts';
 import { cleanText } from './codegen/patch.ts';
 import { isFunctionValue, isTemplateValue, resetUsed, tryCatchesClient } from './graph.ts';
 import type { Graph } from './graph.ts';
@@ -86,9 +86,10 @@ export interface Plan {
   clientSites: Set<Site>;
   /** The compiled `<style>` blocks. */
   styles: StyleOutput;
-  /** True if a style variable of the component can change on the client. */
-  liveStyles: boolean;
-  /** The bodies whose style variables can change on the client, so their instances carry an ID. */
+  /**
+   * The bodies whose style variables can change on the client, so their instances carry an ID.
+   * The body of the file (`fileBody`) is one of them when its style can change.
+   */
   liveBlocks: Set<Body>;
   /** True when server function IDs hash the names of the functions. */
   hideNames: boolean;
@@ -805,21 +806,16 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
   }
 
   const styles = compileStyles(file, hash(file.filename), path);
-  let liveStyles = false;
   const liveBlocks = new Set<Body>();
   for (const site of model.sites) {
     if (site.kind !== 'style' || !isLiveSite(site)) {
       continue;
     }
-    if (site.scope.body) {
-      // A block style: the instance of the body is the scope of its variables.
-      liveBlocks.add(site.scope.body);
-      const plan = scopes.get(site.scope);
-      if (plan) {
-        plan.needsId = true;
-      }
-    } else {
-      liveStyles = true;
+    // The instance of the body is the scope of its variables. The file's is the component.
+    liveBlocks.add(site.scope.body ?? fileBody(file));
+    const plan = site.scope.body ? scopes.get(site.scope) : undefined;
+    if (plan) {
+      plan.needsId = true;
     }
   }
 
@@ -828,7 +824,6 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     name,
     id: `${name}_${hash(file.filename)}`,
     styles,
-    liveStyles,
     liveBlocks,
     hideNames,
     scopes,

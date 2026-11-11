@@ -2,6 +2,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { compile } from '../../src/index.ts';
 import type { CompileResult } from '../../src/index.ts';
+import type { StyleOutput } from '../../src/css.ts';
 import { render } from '../../src/runtime/server.ts';
 
 const output = new URL('../.output/block-styles/', import.meta.url);
@@ -27,6 +28,11 @@ async function renderFiles(files: Record<string, string>, hideNames = false): Pr
   const entry = Object.keys(files)[0]!;
   const module = await import(new URL(`${entry}.ts`, output).href);
   return { html: (await render(module.default, {})).html, results };
+}
+
+/** The attribute of the file, such as `b-c-abc`: the prefix of the attribute of every style. */
+function fileAttribute(styles: StyleOutput): string {
+  return /^b-c-\w+/.exec(styles.blocks[0]!.attribute)![0];
 }
 
 /** The attributes of each element that has a class, as `class: [attributes, …]`, in order. */
@@ -70,7 +76,7 @@ describe('scope of a block style', () => {
 }`,
     });
     const { styles } = results['scopeFor.brm']!.plan;
-    const block = `${styles.attribute}-1`;
+    const block = `${fileAttribute(styles)}-1`;
     expect(styles.blocks.map((item) => item.attribute)).toEqual([block]);
     expect(styles.css).toBe(`.tag[${block}] { border: 1px solid; }`);
     const found = elements(html);
@@ -101,19 +107,19 @@ describe('scope of a block style', () => {
 <i class="tag">after</i>`,
     });
     const { styles } = results['scopeNested.brm']!.plan;
-    const [outer, inner] = [`${styles.attribute}-1`, `${styles.attribute}-2`];
+    const [outer, inner] = [`${fileAttribute(styles)}-1`, `${fileAttribute(styles)}-2`];
     const found = elements(html);
     expect(found.tag!.map(marks)).toEqual([
-      `${styles.attribute} ${outer}`,
-      `${styles.attribute} ${outer}`,
-      `${styles.attribute}`,
+      `${fileAttribute(styles)} ${outer}`,
+      `${fileAttribute(styles)} ${outer}`,
+      `${fileAttribute(styles)}`,
     ]);
-    expect(found['tag inner']!.map(marks)).toEqual([`${styles.attribute} ${outer} ${inner}`]);
+    expect(found['tag inner']!.map(marks)).toEqual([`${fileAttribute(styles)} ${outer} ${inner}`]);
     // The component first, then the outer block, then the inner one, so an inner rule wins at the
     // same specificity.
     const rules = styles.css.split('\n');
     expect(rules).toEqual([
-      `.tag[${styles.attribute}] { margin: 0; }`,
+      `.tag[${fileAttribute(styles)}] { margin: 0; }`,
       `.tag[${outer}] { padding: 1px; }`,
       `.inner[${inner}] { color: green; }`,
     ]);
@@ -132,7 +138,8 @@ describe('scope of a block style', () => {
 }`,
       { filename: 'order.brm' },
     );
-    const { attribute, css } = plan.styles;
+    const { css } = plan.styles;
+    const attribute = fileAttribute(plan.styles);
     // The `#if` is the outer block, though its style comes after the `#for`.
     expect(css.split('\n')).toEqual([
       `.outer[${attribute}-1] { color: blue; }`,
@@ -154,7 +161,7 @@ describe('scope of a block style', () => {
 }
 <p class="a">three</p>`,
     });
-    const { attribute } = results['scopeIf.brm']!.plan.styles;
+    const attribute = fileAttribute(results['scopeIf.brm']!.plan.styles);
     expect(results['scopeIf.brm']!.plan.styles.css.split('\n')).toEqual([
       `.a[${attribute}-1] { color: red; }`,
       `.a[${attribute}-2] { color: blue; }`,
@@ -172,7 +179,7 @@ describe('scope of a block style', () => {
 }
 {card('one')}`,
     });
-    const { attribute } = results['scopeTemplate.brm']!.plan.styles;
+    const attribute = fileAttribute(results['scopeTemplate.brm']!.plan.styles);
     expect(elements(html).mark!.map(marks)).toEqual(['', `${attribute}-1`]);
   });
 
@@ -192,7 +199,7 @@ describe('scope of a block style', () => {
   <style>.slot { color: red; }</style>
 }`,
     });
-    const { attribute } = results['Frame.brm']!.plan.styles;
+    const attribute = fileAttribute(results['Frame.brm']!.plan.styles);
     // The `div` of the block has the attribute. The `em` was written in the parent, which has none.
     expect(elements(html).slot!.map(marks)).toEqual([`${attribute}-1`, '']);
   });
@@ -209,7 +216,7 @@ describe('scope of a block style', () => {
       },
       true,
     );
-    const { attribute } = results['scopeBuild.brm']!.plan.styles;
+    const attribute = fileAttribute(results['scopeBuild.brm']!.plan.styles);
     const found = elements(html);
     expect(found.tag!.map(marks)).toEqual([`${attribute}-1`, `${attribute}-1`]);
     expect(found.plain!.map(marks)).toEqual(['', '']);
@@ -231,7 +238,7 @@ describe('variables of a block style', () => {
   </style>
 }`,
     });
-    const { attribute } = results['varsFor.brm']!.plan.styles;
+    const attribute = fileAttribute(results['varsFor.brm']!.plan.styles);
     const names = [`--s-${attribute.slice(4)}-1-0`, `--s-${attribute.slice(4)}-1-1`];
     expect(results['varsFor.brm']!.plan.styles.css).toBe(
       `.tag[${attribute}-1] { background: var(${names[0]}); border-color: var(${names[1]}); }`,
@@ -254,7 +261,7 @@ describe('variables of a block style', () => {
   <style>.a { background: \${tag.color}; }</style>
 }`,
     });
-    const { attribute } = results['varsMixed.brm']!.plan.styles;
+    const attribute = fileAttribute(results['varsMixed.brm']!.plan.styles);
     const hash = attribute.slice(4);
     expect(html).toContain(
       `style="--s-${hash}-0:red;--s-${hash}-1-0:red;margin: 0"`.replace(
@@ -281,7 +288,7 @@ describe('variables of a block style', () => {
   </div>
 }`,
     });
-    const hash = results['varsNested.brm']!.plan.styles.attribute.slice(4);
+    const hash = fileAttribute(results['varsNested.brm']!.plan.styles).slice(4);
     // A top-level element of the inner block is a top-level element of the outer one.
     expect(elements(html).row![0]).toContain(`style="--s-${hash}-1-0:red;--s-${hash}-2-0:a"`);
     // The `i` is inside a `div`: it inherits the outer variable and sets its own.
@@ -309,7 +316,7 @@ describe('variables of a block style', () => {
 }`,
       { filename: 'varsClient.brm' },
     );
-    const { attribute } = result.plan.styles;
+    const attribute = fileAttribute(result.plan.styles);
     const name = `--s-${attribute.slice(4)}-1-0`;
     const code = [result.render, ...Object.values(result.parts), result.client].join('\n');
     expect(code).toContain(`${attribute}-1`);
@@ -328,7 +335,8 @@ describe('style languages in a block', () => {
         `${tags}\n#for (tag of tags by tag.id) {\n  <p class="tag"><b>{tag.name}</b></p>\n  <style lang="${lang}">\n  ${style}\n  </style>\n}`,
         { filename: `${lang}.brm` },
       );
-      const { attribute, css } = plan.styles;
+      const { css } = plan.styles;
+      const attribute = fileAttribute(plan.styles);
       expect(css).toMatch(new RegExp(`\\.tag\\[${attribute}-1\\] \\{\\n\\s+padding: 8px;\\n\\}`));
       expect(css).toMatch(
         new RegExp(
@@ -348,24 +356,40 @@ function failure(source: string): Error {
   throw new Error('compiled');
 }
 
+describe('global markers in a block', () => {
+  it('writes the rules of a <style global> in a block unscoped, as at the top level', () => {
+    const rules = 'p { margin: 0; }\n  .x > b { color: red; }';
+    const inBlock = compile(
+      `#for (tag of ['a']) {\n  <p class="x">{tag}</p>\n  <style global>\n  ${rules}\n  </style>\n}\n<p>outside</p>`,
+      { filename: 'Global.brm' },
+    ).plan.styles;
+    const atTop = compile(
+      `<style global>\n  ${rules}\n</style>\n#for (tag of ['a']) {\n  <p class="x">{tag}</p>\n}\n<p>outside</p>`,
+      { filename: 'Global.brm' },
+    ).plan.styles;
+    // The rules have no attribute, so they match the elements outside the block too.
+    expect(inBlock.css).not.toContain('[b-c-');
+    expect(inBlock.css).toBe(atTop.css);
+    expect(inBlock.css).toContain('p {');
+    expect(inBlock.css).toContain('.x > b {');
+    expect(inBlock.blocks[0]!.targets).toEqual([]);
+  });
+
+  it('unwraps :global(…) in the style of a block, as at the top level', () => {
+    const inBlock = compile(
+      `#for (tag of ['a']) {\n  <p class="tag">{tag}</p>\n  <style>\n  .tag :global(.x) { color: red; }\n  :global(body) { margin: 0; }\n  p { :global(b) { margin: 0; } }\n  </style>\n}\n<i class="x">outside</i>`,
+      { filename: 'GlobalIn.brm' },
+    ).plan.styles;
+    const attribute = inBlock.blocks[0]!.attribute;
+    // The compound around :global(…) is scoped, and the one inside it is not.
+    expect(inBlock.css).toContain(`.tag[${attribute}] .x {`);
+    expect(inBlock.css).toMatch(/ {2}body \{/);
+    expect(inBlock.css).toContain(`p[${attribute}] { b {`);
+    expect(inBlock.css).not.toContain(':global');
+  });
+});
+
 describe('errors', () => {
-  it('rejects <style global> in a block', () => {
-    expect(
-      failure('#if (true) {\n  <p>x</p>\n  <style global>p { margin: 0; }</style>\n}').message,
-    ).toMatch(/<style global> is not allowed in a block.*\[BRM205\]/);
-  });
-
-  it('rejects :global(…) in the style of a block', () => {
-    expect(
-      failure('#if (true) {\n  <p>x</p>\n  <style>:global(body) { margin: 0; }</style>\n}').message,
-    ).toMatch(/:global\(…\) is not allowed in the <style> of a block.*\[BRM206\]/);
-    // Also from a nested rule.
-    expect(
-      failure('#if (true) {\n  <p>x</p>\n  <style>p { :global(b) { margin: 0; } }</style>\n}')
-        .message,
-    ).toMatch(/\[BRM206\]/);
-  });
-
   it('rejects a <style> inside an element', () => {
     expect(failure('<div><style>p { margin: 0; }</style></div>').message).toMatch(
       /<style> must be at the top level of the file or of a block.*\[BRM011\]/,

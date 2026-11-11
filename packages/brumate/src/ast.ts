@@ -389,15 +389,17 @@ export interface BodyInfo {
    * it is called.
    */
   top: boolean;
+  /** True for the body of a template. */
+  template: boolean;
 }
 
 /** The place of every body of a file: the bodies of blocks and of templates. */
 export function bodyTree(file: SFCFile): Map<Body, BodyInfo> {
   const tree = new Map<Body, BodyInfo>();
-  function visitBody(body: Body, parent: Body | undefined, top: boolean): void {
-    tree.set(body, { parent, top });
-    for (const template of body.templates) {
-      visitBody(template.body, body, false);
+  function visitBody(body: Body, parent: Body | undefined, top: boolean, template = false): void {
+    tree.set(body, { parent, top, template });
+    for (const declared of body.templates) {
+      visitBody(declared.body, body, false, true);
     }
     visitNodes(body.children, body, true);
   }
@@ -424,8 +426,30 @@ export function bodyTree(file: SFCFile): Map<Body, BodyInfo> {
     }
   }
   for (const template of file.templates) {
-    visitBody(template.body, undefined, false);
+    visitBody(template.body, undefined, false, true);
   }
   visitNodes(file.children, undefined, true);
   return tree;
+}
+
+const fileBodies = new WeakMap<SFCFile, Body>();
+
+/**
+ * The body of the file itself, the outermost block: its script, `<style>` elements, templates
+ * and markup. It is not in `bodyTree`, where a body without a parent sits directly in it.
+ */
+export function fileBody(file: SFCFile): Body {
+  let body = fileBodies.get(file);
+  if (!body) {
+    body = {
+      start: 0,
+      end: file.source.length,
+      script: file.instanceScript,
+      styles: file.styles,
+      templates: file.templates,
+      children: file.children,
+    };
+    fileBodies.set(file, body);
+  }
+  return body;
 }
