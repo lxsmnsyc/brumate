@@ -1,7 +1,7 @@
 ---
 id: attribute-value-case
 title: Enumerated attributes accept the values HTML accepts
-status: todo
+status: done
 priority: must
 type: fix
 outline: false
@@ -12,10 +12,10 @@ size: S
 spike: false
 verify:
 exclusive: []
-fulfilled_by:
+fulfilled_by: 1b496e38 (batch/brumate-main)
 gate: false
 added: 2026-11-09
-spent:
+spent: 60000
 owns: []
 shared:
   - packages/brumate/elements.d.ts

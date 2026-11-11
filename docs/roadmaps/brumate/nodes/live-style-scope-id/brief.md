@@ -1,7 +1,7 @@
 ---
 id: live-style-scope-id
 title: Live style variables on elements the browser renders outside the component's render function
-status: todo
+status: done
 priority: must
 type: fix
 story:
@@ -17,10 +17,10 @@ spike: false
 hypothesis:
 verify: pnpm --filter brumate exec vitest run test/styles
 exclusive: []
-fulfilled_by:
+fulfilled_by: 9875a27d (batch/brumate-main)
 gate: false
 added: 2026-11-11
-spent:
+spent: 85000
 owns: []
 shared:
   - packages/brumate/src/codegen/markup.ts

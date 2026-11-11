@@ -1,7 +1,7 @@
 ---
 id: inline-memo-errors
 title: An inline memo keeps its error until a read
-status: todo
+status: done
 priority: must
 type: fix
 story:
@@ -17,10 +17,10 @@ spike: false
 hypothesis:
 verify: pnpm --filter brumate exec vitest run test/render.test.ts
 exclusive: []
-fulfilled_by:
+fulfilled_by: 0a494cf5 (batch/brumate-main)
 gate: false
 added: 2026-11-11
-spent:
+spent: 170000
 owns: []
 shared:
   - packages/brumate/src/codegen/**

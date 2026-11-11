@@ -1,7 +1,7 @@
 ---
 id: key-letter-case
 title: A key with a modifier matches the letter in either case
-status: todo
+status: done
 priority: must
 type: fix
 story:
@@ -17,10 +17,10 @@ spike: false
 hypothesis:
 verify:
 exclusive: []
-fulfilled_by:
+fulfilled_by: 2b94abf4 (batch/brumate-main)
 gate: false
 added: 2026-11-11
-spent:
+spent: 60000
 owns: []
 shared:
   - packages/brumate/src/runtime/boot.ts
