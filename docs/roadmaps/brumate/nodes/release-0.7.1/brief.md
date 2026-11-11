@@ -33,6 +33,9 @@ depends_on:
   - on: get-event-helper-docs
     kind: hard
     why: the getEvent docs do not say a .ts helper needs the event passed in (added 2026-11-11)
+  - on: inline-memo-errors
+    kind: hard
+    why: an inline memo throws at its declaration instead of at a read (added 2026-11-11)
   - on: live-style-scope-id
     kind: hard
     why: live style variables miss elements the browser renders outside the component's render function (added 2026-11-11)
