@@ -1,7 +1,7 @@
 ---
 id: get-event-helper-docs
 title: Say that a .ts helper gets the event as an argument
-status: active
+status: done
 priority: must
 type: docs
 story:
@@ -17,10 +17,10 @@ spike: false
 hypothesis:
 verify:
 exclusive: []
-fulfilled_by:
+fulfilled_by: 75d3803c (batch/brumate-main)
 gate: false
 added: 2026-11-11
-spent:
+spent: 30000
 owns: []
 shared:
   - website/docs/server-functions.md
