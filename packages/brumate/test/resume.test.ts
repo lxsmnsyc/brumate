@@ -1041,6 +1041,27 @@ describe('resume', () => {
     expect(big.hasAttribute('b-c-9wx0az')).toBe(true);
   });
 
+  it('updates the style variables of an element in children that the browser renders', async () => {
+    await resume('liveStyleChildren', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.x')).not.toBeNull());
+    const span = document.querySelector<HTMLElement>('.x')!;
+    expect(span.getAttribute('b-v')).not.toContain('[object');
+    expect(span.getAttribute('style')).toContain('10px');
+    click(document.querySelector('.wider')!);
+    await waitFor(() => expect(span.getAttribute('style')).toContain('20px'));
+  });
+
+  it('updates the style variables of a row that the browser adds to a #for', async () => {
+    await resume('liveStyleRows', {});
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(document.querySelector('.row')).not.toBeNull());
+    const row = document.querySelector<HTMLElement>('.row')!;
+    expect(row.getAttribute('b-v')).not.toContain('[object');
+    click(document.querySelector('.wider')!);
+    await waitFor(() => expect(row.getAttribute('style')).toContain('20px'));
+  });
+
   it('adds the stylesheet when the client renders a component first', async () => {
     vi.resetModules();
     const render = await import(file('styled.brm.render.ts'));

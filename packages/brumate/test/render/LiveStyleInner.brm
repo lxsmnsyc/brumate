@@ -1,0 +1,7 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { children } = $props();
+</script>
+
+<div class="inner">{children}</div>

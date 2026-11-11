@@ -2154,11 +2154,19 @@ export class Emitter {
     return `{ ${values.join(', ')} }`;
   }
 
+  /** The ID of the component scope, which `b-v` names. */
+  private componentId(): string {
+    const component = this.plan.graph.model.component;
+    const name = this.scopeVar(component);
+    // Outside the render function of the component, the name is the scope object.
+    return this.isInside(component) ? name : `${name}.id`;
+  }
+
   private emitLiveStyles(): void {
     if (this.plan.liveStyles) {
       // Marks the element, so changes to the variables reach it.
       this.html(' b-v="');
-      this.code(this.scopeVar(this.plan.graph.model.component));
+      this.code(this.componentId());
       this.html('"');
     }
   }
@@ -2803,7 +2811,7 @@ export class Emitter {
     let spreadVariables: string | undefined;
     if (variables.length > 0 && this.nesting === 0) {
       if (this.plan.liveStyles) {
-        extra.push(`"b-v": $$b.internal(${this.scopeVar(this.plan.graph.model.component)})`);
+        extra.push(`"b-v": $$b.internal(${this.componentId()})`);
       }
     }
     if (variables.length > 0 && this.nesting === 0 && hasSpread(attributes)) {
