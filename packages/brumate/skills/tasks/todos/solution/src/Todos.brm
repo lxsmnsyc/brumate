@@ -1,0 +1,46 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  interface Todo {
+    id: number;
+    text: string;
+    done: boolean;
+  }
+
+  let todos = $signal<Todo[]>([]);
+  let draft = $signal('');
+  let nextId = $signal(1);
+
+  function add() {
+    if (draft === '') {
+      return;
+    }
+    todos = [...todos, { id: nextId, text: draft, done: false }];
+    nextId++;
+    draft = '';
+  }
+
+  function toggle(id: number) {
+    todos = todos.map((todo) => (todo.id === id ? { ...todo, done: !todo.done } : todo));
+  }
+
+  function remove(id: number) {
+    todos = todos.filter((todo) => todo.id !== id);
+  }
+</script>
+
+<input class="text" value=(draft) onInput=((event) => (draft = event.currentTarget.value)) />
+<button class="add" onClick=(add)>Add</button>
+<ul>
+  #for (todo of todos by todo.id) {
+    <style>
+      li {
+        text-decoration: ${todo.done ? 'line-through' : 'none'};
+      }
+    </style>
+    <li class=(todo.done ? 'done' : '')>
+      <span onClick=(() => toggle(todo.id))>{todo.text}</span>
+      <button class="remove" onClick=(() => remove(todo.id))>Remove</button>
+    </li>
+  }
+</ul>

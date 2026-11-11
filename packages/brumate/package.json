@@ -20,7 +20,9 @@
     "elements.d.ts",
     "check.d.ts",
     "forms",
-    "skills"
+    "skills",
+    "!skills/tasks",
+    "!skills/run-tasks.mjs"
   ],
   "type": "module",
   "exports": {
