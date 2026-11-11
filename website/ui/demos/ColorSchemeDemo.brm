@@ -14,9 +14,6 @@
     border-radius: 0.5rem;
     background: #fff;
     color: #1b1b1f;
-    transition:
-      background-color 0.2s,
-      color 0.2s;
   }
 
   .color-scheme-demo.dark {
@@ -24,19 +21,14 @@
     color: #f2f2f5;
   }
 
-  .color-scheme-demo-choice {
-    transition: background-color 0.2s;
+  .color-scheme-demo .color-scheme-demo-choice {
+    border-color: currentColor;
+    background: transparent;
+    color: inherit;
   }
 
-  .color-scheme-demo-choice[aria-pressed='true'] {
+  .color-scheme-demo .color-scheme-demo-choice[aria-pressed='true'] {
     background: color-mix(in srgb, currentColor 18%, transparent);
     outline: 2px solid currentColor;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .color-scheme-demo,
-    .color-scheme-demo-choice {
-      transition: none;
-    }
   }
 </style>

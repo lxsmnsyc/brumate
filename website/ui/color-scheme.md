@@ -92,24 +92,17 @@ The script is inline. It carries the nonce of the render (`getEvent().nonce`, fr
 
 Style the class `dark` (or `light`) on the element. The tokens of the page are custom properties, so the rest follows. The element sets `color-scheme`, so `light-dark(a, b)` and the system colors pick their side from the choice. See [Styling](./styling.md).
 
-The demo draws its box with these rules, and its buttons show the choice with a tint and an outline. The change fades, unless the person asks for reduced motion:
+The demo draws its box with these rules, and its buttons show the choice with a tint and an outline. The change has no transition: for `system`, the client sets the class after load, and a fade from the server's `light` would pass through grey colors that fail the contrast check:
 
 ```css
 .color-scheme-demo {
   background: #fff;
   color: #1b1b1f;
-  transition: background-color 0.2s, color 0.2s;
 }
 
 .color-scheme-demo.dark {
   background: #1b1b1f;
   color: #f2f2f5;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .color-scheme-demo {
-    transition: none;
-  }
 }
 ```
 

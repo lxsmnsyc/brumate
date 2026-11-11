@@ -223,20 +223,6 @@ export const Level = createContext<{ level: Store<number>; reset: () => void }>(
 
 A value at module level, outside any component, can be computed from stores with `derived` of `brumate/store`. Inside a component, a `$memo` over the store's variable does the same, and `$toStore(memo)` shares it through a context. A component reads a derived store with `$store`, as any store.
 
-```ts live cart.ts
-import { derived, store } from 'brumate/store';
-import type { Store, StoreLike } from 'brumate/store';
-
-export const cart: Store<number[]> = store([12, 8]);
-export const total: StoreLike<number> = derived(cart, (items) =>
-  items.reduce((sum, price) => sum + price, 0),
-);
-export const label: StoreLike<string> = derived(
-  [cart, total],
-  ([items, sum]) => `${items.length} items, ${sum}`,
-);
-```
-
 ```brm live
 <script>
   import { $store } from 'brumate/signals';
@@ -249,6 +235,20 @@ export const label: StoreLike<string> = derived(
 <button onClick=(() => cart.set([...cart.get(), 5]))>Add 5</button>
 <p>Total {sum}</p>
 <p>{text}</p>
+```
+
+```ts live cart.ts
+import { derived, store } from 'brumate/store';
+import type { Store, StoreLike } from 'brumate/store';
+
+export const cart: Store<number[]> = store([12, 8]);
+export const total: StoreLike<number> = derived(cart, (items) =>
+  items.reduce((sum, price) => sum + price, 0),
+);
+export const label: StoreLike<string> = derived(
+  [cart, total],
+  ([items, sum]) => `${items.length} items, ${sum}`,
+);
 ```
 
 `derived(sources, fn, initial?)` follows Svelte 4's `derived`:
