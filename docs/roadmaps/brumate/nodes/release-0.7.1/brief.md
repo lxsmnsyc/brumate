@@ -61,3 +61,10 @@ Publish brumate 0.7.1 with the patch fixes of the 0.7.1 milestone, then merge `m
 ## Sizing
 
 S: checks and one hand-off.
+
+## Merge notes for main into release/0.8 (2026-11-11)
+
+- popover-tab-out and popover-group-alert both add `leaveByTab` to packages/ui/src/overlay.ts, identical: keep one copy and one import. In Popover.brm keep a single keyDown block for every non-modal popover (drop `group &&` from the 0.8 condition, keep `!trigger?.isPreview` from main).
+- live-style-scope-id: apply the same `.id` rule in `liveVariableScopes` (codegen/markup.ts on release/0.8).
+- inline-memo-errors: release/0.8's render-memo-reads has the narrower `cannotThrow`; resolve to it.
+- key-letter-case: keep @brumate/ui's `matchesShortcut` and the runtime `keyMatches` on the same letter rule.

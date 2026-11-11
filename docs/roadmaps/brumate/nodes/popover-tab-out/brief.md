@@ -1,7 +1,7 @@
 ---
 id: popover-tab-out
 title: A non-modal popover closes when Tab leaves its panel
-status: active
+status: done
 priority: must
 type: fix
 story:
@@ -17,10 +17,10 @@ spike: false
 hypothesis:
 verify:
 exclusive: []
-fulfilled_by:
+fulfilled_by: 64f67bc0 (batch/brumate-main)
 gate: false
 added: 2026-11-11
-spent:
+spent: 90000
 owns: []
 shared:
   - packages/ui/src/Popover.brm
