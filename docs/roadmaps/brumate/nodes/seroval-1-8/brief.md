@@ -1,7 +1,7 @@
 ---
 id: seroval-1-8
 title: Upgrade seroval to 1.8.0, with its split entry points, validators and @seroval/transport
-status: todo
+status: active
 priority: must
 type: refactor
 outline: false

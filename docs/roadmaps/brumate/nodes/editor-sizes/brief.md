@@ -1,7 +1,7 @@
 ---
 id: editor-sizes
 title: What ships, in the editor
-status: todo
+status: active
 priority: must
 type: feature
 outline: false
