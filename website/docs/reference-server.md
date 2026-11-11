@@ -18,7 +18,7 @@ The modules that app code imports, other than `brumate/signals`. Most apps use o
 
 ## `brumate/server`: in server functions
 
-`getEvent()` returns the `RequestEvent` of the request being handled. Call it in a server function, middleware or an endpoint before their first `await`, or anywhere in a component's script while a page renders with a request. Elsewhere it throws. See [The request](./server-functions.md#the-request).
+`getEvent()` returns the `RequestEvent` of the request being handled. Call it in a server function, middleware or an endpoint before their first `await`, or anywhere in a component's script while a page renders with a request. Elsewhere it throws, including in a `.ts` helper that a component calls during render, because the compiler rewrites `getEvent()` only in `.brm` code. Call it in the component script and pass the event to the helper. See [The request](./server-functions.md#the-request).
 
 | `RequestEvent` member                   | What it does                                                                                                    |
 | --------------------------------------- | --------------------------------------------------------------------------------------------------------------- |

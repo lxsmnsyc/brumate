@@ -317,6 +317,17 @@ This needs no `AsyncLocalStorage` or other runtime support, so it runs on any ho
 
 In a component, `getEvent()` returns the event of the page anywhere in its script while the page renders. There, `event.setStatus(404)` also sets the status of the page. See [Routing](./routing.md#errors-and-404). Middleware and endpoints read it before their first `await`, as server functions do.
 
+The compiler rewrites `getEvent()` only in `.brm` code. A `.ts` helper that calls it during a render throws once an ancestor has awaited, so call it in the script and pass the event to the helper:
+
+```brm
+<script>
+  import { getEvent } from 'brumate/server';
+  import { readTheme } from '../theme.ts';
+
+  const theme = readTheme(getEvent());
+</script>
+```
+
 When the browser no longer needs an answer, such as a memo whose input changed again, it aborts the call. `event.signal` tells the function, so it can stop work it no longer needs. It aborts when `event.request.signal` does, and when the reader of the answer goes away:
 
 ```ts
