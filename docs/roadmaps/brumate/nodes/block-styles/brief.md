@@ -1,7 +1,7 @@
 ---
 id: block-styles
 title: Styles in blocks
-status: todo
+status: active
 priority: must
 type: feature
 story:

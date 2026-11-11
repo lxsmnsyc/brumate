@@ -1,7 +1,7 @@
 ---
 id: block-styles-scope
 title: Styles in blocks, scoping and first render
-status: active
+status: done
 priority: must
 type: feature
 story:
@@ -17,10 +17,10 @@ spike: false
 hypothesis:
 verify: pnpm --filter brumate exec vitest run test/styles/block-styles.test.ts
 exclusive: []
-fulfilled_by:
+fulfilled_by: 0abbb2ce (batch/brumate-release-0.8)
 gate: false
 added: 2026-11-09
-spent:
+spent: 293000
 owns:
   - packages/brumate/src/css.ts
   - packages/brumate/test/styles/block-styles.test.ts
