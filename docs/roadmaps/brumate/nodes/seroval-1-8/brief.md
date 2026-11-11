@@ -1,7 +1,7 @@
 ---
 id: seroval-1-8
 title: Upgrade seroval to 1.8.0, with its split entry points, validators and @seroval/transport
-status: active
+status: done
 priority: must
 type: refactor
 outline: false
@@ -12,10 +12,10 @@ size: M
 spike: false
 verify:
 exclusive: [bench]
-fulfilled_by:
+fulfilled_by: 437a424b (batch/brumate-release-0.8)
 gate: false
 added: 2026-11-09
-spent:
+spent: 340000
 owns:
   - packages/brumate/src/runtime/serial.ts
   - packages/brumate/src/runtime/stream.ts
