@@ -56,3 +56,5 @@ Also made must on 2026-11-10 (not features, so the count stays 10): render-memo-
 ## Amendment, 2026-11-11
 
 for-leave left the cut. The maintainer was unsure the idea is worth keeping: a leave hook for `#for` alone implies one for conditionals, and prior art has either one mechanism for every block (Svelte, Framer Motion) or a pair (Vue, Solid). It is parked in the backlog for a goal debate. The cut has 9 features.
+
+editor-sizes also left the cut on 2026-11-11: the maintainer dropped it after the review showed that a true "what ships" hover needs a bundler in the language server (rolldown, about 15-20 MB in the VS Code extension). The cut has 8 features.

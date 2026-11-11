@@ -1,7 +1,7 @@
 ---
 id: editor-sizes
 title: What ships, in the editor
-status: active
+status: dropped
 priority: must
 type: feature
 outline: false
@@ -43,3 +43,8 @@ The language server shows the gzip size of each handler, update and `$client` ca
 ## Sizing
 
 M: new to the language server.
+
+## Dropped (2026-11-11, maintainer)
+
+The maintainer dropped the feature. A hover that shows what a handler ships must bundle the handler with its imports; the review measured own-code numbers at 5-36% off and imports left out (a Calendar handler: 120 B own code, 4.6 kB with calendar.ts). Bundling needs rolldown in the language server, which the platform-neutral VS Code extension would ship as a wasm binding of about 15-20 MB. The work is kept on the local branch feat/editor-sizes (8cd11cad: rolldown bundle per hovered part, caches by mtime, imported components, LRU of 8), not merged.
+

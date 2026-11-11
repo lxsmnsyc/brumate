@@ -60,9 +60,6 @@ depends_on:
   - on: dev-setup-in-plugin
     kind: hard
     why: a must feature of the 0.8.0 cut
-  - on: editor-sizes
-    kind: hard
-    why: a must feature of the 0.8.0 cut
 ---
 
 # Release brumate 0.8.0
