@@ -1,7 +1,7 @@
 ---
 id: key-letter-case
 title: A key with a modifier matches the letter in either case
-status: todo
+status: active
 priority: must
 type: fix
 story:

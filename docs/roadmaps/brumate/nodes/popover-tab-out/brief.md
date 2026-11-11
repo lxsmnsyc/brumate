@@ -1,7 +1,7 @@
 ---
 id: popover-tab-out
 title: A non-modal popover closes when Tab leaves its panel
-status: todo
+status: active
 priority: must
 type: fix
 story:

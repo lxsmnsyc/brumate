@@ -1,7 +1,7 @@
 ---
 id: attribute-value-case
 title: Enumerated attributes accept the values HTML accepts
-status: todo
+status: active
 priority: must
 type: fix
 outline: false

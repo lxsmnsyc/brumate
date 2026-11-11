@@ -1,7 +1,7 @@
 ---
 id: get-event-helper-docs
 title: Say that a .ts helper gets the event as an argument
-status: todo
+status: active
 priority: must
 type: docs
 story:
