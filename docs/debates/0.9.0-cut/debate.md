@@ -2,7 +2,7 @@
 goal: Cut 0.9.0 to ship the features an app needs, 8 to 12 of them, with fixes of 0.8.0 behavior in a 0.8.1 patch
 date: 2026-11-12
 rounds: 1 of 1
-status: proposed
+status: approved
 roadmap: docs/roadmaps/brumate
 supersedes: none
 decision: none
@@ -10,7 +10,7 @@ decision: none
 
 # Debate: cut of 0.9.0
 
-A short cut (one round, no subagents), as for 0.7.0 and 0.8.0: moving a node between milestones costs one frontmatter edit and can be undone. It waits for the maintainer's approval.
+A short cut (one round, no subagents), as for 0.7.0 and 0.8.0: moving a node between milestones costs one frontmatter edit and can be undone. The maintainer approved it on 2026-11-12.
 
 ## Facts
 
