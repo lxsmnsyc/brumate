@@ -1,5 +1,16 @@
 # @brumate/language-core
 
+## 0.2.12
+
+### Patch Changes
+
+- Updated dependencies [1b496e3]
+- Updated dependencies [0a494cf]
+- Updated dependencies [2b94abf]
+- Updated dependencies [9875a27]
+- Updated dependencies [0c8d9d1]
+  - brumate@0.7.1
+
 ## 0.2.11
 
 ### Patch Changes
