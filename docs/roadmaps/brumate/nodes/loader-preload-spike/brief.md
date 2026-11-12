@@ -2,10 +2,10 @@
 id: loader-preload-spike
 title: "Spike: fold the loader into the core"
 status: todo
-priority: could
+priority: later
 type: spike
 outline: false
-milestone: 0.8.0
+milestone: backlog
 target:
 from:
 size: S
@@ -27,6 +27,8 @@ depends_on:
     kind: hard
     why: the helper is removed there (0.4.1); this spike measures the loader without it
 ---
+
+> Parked 2026-11-12 (docs/debates/0.9.0-cut/debate.md): the maintainer said size does not matter for now, and adjustments come after the needed features ship.
 
 # Spike: fold the loader into the core
 

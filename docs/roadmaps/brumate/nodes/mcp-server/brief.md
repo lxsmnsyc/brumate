@@ -2,10 +2,10 @@
 id: mcp-server
 title: An MCP server in the dev server
 status: todo
-priority: later
+priority: must
 type: story
 outline: true
-milestone: backlog
+milestone: 0.9.0
 target:
 from:
 size: L
@@ -14,7 +14,7 @@ verify:
 exclusive: []
 fulfilled_by: 
 gate: false
-added: 
+added: 2026-11-12
 owns: []
 shared: []
 reserves: []
@@ -24,6 +24,8 @@ depends_on:
     kind: hard
     why: the pieces before it show which tools agents use
 ---
+
+> 2026-11-12: a must feature of 0.9.0 (docs/debates/0.9.0-cut/debate.md). Its dependency skill-tasks is done, and its outcome shows which checks agents need.
 
 # An MCP server in the dev server
 

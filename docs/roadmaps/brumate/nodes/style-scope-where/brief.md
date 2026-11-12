@@ -2,12 +2,12 @@
 id: style-scope-where
 title: Scope attributes add no specificity
 status: todo
-priority: could
+priority: must
 type: feature
 story:
 early: false
 outline: false
-milestone: backlog
+milestone: 0.9.0
 target:
 ship: auto
 land: auto
@@ -32,6 +32,8 @@ reserves: []
 provides: []
 depends_on: []
 ---
+
+> 2026-11-12: a must feature of 0.9.0 (docs/debates/0.9.0-cut/debate.md).
 
 # Scope attributes add no specificity
 

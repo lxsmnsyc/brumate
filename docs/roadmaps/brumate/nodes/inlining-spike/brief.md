@@ -2,10 +2,10 @@
 id: inlining-spike
 title: Spike: component inlining and constant folding
 status: todo
-priority: could
+priority: later
 type: spike
 outline: false
-milestone: 0.8.0
+milestone: backlog
 target:
 from:
 size: M
@@ -23,6 +23,8 @@ reserves: []
 provides: []
 depends_on: []
 ---
+
+> Parked 2026-11-12 (docs/debates/0.9.0-cut/debate.md): the maintainer said size does not matter for now, and adjustments come after the needed features ship.
 
 # Spike: component inlining and constant folding
 

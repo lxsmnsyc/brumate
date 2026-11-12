@@ -2,7 +2,7 @@
 id: lazy-sync-memos-spike
 title: "Spike: lazy sync memos in the browser"
 status: todo
-priority: could
+priority: later
 type: spike
 outline: false
 milestone: backlog
@@ -22,6 +22,8 @@ reserves: []
 provides: []
 depends_on: []
 ---
+
+> Parked 2026-11-12 (docs/debates/0.9.0-cut/debate.md): the maintainer said size does not matter for now, and adjustments come after the needed features ship.
 
 # Spike: lazy sync memos in the browser
 

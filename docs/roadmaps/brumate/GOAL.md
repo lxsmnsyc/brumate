@@ -1,5 +1,5 @@
 ---
-milestones: ["0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.5.0", "0.5.1", "0.6.0", "0.6.1", "0.6.2", "0.7.0", "0.7.1", "0.8.0", backlog]
+milestones: ["0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.5.0", "0.5.1", "0.6.0", "0.6.1", "0.6.2", "0.7.0", "0.7.1", "0.8.0", "0.8.1", "0.9.0", backlog]
 # S, docs and chore nodes self-review; the rest, and gates, contracts, releases and hotfixes, get a fresh
 # reviewer (the maintainer, 2026-10-30; this is what ran since 2026-10-27, when an inline comment hid `fresh`).
 review: auto
@@ -34,7 +34,7 @@ branches:
 
 ## Outcome
 
-The core is correct and safe to change, agents write good .brm files with a skill, @brumate/ui is ready to publish, and the client keeps shrinking. Far-off proposals stay in the graph as outlines until a milestone reaches them.
+The core is correct and safe to change, agents write good .brm files with a skill, @brumate/ui is ready to publish, and the client keeps shrinking. Far-off proposals stay in the graph as outlines until a milestone reaches them. From 0.9.0 (the maintainer, 2026-11-12): ship the features an app needs first; the size of the client is recorded and adjusted after.
 
 ## Acceptance
 
@@ -51,6 +51,7 @@ The core is correct and safe to change, agents write good .brm files with a skil
 - should: what makes them useful, the ui release, and the website fixes. They can wait.
 - could: the takeaways of lower value, and the spikes.
 - later: the outline nodes of the backlog. Parked, never scheduled.
+- From 0.9.0 the must line of a minor is its feature cut, and the size spikes are parked (2026-11-12).
 
 ## Milestones
 
@@ -70,12 +71,14 @@ Milestones are releases (the maintainer, 2026-10-29).
 - 0.6.2 (2026-11-07): patch fixes of 0.6.1 behavior found during 0.7.0 work, from `main`: imported-function-prop and devtools-defer-failed.
 - 0.7.0 (re-cut 2026-11-05, ../../debates/0.7.0-cut/debate.md): 11 features as must nodes: context-stores (`$store`), memo-guard (`$gate`), conditional-rest-spread, control-target, element types (mathml-elements and missing-attributes, counted once), graph-node-locations, skill-command-packages, popover-sizing, fieldset and is-pending-many (from the backlog). dev-dock-redesign is a should feature, since it may slip; block-styles is the reserve if a feature slips. The rest ships uncounted: the context-stores spike and children, clone-remaining-bodies, no-client-html, cold-paths-spike, split-ui-examples, coverage-script, skill-tasks, skill-blocks-typecheck and part-guides. release-0.7 waits only for the must nodes, as release-0.6 did.
 - 0.7.1 (2026-11-09): patch fixes of 0.7.0 behavior, from `main`: attribute-value-case (enumerated attribute types reject valid HTML values) and rest-ref-test-wait (a resume test with a fixed wait). release-0.7.1 waits for them and merges `main` into `release/0.8`.
-- 0.8.0 (cut approved 2026-11-09, ../../debates/0.8.0-cut/debate.md): 10 features as must nodes, on `release/0.8`: dev-dock-redesign, devtools-copy, color-scheme, context-menu, popover-group-alert (counted once), derived-stores, head-rerun-scripts, block-styles (the 0.7.0 reserve, from the backlog), dev-setup-in-plugin and editor-sizes. Should, shipped uncounted: partial-route-responses, tsc-check-api, part-guides, skill-tasks, skill-blocks-typecheck, clone-remaining-bodies, no-client-html, render-memo-reads, cold-paths-spike, coverage-script, seroval-1-8 (added 2026-11-09). Could: inlining-spike, store-lens-spike, loader-preload-spike. release-0.8 waits only for the must nodes.
+- 0.8.0 (cut approved 2026-11-09, ../../debates/0.8.0-cut/debate.md; 8 features after its amendments: for-leave is parked and editor-sizes is dropped): 10 features as must nodes, on `release/0.8`: dev-dock-redesign, devtools-copy, color-scheme, context-menu, popover-group-alert (counted once), derived-stores, head-rerun-scripts, block-styles (the 0.7.0 reserve, from the backlog), dev-setup-in-plugin and editor-sizes. Should, shipped uncounted: partial-route-responses, tsc-check-api, part-guides, skill-tasks, skill-blocks-typecheck, clone-remaining-bodies, no-client-html, render-memo-reads, cold-paths-spike, coverage-script, seroval-1-8 (added 2026-11-09). Could: inlining-spike, store-lens-spike, loader-preload-spike. release-0.8 waits only for the must nodes.
+- 0.8.1 (2026-11-12): patch fixes of 0.8.0 behavior, from `main` after the 0.8.0 promotion: the three open causes of the differential test (ref-element-writes, template-context, pending-read), children-rerender and resume-test-races. Bugs found on `main` during 0.9.0 work join it. release-0.8.1 waits for them and merges `main` into `release/0.9`.
+- 0.9.0 (cut proposed 2026-11-12, ../../debates/0.9.0-cut/debate.md): 8 features as must nodes, on `release/0.9`, cut from `main` when release-0.8 ends: partial-route-responses (a story), external-scripts, async-effects, produce-map-set, effect-copy-warning, style-scope-where, mcp-server (a story) and observability. skill-0-9-apis is must too. Should, shipped uncounted: style-files (the reserve, its spike first), server-components-spike, clone-remaining-bodies, no-client-html, tsc-check-api, part-guides, skill-blocks-typecheck, coverage-script. release-0.9 waits only for the must nodes.
 - backlog: outlines, refined when a release takes them. Large features are outline stories (`type: story`); refining one means writing its children, which merge into `feat/<story id>`, and the story is one PR to its target.
 
 ## Constraints
 
-- Size comes first. Every core change reports the gzip size of todos (`pnpm bench`), within 0.3 kB.
+- Size is recorded, not a gate, from 2026-11-12 (the maintainer: "size doesn't matter currently, we can make adjustments after we've shipped what needed"). Every core change still reports the gzip size of todos (`pnpm bench --only brumate --scenario todos`) in its outcome. Before that date size came first, within 0.3 kB; older briefs that say so are read as "report it".
 - Breaking changes are fine, with no deprecation periods.
 - client.ts is split (split-client-runtime) before the nodes that rewrite it. website/src/ui.ts is an append-only list of one line for each page, so it is shared, not split.
 - batching (the `flush()` audit) and element-checks (the caller fixes of the stricter check) sweep many parts of @brumate/ui. plan.py warns that a part is edited by four nodes or more. The edges order them: element-checks runs after the parts are rewritten.
@@ -106,13 +109,13 @@ Milestones are releases (the maintainer, 2026-10-29).
 Each item of the proposals maps to one node, or to built work:
 
 - Syntax: named view transitions -> view-transitions; long lists -> built (`parseWindow`); streaming lists -> streaming-lists; styles in blocks -> block-styles; external scripts -> external-scripts; reveal order of `#defer` -> defer-reveal; server components -> server-components-spike, server-components
-- Reactivity: ordered updates -> ordered-updates; batching -> batching; one table of the fields with scope IDs -> scope-id-table; fields typed before the code loads -> fields-typed-early
+- Reactivity: async effects -> async-effects; `$produce` with maps and sets -> produce-map-set; effects that only copy signals -> effect-copy-warning; ordered updates -> ordered-updates; batching -> batching; one table of the fields with scope IDs -> scope-id-table; fields typed before the code loads -> fields-typed-early
 - Data: worker functions -> worker-functions; offline pages -> offline-pages; observability -> observability
 - Routing: state in the URL -> search-params
 - Server: idempotent calls -> built for forms, keys -> call-keys; two-way realtime -> realtime
-- Tooling: content mappers -> content-mapper (#3); tests against the current build -> tests-current-build; what ships in the editor -> editor-sizes; devtools -> built except history -> devtools-history; workbench -> built steps 1 to 3, step 4 -> workbench-stories; accessibility checks in tests -> a11y-in-tests; embedding -> embedding
+- Tooling: content mappers -> content-mapper (#3); tests against the current build -> tests-current-build; what ships in the editor -> editor-sizes (dropped 2026-11-11: it needs a bundler in the language server); devtools -> built except history -> devtools-history; workbench -> built steps 1 to 3, step 4 -> workbench-stories; accessibility checks in tests -> a11y-in-tests; embedding -> embedding
 - Agent support: the skill -> brm-skill; llms.txt -> llms-txt; copy in the devtools -> devtools-copy; brumate check -> brumate-check; the tasks -> skill-tasks; an MCP server -> mcp-server
-- Compiler: steps 1 and 2 -> built (#147, 4d1d0f14, 624e210b); step 3 -> partly built, the rest -> drop-marker-index; step 4 -> values-spike, values-build; fixed walks -> fixed-walks; inlining and constant folding (2026-10-26) -> inlining-spike, inlining-build
+- Compiler: steps 1 and 2 -> built (#147, 4d1d0f14, 624e210b); step 3 -> partly built, the rest -> clone-remaining-bodies, no-client-html (drop-marker-index dropped 2026-11-12); step 4 -> values-spike (no-go, 2026-11-03), values-build (dropped); fixed walks -> fixed-walks; inlining and constant folding (2026-10-26) -> inlining-spike, inlining-build
 - Client size (2026-10-30, after perf-pass-0.4): prune the runtime by use -> usage-pruning-spike; fewer files and no preload helper -> loader-preload-spike; the compiled update table as direct calls -> merged into values-spike, values-build (debate client-restructure)
 - Client restructure (debate client-restructure, 2026-11-02): one settled-memo mechanism -> settled-memo-merge; unread memos -> drop-unread-memos; no HTML string bodies -> no-html-string-fallback; both render paths compared -> differential-render-test; value functions -> values-spike, values-build
 - Library: Headless UI phases 0 to 7, components from packages, nested TransitionChild -> built; leave animations for `#for` -> for-leave; takeaway 1 -> docs-generator and the four docs-* nodes; 2 -> popover-sizing; 3 -> fieldset; 4 -> context-menu; 5 -> color-scheme; 6 and 9 -> popover-group-alert; 7 and 8 -> part-guides; 10 -> feed; internationalization -> i18n; images -> images; Markdown with components -> markdown-plugin
@@ -122,15 +125,16 @@ Each item of the proposals maps to one node, or to built work:
 
 ## Open questions
 
-- Gate: split-ui-examples (the ui example page and its e2e suite by part). Approve or decline it.
+- for-leave waits for a goal debate: keep it, replace it with one mechanism for every block, or drop it.
 - Should the Order section of the proposals become a link to this roadmap?
 
 ## Gates
 
 - split-client-runtime: the layout change was approved by the user on 2026-10-26. The gate stays for a review of the split before the nodes that build on it start.
-- split-ui-examples: the user approves the layout change.
 - props-table, once docs-generator freezes it: the user reviews the page format before the docs nodes start.
 - values-spike and inlining-spike: the user decides go or no-go.
 - browser-await-spike: the user picks one of the three approaches before the other children of browser-async are refined.
 - release-0.5: the user merges the promotion and the Version Packages pull requests.
+- server-components-spike and the spike of style-files: the user decides go or no-go.
+- release-0.8.1 and release-0.9: the user merges the promotion and the Version Packages pull requests.
 - usage-pruning-spike and loader-preload-spike: the user decides go or no-go. values-spike is an experiment with gates fixed in ../../debates/client-restructure/debate.md (approved 2026-11-02); the user decides go or no-go. direct-update-calls is merged into values-spike and values-build.

@@ -2,10 +2,10 @@
 id: partial-route-responses
 title: A client navigation fetches only the routes that change
 status: todo
-priority: should
-type: feature
+priority: must
+type: story
 outline: true
-milestone: 0.8.0
+milestone: 0.9.0
 target:
 from:
 size: L
@@ -24,6 +24,8 @@ depends_on:
     kind: hard
     why: both change how navigate.ts applies the next page; this builds on the attribute ownership it adds
 ---
+
+> 2026-11-12: a must feature of 0.9.0 (docs/debates/0.9.0-cut/debate.md). It is a story: refining it means writing its children, which merge into `feat/partial-route-responses`.
 
 # A client navigation fetches only the routes that change
 

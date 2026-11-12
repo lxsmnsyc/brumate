@@ -2,12 +2,12 @@
 id: style-files
 title: Component CSS as Vite stylesheets in builds
 status: todo
-priority: could
+priority: should
 type: story
 story:
 early: false
 outline: true
-milestone: backlog
+milestone: 0.9.0
 target:
 ship: auto
 land: auto
@@ -27,6 +27,8 @@ reserves: []
 provides: []
 depends_on: []
 ---
+
+> 2026-11-12: should in 0.9.0 (docs/debates/0.9.0-cut/debate.md), the reserve if a must feature slips. The gated spike comes first. Size is recorded, not a gate (GOAL.md, Constraints).
 
 # Component CSS as Vite stylesheets in builds
 

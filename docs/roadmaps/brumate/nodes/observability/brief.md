@@ -2,10 +2,10 @@
 id: observability
 title: Observability
 status: todo
-priority: later
+priority: must
 type: feature
 outline: true
-milestone: backlog
+milestone: 0.9.0
 target:
 from:
 size: M
@@ -14,13 +14,15 @@ verify:
 exclusive: []
 fulfilled_by: 
 gate: false
-added: 
+added: 2026-11-12
 owns: []
 shared: []
 reserves: []
 provides: []
 depends_on: []
 ---
+
+> 2026-11-12: a must feature of 0.9.0 (docs/debates/0.9.0-cut/debate.md).
 
 # Observability
 

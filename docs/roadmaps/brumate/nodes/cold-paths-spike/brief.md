@@ -2,12 +2,12 @@
 id: cold-paths-spike
 title: "Spike: drop the cold runtime paths that usage-pruning-spike did not check"
 status: todo
-priority: should
+priority: later
 type: spike
 story:
 early: false
 outline: false
-milestone: 0.8.0
+milestone: backlog
 target:
 ship: auto
 from:
@@ -30,6 +30,8 @@ depends_on:
     kind: hard
     why: measure on top of the five flags, with the same facts and tests
 ---
+
+> Parked 2026-11-12 (docs/debates/0.9.0-cut/debate.md): the maintainer said size does not matter for now, and adjustments come after the needed features ship.
 
 # Spike: drop the cold runtime paths that usage-pruning-spike did not check
 

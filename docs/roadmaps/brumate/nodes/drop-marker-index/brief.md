@@ -1,7 +1,7 @@
 ---
 id: drop-marker-index
 title: Remove the marker index and the HTML string path
-status: todo
+status: dropped
 priority: later
 type: refactor
 outline: false
@@ -38,6 +38,8 @@ depends_on:
     kind: hard
     why: both rewrite the b-near code of markup.ts and boot.ts
 ---
+
+> Dropped on 2026-11-12 (the maintainer, docs/debates/0.9.0-cut/debate.md): its rule that no browser-rendered body falls back to an HTML string lives in no-html-string-fallback (done), clone-remaining-bodies and no-client-html. What is left, removing the MutationObserver, saves almost nothing, and streaming and `#defer` rely on its markers.
 
 # Remove the marker index and the HTML string path
 

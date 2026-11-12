@@ -2,10 +2,10 @@
 id: store-lens-spike
 title: "Spike: a path-tracked store and lens utilities"
 status: todo
-priority: could
+priority: later
 type: spike
 outline: false
-milestone: 0.8.0
+milestone: backlog
 target:
 from:
 size: M
@@ -25,6 +25,8 @@ depends_on:
     kind: hard
     why: a store write that touches several paths must be one pass, which batching defines
 ---
+
+> Parked 2026-11-12 (docs/debates/0.9.0-cut/debate.md): no user asks for it, and `$store`, `$toStore` and `derived` shipped since the brief was written. Rewrite the questions against them before it starts.
 
 # Spike: a path-tracked store and lens utilities
 
