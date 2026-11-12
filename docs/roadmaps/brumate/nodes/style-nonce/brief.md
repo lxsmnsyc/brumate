@@ -1,7 +1,7 @@
 ---
 id: style-nonce
 title: Component stylesheets carry the CSP nonce
-status: todo
+status: active
 priority: must
 type: fix
 story:
