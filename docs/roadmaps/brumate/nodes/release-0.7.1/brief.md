@@ -45,6 +45,9 @@ depends_on:
   - on: live-style-scope-id
     kind: hard
     why: live style variables miss elements the browser renders outside the component's render function (added 2026-11-11)
+  - on: style-nonce
+    kind: hard
+    why: a strict style-src policy blocks every component stylesheet on 0.7.0
 ---
 
 # Release brumate 0.7.1
