@@ -264,8 +264,9 @@ export function vars(variables: Record<string, unknown>, own: unknown): string {
 }
 
 /** Returns a `<style>` element for a component's stylesheet. */
-export function styleElement(id: string, css: string): string {
-  return `<style b-style="${escapeAttribute(id)}">${css.replace(/<\/style/gi, '<\\/style')}</style>`;
+export function styleElement(id: string, css: string, nonce?: string): string {
+  const extra = nonce === undefined ? '' : ` nonce="${escapeAttribute(nonce)}"`;
+  return `<style${extra} b-style="${escapeAttribute(id)}">${css.replace(/<\/style/gi, '<\\/style')}</style>`;
 }
 
 /**

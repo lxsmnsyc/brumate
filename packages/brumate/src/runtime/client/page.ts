@@ -44,6 +44,11 @@ export function addStyle(id: string, css: string): string {
   if (!document.querySelector(`style[b-style="${id}"]`)) {
     const sheet = document.createElement('style');
     sheet.setAttribute('b-style', id);
+    // Browsers hide the attribute, so the nonce comes from the property of an element that has one.
+    const nonce = document.querySelector<HTMLElement>('[nonce]')?.nonce;
+    if (nonce) {
+      sheet.nonce = nonce;
+    }
     sheet.textContent = css;
     document.head.append(sheet);
   }
