@@ -1,7 +1,7 @@
 ---
 id: style-nonce
 title: Component stylesheets carry the CSP nonce
-status: active
+status: done
 priority: must
 type: fix
 story:
@@ -17,10 +17,10 @@ spike: false
 hypothesis:
 verify:
 exclusive: []
-fulfilled_by:
+fulfilled_by: 0c8d9d1e (batch/brumate-main)
 gate: false
 added: 2026-11-12
-spent:
+spent: 90000
 owns: []
 shared:
   - packages/brumate/src/runtime/html.ts
