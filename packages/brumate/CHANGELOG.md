@@ -1,5 +1,18 @@
 # brumate
 
+## 0.7.1
+
+### Patch Changes
+
+- 1b496e3: Enumerated attributes in the element types take their keywords in lower case, upper case or capitalized, as HTML matches them without regard to case: `dir="LTR"`, `type="Submit"`. The empty string type-checks where HTML defines it as a state, such as `translate=""`, `contenteditable=""` and `popover=""`.
+- 0a494cf: A `$memo` whose expression can throw by conversion, such as `big + 1` for a BigInt, `[big]` or a template with a part, now keeps its error until something reads it, in the browser render and on the server. It used to throw where it was declared, so a `#try` around the component showed its `#catch` even when nothing read the memo. Memos that cannot throw, such as `a === b`, `!a` or `a ?? b`, stay plain values.
+
+  Memos with arithmetic or a template part, such as `count * 2`, are no longer computed in place: the browser render wraps them in its memo read, and the server computes them as lazy memos. Values and update order are the same; the client code of such a component grows by a few bytes per memo.
+
+- 2b94abf: Fix `prevent(handler, 'Mod+K')` so a letter after a modifier matches in either case. It matched only Cmd+Shift+K before, because the browser sends `k` for Cmd+K.
+- 9875a27: An element that the browser renders outside the render function of its component, such as one in `{children}` or in a row the browser adds to a `#for`, gets `b-v` with the scope ID. It had `b-v="[object Object]"`, so it kept its first style variables.
+- 0c8d9d1: Component `<style>` elements carry the `nonce` of the render, and styles that the browser adds copy the page nonce, so `style-src 'nonce-…'` loads them.
+
 ## 0.7.0
 
 ### Minor Changes
