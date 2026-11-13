@@ -73,13 +73,13 @@ Promote `release/0.8` to `main` and publish brumate 0.8.0 and @brumate/ui, with 
 
 ## Context
 
-- The cut is docs/debates/0.8.0-cut/debate.md: 10 must features. Open should and could nodes move to the next minor when this node starts.
+- The cut is docs/debates/0.8.0-cut/debate.md: 10 must features. Open should and could nodes move to the next minor when this node starts, except the five fixes (ref-element-writes, template-context, pending-read, children-rerender, resume-test-races): an open one moves to 0.8.1 and targets `main`.
 - Same checks as release-0.7: `pnpm build`, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test`, `node e2e/run.mjs`, `pnpm --filter website check:samples`, `pnpm --filter website build`, `pnpm bench --only brumate --scenario todos` against 0.7.0 (13.8 kB gzip JS before `load`), and `npm pack --dry-run` with no test fixtures.
 - After the promotion merges, check and hand the Version Packages pull request to the maintainer. The orchestrator merges neither (`gate: true`). Then cut `release/0.9` from `main` and close `release/0.8`.
 
 ## Acceptance
 
-- [ ] Open should and could nodes of 0.8.0 are moved to the next milestone, and the changesets on `release/0.8` are merged.
+- [ ] Open should and could nodes of 0.8.0 are moved to the next milestone (open fixes to 0.8.1), and the changesets on `release/0.8` are merged.
 - [ ] All checks pass; the results are in the outcome.
 - [ ] Todos gzip JS before `load` is no larger than 0.7.0 (13.8 kB), or the outcome names the node that grew it and by how much.
 - [ ] The maintainer merges the promotion and the Version Packages pull requests, and brumate 0.8.0 is on npm.

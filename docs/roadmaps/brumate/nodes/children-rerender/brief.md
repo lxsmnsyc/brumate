@@ -2,16 +2,16 @@
 id: children-rerender
 title: A spread onto a component does not render its children again
 status: todo
-priority: must
+priority: should
 type: fix
 story:
 early: false
 outline: true
-milestone: 0.8.1
-target: main
+milestone: 0.8.0
+target:
 ship: auto
 land: auto
-from: 
+from:
 size: M
 spike: false
 hypothesis:
@@ -40,6 +40,6 @@ A `{...rest}` spread onto a component makes every prop of that component live fo
 ## Context
 
 - Found on 2026-10-26 while building NavigationTree (#172). The parts work around it with a context (`TreeItemAttributesContext`). spread-children-live (0.4.0) and later fixes may have closed it.
-- First prove it on `main` with a failing test: a Tree row template, a spread onto the item part, and a count of the child's renders. If it no longer fails, close the node with that test and remove the workaround only if the test covers it.
+- First prove it on `release/0.8` with a failing test: a Tree row template, a spread onto the item part, and a count of the child's renders. If it no longer fails, close the node with that test and remove the workaround only if the test covers it.
 
 Outline: not broken into a brief yet. Refine it when `plan.py refine` lists it.

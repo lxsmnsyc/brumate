@@ -2,16 +2,16 @@
 id: ref-element-writes
 title: A ref in a list whose source reads it settles in a browser render
 status: todo
-priority: must
+priority: should
 type: fix
 story:
 early: false
 outline: true
-milestone: 0.8.1
-target: main
+milestone: 0.8.0
+target:
 ship: auto
 land: auto
-from: 
+from:
 size: S
 spike: false
 hypothesis:
