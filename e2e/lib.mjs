@@ -164,7 +164,9 @@ export async function serveBuild(root) {
       }
       const headers = headersOf(answer);
       if ((headers['content-type'] ?? '').includes('html')) {
-        headers['content-security-policy'] = `script-src 'nonce-${nonce}' 'strict-dynamic'`;
+        // Trusted Types too, so a string in an HTML or script sink that skips the policy fails.
+        headers['content-security-policy'] =
+          `script-src 'nonce-${nonce}' 'strict-dynamic'; require-trusted-types-for 'script'; trusted-types brumate`;
       }
       response.writeHead(answer.status, headers);
       if (answer.body) {
