@@ -2,7 +2,7 @@
 // that never navigate do not load it.
 
 import { loadOnce } from './skew.ts';
-import { trustedScript } from './trusted.ts';
+import { trustedHTML, trustedScript } from './trusted.ts';
 export interface Visit {
   url: string;
   /** For a form that posts to a server function. */
@@ -779,7 +779,7 @@ export async function navigate(visit: Visit): Promise<void> {
       end = match.index + match[0].length;
     }
   }
-  const next = new DOMParser().parseFromString(text.slice(0, end), 'text/html');
+  const next = new DOMParser().parseFromString(trustedHTML(text.slice(0, end)), 'text/html');
   const state = next.body.querySelector(`${STATE}[b-route]`);
   // A page of another build: the site was deployed since this page loaded, so it loads in full,
   // once for each build. When two builds answer in turn during a deploy, the page swaps in.
@@ -875,11 +875,11 @@ export async function navigate(visit: Visit): Promise<void> {
   // in any pieces. A node is complete once the parser has moved past it.
   const sink = document.implementation.createHTMLDocument('');
   sink.open();
-  sink.write('<!doctype html><body>');
+  sink.write(trustedHTML('<!doctype html><body>'));
   let rest = text.slice(end);
   for (;;) {
     if (rest) {
-      sink.write(rest);
+      sink.write(trustedHTML(rest));
       append([...sink.body.childNodes].slice(0, -1), shift);
     }
     let chunk: ReadableStreamReadResult<string> | undefined;

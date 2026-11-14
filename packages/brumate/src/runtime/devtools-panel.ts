@@ -22,6 +22,7 @@ import type * as Highlight from '../highlight.ts';
 import type { Scope } from './client.ts';
 import type { ScopeId } from './shared.ts';
 import { LOGO, preview, findRootScope } from './devtools.ts';
+import { trustedHTML } from './trusted.ts';
 import type {
   BlockEntry,
   DevtoolsEntry,
@@ -409,7 +410,7 @@ function icon(name: keyof typeof ICONS, size = 14): SVGElement {
     'stroke-linejoin': 'round',
     'aria-hidden': 'true',
   });
-  node.innerHTML = ICONS[name];
+  node.innerHTML = trustedHTML(ICONS[name]);
   return node;
 }
 
@@ -966,20 +967,22 @@ async function codeView(
   // only the lines around the place stay, each line one `.l` element.
   box.insertAdjacentHTML(
     'beforeend',
-    module.highlightFile(place.url ? 'compiled.ts' : place.file, text, {
-      line_numbers: { start: 1 },
-      line: (index) => (index === target ? { class: 'error-line' } : undefined),
-      overlays:
-        word.length > 0
-          ? [
-              {
-                start: { line: target, character: place.column - 1 },
-                end: { line: target, character: place.column - 1 + word.length },
-                class: 'error-mark',
-              },
-            ]
-          : [],
-    }),
+    trustedHTML(
+      module.highlightFile(place.url ? 'compiled.ts' : place.file, text, {
+        line_numbers: { start: 1 },
+        line: (index) => (index === target ? { class: 'error-line' } : undefined),
+        overlays:
+          word.length > 0
+            ? [
+                {
+                  start: { line: target, character: place.column - 1 },
+                  end: { line: target, character: place.column - 1 + word.length },
+                  class: 'error-mark',
+                },
+              ]
+            : [],
+      }),
+    ),
   );
   const shown = [...box.querySelectorAll('code > .l')];
   for (const [index, line] of shown.entries()) {
@@ -1130,7 +1133,7 @@ export function togglePanel(
     );
   }
   const logo = element('i');
-  logo.innerHTML = LOGO;
+  logo.innerHTML = trustedHTML(LOGO);
   const resize = element('div', { class: 'resize', title: 'Drag to resize' });
   panel = element(
     'div',
