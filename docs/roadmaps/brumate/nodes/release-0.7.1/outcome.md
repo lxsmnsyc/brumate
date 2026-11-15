@@ -7,4 +7,4 @@
 
 ## Deviations
 
-- `main` was not merged into `release/0.8` after this release. The merge happens once for 0.7.1 and 0.7.2 when release-0.8 starts (2026-11-15), using the merge notes in the brief.
+- `main` was not merged into `release/0.8` right after this release. It was merged once for 0.7.1 and 0.7.2 when release-0.8 started (10d853fd, 2026-11-15), using the merge notes in the brief.

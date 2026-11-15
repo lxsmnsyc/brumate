@@ -39,7 +39,7 @@ Publish brumate 0.7.2 with the Trusted Types fix, then merge `main` into `releas
 ## Acceptance
 
 - [x] The maintainer merges the Version Packages pull request, and brumate 0.7.2 is on npm.
-- [ ] `release/0.8` holds `main` (merge pushed directly, after the checks).
+- [x] `release/0.8` holds `main` (merge pushed directly, after the checks; 10d853fd, 2026-11-15).
 
 ## Sizing
 

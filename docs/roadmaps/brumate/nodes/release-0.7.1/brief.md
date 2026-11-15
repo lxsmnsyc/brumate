@@ -59,7 +59,7 @@ Publish brumate 0.7.1 with the patch fixes of the 0.7.1 milestone, then merge `m
 ## Acceptance
 
 - [x] The maintainer merges the Version Packages pull request, and brumate 0.7.1 is on npm.
-- [ ] `release/0.8` holds `main` (merge pushed directly, after the checks).
+- [x] `release/0.8` holds `main` (merge pushed directly, after the checks; 10d853fd, 2026-11-15).
 
 ## Sizing
 
