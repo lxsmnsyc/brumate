@@ -755,7 +755,9 @@ describe('await', () => {
       { filename: 'T.brm' },
     );
     expect(render).toContain('const user = $$b.renderMemo(() => (load(id)));');
-    expect(render).toContain('const twice = (id * 2);');
+    // A conversion can throw, and a read of `user` in the block may throw first, so `twice` holds
+    // its error until a read.
+    expect(render).toContain('const twice = $$b.renderMemo(() => (id * 2));');
     expect(render).toContain('$$b.readMemo(user)');
   });
 

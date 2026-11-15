@@ -257,11 +257,23 @@ function heldMemos(
   inline: Set<Declaration>,
   settled: Set<Declaration>,
 ): Set<Declaration> {
-  // The memos whose expression can give a promise or throw.
+  // The memos whose expression can give a promise or throw. One that does neither, such as
+  // `count === 2`, is computed in place.
   const candidates = new Set<Declaration>();
   for (const site of sites) {
     if (site.kind === 'memo' && site.declaration && !inline.has(site.declaration)) {
-      if (!site.awaits && !neverPromise(site.node as oxc.Node)) {
+      const node = site.node as oxc.Node;
+      // A read of a memo can throw the error that the memo holds.
+      const memoReads = new Set<number>();
+      for (const read of site.reads) {
+        if (read.declaration.kind === 'memo' || read.declaration.kind === 'async-memo') {
+          memoReads.add(read.range.start);
+        }
+      }
+      if (
+        !site.awaits &&
+        (!neverPromise(node) || !cannotThrow(node, (name) => !memoReads.has(name.start)))
+      ) {
         candidates.add(site.declaration);
       }
     }
@@ -619,8 +631,10 @@ export function addValueEdits(
   }
   // The memos that hold no error in a render: the declaration of one gives its value or throws.
   const settled = new Set<Declaration>();
+  // The memos that the browser render runs through `renderMemo`.
+  let held = new Set<Declaration>();
   if (mode === 'render') {
-    const held = heldMemos(file, sites, inline, settled);
+    held = heldMemos(file, sites, inline, settled);
     // A read of a memo that holds an error throws the error, as the server's does.
     for (const site of sites) {
       readMemos(site, site.node as oxc.Node, site.declaration, held);
@@ -771,7 +785,11 @@ export function addValueEdits(
             : '$$b.renderMemo(() => $$b.gateValue(';
           patch.replace(node.start, argument.start, open);
           patch.replace(argument.end, node.end, settled.has(declaration) ? ')' : '))');
-        } else if (mode === 'render' && declaration && (site!.awaits || !neverPromise(argument))) {
+        } else if (
+          mode === 'render' &&
+          declaration &&
+          (site!.awaits || !neverPromise(argument) || held.has(declaration))
+        ) {
           // The render marks a promise, so `setSlots` starts the load. A throw is held as a
           // value, unless the memo cannot throw, or throws at once.
           let open = site!.awaits ? '$$b.renderMemo(async () => (' : '$$b.renderMemo(() => (';
