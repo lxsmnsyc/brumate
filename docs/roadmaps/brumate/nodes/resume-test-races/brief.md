@@ -2,13 +2,13 @@
 id: resume-test-races
 title: Resume tests that race, and a test of a skew reload
 status: todo
-priority: should
+priority: must
 type: fix
 story:
 early: false
 outline: true
-milestone: 0.8.0
-target:
+milestone: 0.8.1
+target: main
 ship: auto
 land: auto
 from:

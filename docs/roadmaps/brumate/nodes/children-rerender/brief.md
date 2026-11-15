@@ -2,13 +2,13 @@
 id: children-rerender
 title: A spread onto a component does not render its children again
 status: todo
-priority: should
+priority: must
 type: fix
 story:
 early: false
 outline: true
-milestone: 0.8.0
-target:
+milestone: 0.8.1
+target: main
 ship: auto
 land: auto
 from:

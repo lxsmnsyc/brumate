@@ -2,13 +2,13 @@
 id: pending-read
 title: A browser render holds at a read of a property of a pending memo
 status: todo
-priority: should
+priority: must
 type: fix
 story:
 early: false
 outline: true
-milestone: 0.8.0
-target:
+milestone: 0.8.1
+target: main
 ship: auto
 land: auto
 from:
