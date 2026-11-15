@@ -1,0 +1,18 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let rows = $signal<number[]>([]);
+  let w = $signal(10);
+</script>
+
+<style>
+  .row {
+    width: ${w}px;
+  }
+</style>
+
+<button class="add" onClick=(() => (rows = [...rows, rows.length]))>Add</button>
+<button class="wider" onClick=(() => (w = 20))>Wider</button>
+#for (id of rows by id) {
+  <p class="row">{id}</p>
+}

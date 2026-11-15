@@ -3,7 +3,7 @@ import type { Declaration, Reference, Scope, Site } from '../model.ts';
 import { children } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
 import { blockBodies } from '../plan.ts';
-import { isPrimitive } from './primitive.ts';
+import { cannotThrow, isPrimitive } from './primitive.ts';
 import type { Plan } from '../plan.ts';
 import { copy } from '../sourcemap.ts';
 
@@ -580,7 +580,8 @@ export function plainValues(plan: Plan, blocking: Set<Declaration>): Set<Declara
       declaration.optimistic ||
       site === undefined ||
       !isPrimitive(site.node, (name) => readsPlain(site, name, check)) ||
-      !isSafe(site.node, blocking.has(declaration))
+      !isSafe(site.node, blocking.has(declaration)) ||
+      !cannotThrow(site.node)
     ) {
       return false;
     }

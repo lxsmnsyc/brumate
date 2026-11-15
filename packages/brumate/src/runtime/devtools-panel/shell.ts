@@ -7,6 +7,7 @@ import { element, svg } from './dom.ts';
 import { kilobytes, stateBytes } from './format.ts';
 import { collectModules, countBlocks, roots } from './info.ts';
 import type { Workspace, WorkspaceId } from './workspace.ts';
+import { trustedHTML } from '../trusted.ts';
 
 /** The edge that the dock is attached to. */
 export type Side = 'bottom' | 'right';
@@ -71,7 +72,7 @@ function glyph(name: keyof typeof GLYPHS, size: number): SVGElement {
     'stroke-linejoin': 'round',
     'aria-hidden': 'true',
   });
-  node.innerHTML = GLYPHS[name];
+  node.innerHTML = trustedHTML(GLYPHS[name]);
   return node;
 }
 
@@ -124,7 +125,7 @@ export function createChrome(state: DevtoolsState, workspaces: Workspace[]): Chr
   }
 
   const mark = element('i');
-  mark.innerHTML = LOGO;
+  mark.innerHTML = trustedHTML(LOGO);
   const vite = state.meta.vite ? ` · Vite ${state.meta.vite}` : '';
   const brand = element(
     'div',

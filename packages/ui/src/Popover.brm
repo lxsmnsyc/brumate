@@ -336,8 +336,8 @@
 
   // A part inside that used Escape prevents it, such as a SearchField that clears its text.
   function keyDown(event: KeyboardEvent) {
-    // In a group, Tab leaves the panel, which is at the end of the page, for the page after the trigger.
-    if (event.key === 'Tab' && group && (isNonModal || trigger?.isNonModal) && !event.defaultPrevented) {
+    // A panel that is not modal sits at the end of the page, so Tab leaves it for the page after the trigger.
+    if (event.key === 'Tab' && !event.defaultPrevented && !trigger?.isPreview && (isNonModal || trigger?.isNonModal)) {
       const element = ref as HTMLElement | undefined;
       if (element && trigger) {
         leaveByTab(element, document.getElementById(trigger.triggerId), event);

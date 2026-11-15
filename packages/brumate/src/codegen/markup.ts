@@ -2211,13 +2211,11 @@ export class Emitter {
     if (this.nesting === this.bodyBase) {
       for (const block of this.blockStyles(scope)?.variables ?? []) {
         if (this.plan.liveBlocks.has(block.body)) {
-          const owner = this.plan.bodyScopes.get(block.body);
-          const name = this.scopeVar(
-            instanceScope(this.plan, owner ?? this.plan.graph.model.component),
-          );
-          // The scope of the component is its variable. A scope of a body that this render creates
-          // is its ID, and one outside it is the object of the instance.
-          ids.push(!owner || this.isInside(owner) ? name : `${name}.id`);
+          const owner = this.plan.bodyScopes.get(block.body) ?? this.plan.graph.model.component;
+          const name = this.scopeVar(instanceScope(this.plan, owner));
+          // Inside the render function of the scope, its variable is the ID. Outside it, such as
+          // in an element the browser renders apart, the variable is the object of the instance.
+          ids.push(this.isInside(owner) ? name : `${name}.id`);
         }
       }
     }

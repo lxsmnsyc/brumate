@@ -5,7 +5,7 @@ status: todo
 priority: should
 type: chore
 outline: false
-milestone: 0.8.0
+milestone: 0.9.0
 target:
 from:
 size: S
@@ -38,6 +38,7 @@ The client audit (docs/roadmaps/brumate/nodes/client-audit/outcome.md) measured 
 
 - [ ] `pnpm --filter brumate coverage` prints coverage of packages/brumate/src/runtime/**.
 - [ ] CI does not run it (it is for local use).
+- [ ] Items 9 and 10 of the client audit ride along (added 2026-11-12): `feature-flags-off.test.ts` also turns off rootWait, clientHTML, loading, lateMarkup, children, templates and bindings, and `getScope` (scopes.ts), which only resume.test.ts calls, is no longer exported.
 
 ## Sizing
 

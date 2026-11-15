@@ -4,6 +4,7 @@ import type { Scope } from '../client.ts';
 import { element, svg } from './dom.ts';
 import { collectModules, known, loadComponents, roots } from './info.ts';
 import type { DockContext } from './workspace.ts';
+import { trustedHTML } from '../trusted.ts';
 
 /** One line of the list. */
 export interface SearchItem {
@@ -109,7 +110,7 @@ export function createSearch(ctx: DockContext, actions: () => SearchItem[]): Sea
       'stroke-linecap': 'round',
       'aria-hidden': 'true',
     });
-    magnifier.innerHTML = '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>';
+    magnifier.innerHTML = trustedHTML('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>');
     const input = element('input', {
       type: 'text',
       role: 'combobox',

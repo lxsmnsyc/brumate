@@ -8,6 +8,7 @@ import { element, svg } from './dom.ts';
 import { ms, seconds } from './format.ts';
 import { known, loadComponents } from './info.ts';
 import type { DockContext, Shell, Workspace } from './workspace.ts';
+import { trustedHTML } from '../trusted.ts';
 
 /** The kinds of rows, in the order of the filters. */
 type RowKind = 'nav' | 'block' | 'handler' | 'write' | 'effect' | 'server';
@@ -485,7 +486,7 @@ function drawCloseIcon(): SVGElement {
     'stroke-linecap': 'round',
     'aria-hidden': 'true',
   });
-  node.innerHTML = '<path d="m6 6 12 12M18 6 6 18"/>';
+  node.innerHTML = trustedHTML('<path d="m6 6 12 12M18 6 6 18"/>');
   return node;
 }
 

@@ -1,5 +1,7 @@
 // Elements, icons and the small parts that the workspaces share.
 
+import { trustedHTML } from '../trusted.ts';
+
 export function element<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   attributes: Record<string, string> = {},
@@ -83,7 +85,7 @@ export function icon(name: IconName, size = 14): SVGElement {
     'stroke-linejoin': 'round',
     'aria-hidden': 'true',
   });
-  node.innerHTML = ICONS[name];
+  node.innerHTML = trustedHTML(ICONS[name]);
   return node;
 }
 

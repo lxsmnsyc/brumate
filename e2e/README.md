@@ -32,7 +32,7 @@ Each check is a named step. Any uncaught error, console error or failed request 
 - The shop demo of the home page adds to the cart.
 - A link from the home page to the docs and a link in the sidebar navigate without loading a new page. The back button goes back the same way.
 
-`todos` serves the production build of `examples/todos` with a content security policy of `script-src 'nonce-…' 'strict-dynamic'`, and a new nonce for each page.
+`todos` serves the production build of `examples/todos` with a content security policy of `script-src 'nonce-…' 'strict-dynamic'; require-trusted-types-for 'script'; trusted-types brumate`, and a new nonce for each page.
 
 - The quote streams in after the page.
 - Toggling a todo updates the count.

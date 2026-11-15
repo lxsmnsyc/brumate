@@ -242,6 +242,7 @@ export interface DevtoolsState {
 const MAX_LOG = 300;
 
 import { LOGO } from './logo.ts';
+import { trustedHTML } from './trusted.ts';
 
 export { LOGO };
 
@@ -809,7 +810,9 @@ export function installDevtools(
   button.type = 'button';
   button.className = 'open';
   button.title = 'brumate devtools (Alt+Shift+D)';
-  button.innerHTML = `<span class="mark">${LOGO}</span><span class="name">brumate</span><span class="version"></span><span class="count"></span>`;
+  button.innerHTML = trustedHTML(
+    `<span class="mark">${LOGO}</span><span class="name">brumate</span><span class="version"></span><span class="count"></span>`,
+  );
   // The version of brumate, next to its mark.
   button.querySelector('.version')!.textContent = meta.version ?? '';
   function label(): void {

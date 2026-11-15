@@ -489,6 +489,8 @@ export class Context {
   private rpcPrefix = '/_brumate';
   /** The ID of the build, for forms that post to server functions. See `RenderOptions`. */
   build: string | undefined;
+  /** The Content Security Policy nonce of the render, for the `<style>` elements. */
+  nonce: string | undefined;
   /** True in development, where a memo that failed or a `#catch` sends its error to the browser. */
   development = false;
 
@@ -1214,7 +1216,7 @@ export class Context {
     }
     styles.add(id);
     this.undo.push(() => styles.delete(id));
-    return styleElement(id, css);
+    return styleElement(id, css, this.root.nonce);
   }
 
   /** Adds the markup of a `#head` block. */
@@ -2715,8 +2717,9 @@ export interface RenderOptions {
    */
   waitUntil?: (promise: Promise<unknown>) => void;
   /**
-   * A Content Security Policy nonce for the inline scripts: the state
-   * records, and the scripts that swap in `#loading` bodies.
+   * A Content Security Policy nonce for the inline scripts (the state
+   * records, and the scripts that swap in `#loading` bodies) and the
+   * `<style>` elements of components.
    */
   nonce?: string;
   /**
@@ -2840,6 +2843,7 @@ export async function render<P>(
     ctx.params = options.params;
   }
   ctx.build = options.build;
+  ctx.nonce = options.nonce;
   ctx.development = options.dev === true;
   if (options.defer) {
     ctx.target = { ...options.defer };

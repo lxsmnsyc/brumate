@@ -201,12 +201,20 @@ export function boot(
   /**
    * A key of `prevent` matches its `event.key` while only the modifier that it names is held. A
    * key alone matches while Ctrl, Meta and Alt are up, so the shortcuts of the browser, such as
-   * Cmd+Left or Alt+Left, keep their default. `Mod+` is Ctrl or Meta. Shift does not count.
+   * Cmd+Left or Alt+Left, keep their default. `Mod+` is Ctrl or Meta. Shift does not count. A
+   * single letter after a modifier matches in either case, as the browser sends `k` for Cmd+K and
+   * `K` for Cmd+Shift+K. A letter alone keeps its case, as `a` and `A` type different text.
    */
   const keyMatches = (key: string, event: KeyboardEvent): boolean => {
     const plus = key.indexOf('+', 1);
     const modifier = plus > 0 ? key.slice(0, plus) : '';
-    if ((event.key === ' ' ? 'Space' : event.key) !== (plus > 0 ? key.slice(plus + 1) : key)) {
+    let name = plus > 0 ? key.slice(plus + 1) : key;
+    let pressed = event.key === ' ' ? 'Space' : event.key;
+    if (plus > 0 && name.length === 1) {
+      name = name.toLowerCase();
+      pressed = pressed.toLowerCase();
+    }
+    if (pressed !== name) {
       return false;
     }
     switch (modifier) {

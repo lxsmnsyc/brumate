@@ -2,25 +2,27 @@
 id: external-scripts
 title: External scripts
 status: todo
-priority: later
+priority: must
 type: feature
 outline: true
-milestone: backlog
+milestone: 0.9.0
 target:
 from:
-size: S
+size: M
 spike: false
 verify: 
 exclusive: []
 fulfilled_by: 
 gate: false
-added: 
+added: 2026-11-12
 owns: []
 shared: []
 reserves: []
 provides: []
 depends_on: []
 ---
+
+> 2026-11-12: a must feature of 0.9.0 (docs/debates/0.9.0-cut/debate.md). Sized M: it touches the parser, the server render, the loader and navigation. Decide the inline form (`<script inline>`) when refining; survey how Astro, Qwik (Partytown) and Next (`next/script` strategies) mark and delay such scripts first.
 
 # External scripts
 

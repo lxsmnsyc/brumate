@@ -1,5 +1,17 @@
 # @brumate/ui
 
+## 0.2.1
+
+### Patch Changes
+
+- 64f67bc: A non-modal `Popover` now closes when Tab leaves its panel. Tab from the last element goes to the element after the trigger, and Shift+Tab from the first goes back to the trigger. The panel sits at the end of the page, so Tab used to leave the document and the popover stayed open.
+- Updated dependencies [1b496e3]
+- Updated dependencies [0a494cf]
+- Updated dependencies [2b94abf]
+- Updated dependencies [9875a27]
+- Updated dependencies [0c8d9d1]
+  - brumate@0.7.1
+
 ## 0.2.0
 
 ### Minor Changes

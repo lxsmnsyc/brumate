@@ -2,6 +2,7 @@
 
 import type * as Highlight from '../../highlight.ts';
 import { element } from './dom.ts';
+import { trustedHTML } from '../trusted.ts';
 
 /** A place in a file that a stack names. */
 export interface Frame {
@@ -177,20 +178,22 @@ export async function codeView(
   // only the lines around the place stay, each line one `.l` element.
   box.insertAdjacentHTML(
     'beforeend',
-    module.highlightFile(place.url ? 'compiled.ts' : place.file, text, {
-      line_numbers: { start: 1 },
-      line: (index) => (index === target ? { class: 'error-line' } : undefined),
-      overlays:
-        word.length > 0
-          ? [
-              {
-                start: { line: target, character: place.column - 1 },
-                end: { line: target, character: place.column - 1 + word.length },
-                class: 'error-mark',
-              },
-            ]
-          : [],
-    }),
+    trustedHTML(
+      module.highlightFile(place.url ? 'compiled.ts' : place.file, text, {
+        line_numbers: { start: 1 },
+        line: (index) => (index === target ? { class: 'error-line' } : undefined),
+        overlays:
+          word.length > 0
+            ? [
+                {
+                  start: { line: target, character: place.column - 1 },
+                  end: { line: target, character: place.column - 1 + word.length },
+                  class: 'error-mark',
+                },
+              ]
+            : [],
+      }),
+    ),
   );
   const shown = [...box.querySelectorAll('code > .l')];
   for (const [index, line] of shown.entries()) {

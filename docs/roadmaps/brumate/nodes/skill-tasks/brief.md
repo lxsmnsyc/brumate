@@ -1,8 +1,8 @@
 ---
 id: skill-tasks
 title: Tasks that check what an agent writes with the skill
-status: todo
-priority: should
+status: done
+priority: must
 type: chore
 outline: false
 milestone: 0.8.0
@@ -12,7 +12,7 @@ size: S
 spike: false
 verify: 
 exclusive: []
-fulfilled_by: 
+fulfilled_by: f87466e8 (batch/brumate-release-0.8)
 gate: false
 added: 
 owns:

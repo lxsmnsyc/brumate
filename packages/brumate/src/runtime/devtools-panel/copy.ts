@@ -7,6 +7,7 @@ import { element, svg } from './dom.ts';
 import { ms } from './format.ts';
 import { known } from './info.ts';
 import type { ComponentInfo } from './info.ts';
+import { trustedHTML } from '../trusted.ts';
 
 /** The longest text of a value on screen, as the record cuts them. */
 const TEXT_LIMIT = 1000;
@@ -465,8 +466,9 @@ function drawCopyIcon(): SVGElement {
     'stroke-linejoin': 'round',
     'aria-hidden': 'true',
   });
-  node.innerHTML =
-    '<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/>';
+  node.innerHTML = trustedHTML(
+    '<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/>',
+  );
   return node;
 }
 

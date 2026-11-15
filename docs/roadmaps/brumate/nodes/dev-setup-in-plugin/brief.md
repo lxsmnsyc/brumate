@@ -1,8 +1,8 @@
 ---
 id: dev-setup-in-plugin
 title: The plugin sets up hot updates and the devtools for every client entry
-status: todo
-priority: could
+status: done
+priority: must
 type: feature
 outline: false
 milestone: 0.8.0
@@ -12,7 +12,7 @@ size: M
 spike: false
 verify:
 exclusive: []
-fulfilled_by:
+fulfilled_by: 4829af28 (batch/brumate-release-0.8)
 gate: false
 added: 2026-10-27
 owns:

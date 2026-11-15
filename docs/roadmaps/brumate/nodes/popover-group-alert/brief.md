@@ -1,8 +1,8 @@
 ---
 id: popover-group-alert
 title: PopoverGroup and Alert
-status: todo
-priority: could
+status: done
+priority: must
 type: feature
 outline: false
 milestone: 0.8.0
@@ -12,7 +12,7 @@ size: S
 spike: false
 verify: pnpm --filter @brumate/ui exec vitest run test/popover-group.test.ts
 exclusive: []
-fulfilled_by: 
+fulfilled_by: 87526e79 (batch/brumate-release-0.8)
 gate: false
 added: 
 owns:

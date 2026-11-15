@@ -49,6 +49,18 @@ describe('Trusted Types', () => {
     expect(record.scripts).toEqual(['$bS(1)']);
   });
 
+  it('reuses the policy of another copy of the core, as the browser refuses a second one', async () => {
+    const record = stubTrustedTypes();
+    const first = await import('../src/runtime/trusted.ts');
+    first.trustedHTML('<p>One</p>');
+    // A hot update or a second bundle evaluates the module again.
+    vi.resetModules();
+    const second = await import('../src/runtime/trusted.ts');
+    expect(second.trustedHTML('<p>Two</p>')).toBe('<p>Two</p>');
+    expect(record.policies).toEqual(['brumate']);
+    expect(record.html).toEqual(['<p>One</p>', '<p>Two</p>']);
+  });
+
   it('passes strings as they are where the browser has no Trusted Types', async () => {
     const { trustedHTML, trustedScript } = await import('../src/runtime/trusted.ts');
     expect(trustedHTML('<p>Hi</p>')).toBe('<p>Hi</p>');
