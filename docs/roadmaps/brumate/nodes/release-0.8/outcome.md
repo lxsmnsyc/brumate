@@ -4,7 +4,7 @@
 
 - The five open should fixes moved back to 0.8.1 as must nodes on `main` (515c1327).
 - `main` (0.7.1, 0.7.2) merged into `release/0.8` (10d853fd), with eight conflicts resolved by the merge notes of release-0.7.1. The Trusted Types fix of 0.7.2 is applied by hand to the split dock modules in `runtime/devtools-panel/`.
-- Changesets: 12 on `release/0.8`. None needed merging. brumate: 8 minor, 2 patch. @brumate/ui: 3 minor.
+- Changesets: 12 on `release/0.8`. None needed merging. brumate: 7 minor, 2 patch. @brumate/ui: 3 minor. @brumate/language-core: 1 minor.
 - Promotion pull request #519 (`release/0.8` -> `main`).
 
 ## Deviations
