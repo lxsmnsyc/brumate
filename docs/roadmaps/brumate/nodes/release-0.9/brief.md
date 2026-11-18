@@ -29,6 +29,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: view-transitions
+    kind: hard
+    why: a must feature of the 0.9.0 cut (added 2026-11-18)
   - on: style-files
     kind: hard
     why: a must feature of the 0.9.0 cut (added 2026-11-18)

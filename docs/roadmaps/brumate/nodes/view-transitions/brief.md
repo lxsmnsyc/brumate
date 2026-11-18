@@ -2,10 +2,10 @@
 id: view-transitions
 title: Named view transitions
 status: todo
-priority: later
+priority: must
 type: feature
 outline: true
-milestone: backlog
+milestone: 0.9.0
 target:
 from:
 size: M
@@ -21,6 +21,8 @@ reserves: []
 provides: []
 depends_on: []
 ---
+
+> 2026-11-18: made a must of 0.9.0 by the maintainer, the 10th feature of the cut (docs/debates/0.9.0-cut/debate.md, amendment 2026-11-18). It pairs with partial-route-responses: a client navigation can name the elements it animates.
 
 # Named view transitions
 

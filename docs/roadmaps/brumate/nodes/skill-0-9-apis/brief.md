@@ -26,6 +26,9 @@ shared: []
 reserves: []
 provides: []
 depends_on:
+  - on: view-transitions
+    kind: hard
+    why: the skill teaches viewTransition, a 0.9 API (added 2026-11-18)
   - on: module-signals
     kind: hard
     why: the skill teaches module signals, a 0.9 API (added 2026-11-18)
