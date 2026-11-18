@@ -1,12 +1,12 @@
 ---
 id: style-files
 title: Component CSS as Vite stylesheets in builds
-status: todo
+status: active
 priority: must
 type: story
 story:
 early: false
-outline: true
+outline: false
 milestone: 0.9.0
 target:
 ship: auto
@@ -30,6 +30,8 @@ depends_on:
     kind: hard
     why: the story is built only after the spike's go and its design
 ---
+
+> 2026-11-18: the maintainer gave the spike's partial go: one stylesheet per route bundle plus a shared chunk, not one per component. Children: style-files-modules (L, carries the byte gate on a real build; a miss stops the story), style-files-links (M), style-files-navigation (M), style-files-postcss (M), style-files-tests (S). Design in `../style-files-spike/outcome.md`.
 
 > 2026-11-18: made a must of 0.9.0 by the maintainer, after mcp-server was deferred (docs/debates/0.9.0-cut/debate.md, amendment 2026-11-18).
 
