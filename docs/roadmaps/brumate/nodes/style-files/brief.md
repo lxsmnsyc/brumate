@@ -2,7 +2,7 @@
 id: style-files
 title: Component CSS as Vite stylesheets in builds
 status: todo
-priority: should
+priority: must
 type: story
 story:
 early: false
@@ -27,6 +27,8 @@ reserves: []
 provides: []
 depends_on: []
 ---
+
+> 2026-11-18: made a must of 0.9.0 by the maintainer, after mcp-server was deferred (docs/debates/0.9.0-cut/debate.md, amendment 2026-11-18).
 
 > 2026-11-12: should in 0.9.0 (docs/debates/0.9.0-cut/debate.md), the reserve if a must feature slips. The gated spike comes first. Size is recorded, not a gate (GOAL.md, Constraints).
 

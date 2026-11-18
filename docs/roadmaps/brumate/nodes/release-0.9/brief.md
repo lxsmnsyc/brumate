@@ -29,6 +29,15 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: style-files
+    kind: hard
+    why: a must feature of the 0.9.0 cut (added 2026-11-18)
+  - on: module-signals
+    kind: hard
+    why: a must feature of the 0.9.0 cut (added 2026-11-18)
+  - on: server-components-spike
+    kind: hard
+    why: a must of 0.9.0, not counted as a feature (added 2026-11-18)
   - on: partial-route-responses
     kind: hard
     why: a must feature of the 0.9.0 cut

@@ -2,12 +2,12 @@
 id: module-signals
 title: $signal and $memo at the top level of a module
 status: todo
-priority: could
+priority: must
 type: feature
 story:
 early: false
 outline: false
-milestone: backlog
+milestone: 0.9.0
 target:
 ship: auto
 land: auto
@@ -46,6 +46,8 @@ depends_on:
     kind: hard
     why: a module memo compiles to derived() of brumate/store
 ---
+
+> 2026-11-18: made a must of 0.9.0 by the maintainer, after mcp-server was deferred (docs/debates/0.9.0-cut/debate.md, amendment 2026-11-18).
 
 # $signal and $memo at the top level of a module
 

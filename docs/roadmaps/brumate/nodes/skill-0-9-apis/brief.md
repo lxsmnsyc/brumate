@@ -26,6 +26,9 @@ shared: []
 reserves: []
 provides: []
 depends_on:
+  - on: module-signals
+    kind: hard
+    why: the skill teaches module signals, a 0.9 API (added 2026-11-18)
   - on: async-effects
     kind: hard
     why: it teaches the API

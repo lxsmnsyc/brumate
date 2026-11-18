@@ -2,7 +2,7 @@
 id: server-components-spike
 title: Spike: server components
 status: todo
-priority: should
+priority: must
 type: spike
 outline: true
 milestone: 0.9.0
@@ -21,6 +21,8 @@ reserves: []
 provides: []
 depends_on: []
 ---
+
+> 2026-11-18: made a must of 0.9.0 by the maintainer, after mcp-server was deferred (docs/debates/0.9.0-cut/debate.md, amendment 2026-11-18).
 
 > 2026-11-12: should in 0.9.0 (docs/debates/0.9.0-cut/debate.md). Order step 6 of the proposals waited for the smaller client, which ended with the no-go of values-spike. The maintainer decides go or no-go from the outcome.
 
