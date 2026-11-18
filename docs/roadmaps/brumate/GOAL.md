@@ -20,14 +20,15 @@ branches:
   # After 0.7.0 merged (the maintainer, 2026-11-09): `next` is closed and each minor release gets its
   # own branch, `release/<major>.<minor>`, cut from `main`. 0.8.0 work targets `release/0.8`; `main` is
   # merged into it after every patch release from `main`.
-  feature: release/0.8
-  fix: release/0.8
-  docs: release/0.8
-  chore: release/0.8
-  refactor: release/0.8
-  spike: release/0.8
+  # After 0.8.0 merged (the maintainer, 2026-11-18): 0.9.0 work targets `release/0.9`, cut from `main`.
+  feature: release/0.9
+  fix: release/0.9
+  docs: release/0.9
+  chore: release/0.9
+  refactor: release/0.9
+  spike: release/0.9
   hotfix: main
-  promote: release/0.8 -> main
+  promote: release/0.9 -> main
 ---
 
 # brumate

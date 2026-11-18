@@ -27,4 +27,4 @@ On 78e04f73: build, lint, format:check and typecheck pass. pnpm test passes, exc
 
 ## Release
 
-Waiting for the maintainer to merge #519, then the Version Packages pull request. After that: set released, cut `release/0.9` from `main`, close `release/0.8`.
+Released 2026-11-18. The maintainer merged #519 (promotion) and #520 (Version Packages). brumate 0.8.0, @brumate/ui 0.3.0 and @brumate/language-core 0.3.0 are on npm; Release and Test passed on 682472e4. `release/0.9` is cut from `main` at 682472e4 and `release/0.8` is closed.

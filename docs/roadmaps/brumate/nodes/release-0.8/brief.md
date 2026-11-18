@@ -1,7 +1,7 @@
 ---
 id: release-0.8
 title: Release brumate 0.8.0
-status: active
+status: released
 priority: must
 type: release
 outline: false
@@ -79,10 +79,10 @@ Promote `release/0.8` to `main` and publish brumate 0.8.0 and @brumate/ui, with 
 
 ## Acceptance
 
-- [ ] Open should and could nodes of 0.8.0 are moved to the next milestone (open fixes to 0.8.1: done 2026-11-15), and the changesets on `release/0.8` are merged.
-- [ ] All checks pass; the results are in the outcome.
-- [ ] Todos gzip JS before `load` is no larger than 0.7.0 (13.8 kB), or the outcome names the node that grew it and by how much.
-- [ ] The maintainer merges the promotion and the Version Packages pull requests, and brumate 0.8.0 is on npm.
+- [x] Open should and could nodes of 0.8.0 are moved to the next milestone (open fixes to 0.8.1: done 2026-11-15), and the changesets on `release/0.8` are merged.
+- [x] All checks pass; the results are in the outcome.
+- [x] Todos gzip JS before `load` is no larger than 0.7.0 (13.8 kB), or the outcome names the node that grew it and by how much.
+- [x] The maintainer merges the promotion and the Version Packages pull requests, and brumate 0.8.0 is on npm.
 
 ## Sizing
 
