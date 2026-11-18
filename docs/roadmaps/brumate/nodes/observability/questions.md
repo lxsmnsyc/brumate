@@ -13,3 +13,7 @@ Options:
 Recommendation: A. The reason to have both sides is one trace for a slow click, and a header that only exists when the app opted in to tracing costs nothing for others. C adds an option for a case (tracing the browser but hiding the link) that no one has asked for.
 
 If you do not answer, the children build A.
+
+## Answer (the maintainer, 2026-11-18)
+
+A: the browser sends `traceparent` with server calls and navigations only when it has an `onTrace`.
