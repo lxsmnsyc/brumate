@@ -31,6 +31,8 @@ depends_on:
     why: the story is built only after the spike's go and its design
 ---
 
+> 2026-11-18: style-files-modules missed the byte gate by +862 B gzip (+0.46%) over two views (CSS gzips better inline; bundle CSS includes components a page does not render). The maintainer chose to continue: size is recorded, not a gate. style-files-links must also fix the e2e regression on /ui/selection-indicator (demo CSS linked after the script) before the story lands.
+
 > 2026-11-18: the maintainer gave the spike's partial go: one stylesheet per route bundle plus a shared chunk, not one per component. Children: style-files-modules (L, carries the byte gate on a real build; a miss stops the story), style-files-links (M), style-files-navigation (M), style-files-postcss (M), style-files-tests (S). Design in `../style-files-spike/outcome.md`.
 
 > 2026-11-18: made a must of 0.9.0 by the maintainer, after mcp-server was deferred (docs/debates/0.9.0-cut/debate.md, amendment 2026-11-18).
