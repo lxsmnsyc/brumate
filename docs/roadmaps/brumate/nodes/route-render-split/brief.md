@@ -4,8 +4,8 @@ title: Route rendering leaves server.ts
 status: active
 priority: must
 type: refactor
-story: partial-route-responses
-early: true
+story:
+early: false
 outline: false
 milestone: 0.9.0
 target:
@@ -29,6 +29,8 @@ reserves: []
 provides: []
 depends_on: []
 ---
+
+> 2026-11-18: taken out of the parked partial-route-responses story; it lands on release/0.9 on its own (navigation debate).
 
 # Route rendering leaves server.ts
 

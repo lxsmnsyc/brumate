@@ -2,12 +2,12 @@
 id: partial-docs
 title: Document partial responses and record the numbers
 status: todo
-priority: must
+priority: later
 type: docs
 story: partial-route-responses
 early: false
 outline: false
-milestone: 0.9.0
+milestone: backlog
 target:
 ship: auto
 land: auto
@@ -39,6 +39,8 @@ depends_on:
     kind: hard
     why: the final numbers come from its script and its baseline
 ---
+
+> 2026-11-18: parked by the maintainer after the navigation debate (../../../../debates/navigation/debate.md). It restarts only when an app with a server asks for partial navigation, or a throttled run of benchmarks/navigation shows a wait a person would notice.
 
 # Document partial responses and record the numbers
 

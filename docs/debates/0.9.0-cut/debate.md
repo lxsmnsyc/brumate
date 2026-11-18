@@ -66,3 +66,5 @@ The maintainer deferred mcp-server to the backlog (priority later): they want to
 The same day, to stay inside the 8-to-12 target, the maintainer made three nodes must: style-files (the reserve), module-signals (from the backlog; brief of 2026-11-18) and server-components-spike (gated; a spike adds no API, so it is not counted). The cut now has 9 features. With partial-route-responses and style-files both L stories, a slip of both leaves 7.
 
 Then the maintainer added view-transitions from the backlog as the 10th feature (M; rejected earlier as low-rated, now chosen because it pairs with partial-route-responses and adds no third L story). The cut has 10 features.
+
+Later the same day the maintainer approved the navigation debate (../navigation/debate.md): partial-route-responses is parked in the backlog, so the cut has 9 features. route-render-split and partial-measure leave the story and land on release/0.9 on their own. state-dedupe-spike is added as a should; it adds no API and is not counted.

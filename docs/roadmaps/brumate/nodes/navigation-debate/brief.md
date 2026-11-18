@@ -1,10 +1,10 @@
 ---
 id: navigation-debate
 title: "Debate: partial responses, a component router, or the full-page swap"
-status: active
+status: done
 priority: must
 type: docs
-story: partial-route-responses
+story:
 early: false
 outline: false
 milestone: 0.9.0
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: true
 added: 2026-11-18
-spent:
+spent: 235000
 owns:
   - docs/debates/navigation/**
   - docs/roadmaps/brumate/nodes/navigation-debate/**

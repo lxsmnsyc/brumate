@@ -2,7 +2,7 @@
 goal: Choose brumate's next navigation model, partial route responses, a component-based client router, or keeping today's full-page swap
 date: 2026-11-18
 rounds: 3 of 3
-status: proposed
+status: approved
 roadmap: ../../roadmaps/brumate
 supersedes: none
 decision: none

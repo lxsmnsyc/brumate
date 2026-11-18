@@ -4,7 +4,7 @@ title: Measure a docs navigation, bytes and time
 status: active
 priority: must
 type: chore
-story: partial-route-responses
+story:
 early: false
 outline: false
 milestone: 0.9.0
@@ -28,6 +28,8 @@ reserves: []
 provides: []
 depends_on: []
 ---
+
+> 2026-11-18: taken out of the parked partial-route-responses story; it lands on release/0.9 on its own (navigation debate).
 
 # Measure a docs navigation, bytes and time
 

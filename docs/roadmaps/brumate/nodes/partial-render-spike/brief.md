@@ -2,12 +2,12 @@
 id: partial-render-spike
 title: Spike: render only the changed routes
 status: todo
-priority: must
+priority: later
 type: experiment
 story: partial-route-responses
 early: false
 outline: false
-milestone: 0.9.0
+milestone: backlog
 target:
 ship: auto
 land: auto
@@ -34,6 +34,8 @@ depends_on:
     kind: hard
     why: the debate decides whether this story goes on and fixes the gate threshold
 ---
+
+> 2026-11-18: parked by the maintainer after the navigation debate (../../../../debates/navigation/debate.md). It restarts only when an app with a server asks for partial navigation, or a throttled run of benchmarks/navigation shows a wait a person would notice.
 
 # Spike: render only the changed routes
 

@@ -1,13 +1,13 @@
 ---
 id: partial-route-responses
 title: A client navigation fetches only the routes that change
-status: active
-priority: must
+status: todo
+priority: later
 type: story
 story:
 early: false
 outline: false
-milestone: 0.9.0
+milestone: backlog
 target:
 ship: auto
 land: auto
@@ -31,6 +31,8 @@ depends_on:
     kind: hard
     why: both change how navigate.ts applies the next page; this builds on the attribute ownership it adds
 ---
+
+> 2026-11-18: parked by the maintainer after the navigation debate (../../../../debates/navigation/debate.md). It restarts only when an app with a server asks for partial navigation, or a throttled run of benchmarks/navigation shows a wait a person would notice.
 
 > 2026-11-18: the maintainer asked whether a component router would be better. Order now: partial-measure, then navigation-debate (gated), then partial-render-spike (gated: at least 40% fewer gzip bytes, or the debate's threshold). A no-go at either gate stops the story and keeps the full-page swap. route-render-split goes on, since it only splits server.ts.
 

@@ -2,12 +2,12 @@
 id: partial-fallbacks
 title: Every case that must stay a full page, in e2e
 status: todo
-priority: must
+priority: later
 type: feature
 story: partial-route-responses
 early: false
 outline: false
-milestone: 0.9.0
+milestone: backlog
 target:
 ship: auto
 land: auto
@@ -37,6 +37,8 @@ depends_on:
     kind: behavior
     via: partial-route-response
 ---
+
+> 2026-11-18: parked by the maintainer after the navigation debate (../../../../debates/navigation/debate.md). It restarts only when an app with a server asks for partial navigation, or a throttled run of benchmarks/navigation shows a wait a person would notice.
 
 # Every case that must stay a full page, in e2e
 
