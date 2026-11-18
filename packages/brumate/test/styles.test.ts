@@ -23,8 +23,10 @@ describe('style languages', () => {
     }
   }
 </style>`);
-    expect(result).toMatch(/\.card\[b-c-\w+\] \{\n\s+padding: 8px;\n\}/);
-    expect(result).toMatch(/\.card\[b-c-\w+\] p\[b-c-\w+\] \{\n\s+color: var\(--s-\w+-0\);\n\}/);
+    expect(result).toMatch(/\.card:where\(\[b-c-\w+\]\) \{\n\s+padding: 8px;\n\}/);
+    expect(result).toMatch(
+      /\.card:where\(\[b-c-\w+\]\) p:where\(\[b-c-\w+\]\) \{\n\s+color: var\(--s-\w+-0\);\n\}/,
+    );
   });
 
   it('compiles Less, then scopes it', () => {
@@ -37,8 +39,10 @@ describe('style languages', () => {
     }
   }
 </style>`);
-    expect(result).toMatch(/\.card\[b-c-\w+\] \{\n\s+padding: 8px;\n\}/);
-    expect(result).toMatch(/\.card\[b-c-\w+\] p\[b-c-\w+\] \{\n\s+color: var\(--s-\w+-0\);\n\}/);
+    expect(result).toMatch(/\.card:where\(\[b-c-\w+\]\) \{\n\s+padding: 8px;\n\}/);
+    expect(result).toMatch(
+      /\.card:where\(\[b-c-\w+\]\) p:where\(\[b-c-\w+\]\) \{\n\s+color: var\(--s-\w+-0\);\n\}/,
+    );
   });
 
   it('reports errors of the preprocessor', () => {
@@ -134,7 +138,7 @@ describe('scope attribute', () => {
     expect(plain).toBe('h1,h2 { margin: 0; }');
     // The scoped parts around the list are in each selector.
     expect(scoped).toMatch(
-      /^\.card\[[\w-]+\] h1 span\[[\w-]+\],\.card\[[\w-]+\] h2 span\[[\w-]+\] \{/,
+      /^\.card:where\(\[[\w-]+\]\) h1 span:where\(\[[\w-]+\]\),\.card:where\(\[[\w-]+\]\) h2 span:where\(\[[\w-]+\]\) \{/,
     );
   });
 
@@ -161,7 +165,7 @@ describe('minified styles', () => {
     const { server, render } = compile(source(style), { filename: 'Card.brm', hideNames: true });
     for (const code of [server, render]) {
       expect(code).toMatch(
-        /const \$\$css = "\.card\[b-c-\w+\], p\[b-c-\w+\]\{color:red;margin:0 auto!important\}";/,
+        /const \$\$css = "\.card:where\(\[b-c-\w+\]\), p:where\(\[b-c-\w+\]\)\{color:red;margin:0 auto!important\}";/,
       );
     }
   });
@@ -184,7 +188,7 @@ describe('<style global>', () => {
     const styles = result.plan.styles;
     expect(styles.css).toMatch(/^p \{ margin: 0; \}/);
     expect(styles.css).toMatch(/\.a b \{/);
-    expect(styles.css).toMatch(/\.card\[b-c-\w+\] \{/);
+    expect(styles.css).toMatch(/\.card:where\(\[b-c-\w+\]\) \{/);
     expect(styles.css).not.toMatch(/p\[b-c/);
     // Only the scoped rule marks elements.
     expect(styles.blocks[0]!.targets).toEqual([{ classes: ['card'] }]);

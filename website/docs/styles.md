@@ -22,6 +22,7 @@ Every selector in a `<style>` block matches only elements that the component its
 - Another component's `.note` is not affected, even with the same class name.
 - Elements that a child component renders are not affected either. See [Styling child components](#styling-child-components).
 - Tag selectors such as `p` are safe to use, because they match only this component's `<p>` elements.
+- Scoping adds no specificity. The scope attribute is written as `:where([b-c-<hash>])`, so `.a .b` keeps the specificity (0,2,0) it was written with, and a global or parent rule of the same written specificity that comes later in the page overrides it.
 
 `:global(…)` leaves part of a selector unscoped:
 
