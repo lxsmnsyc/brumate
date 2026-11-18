@@ -310,7 +310,8 @@ export function generateRender(
       setup.push(statement);
     }
   }
-  if (plan.styles.css) {
+  // With `styleFiles`, the stylesheet is a CSS module that the bundles of the build import.
+  if (plan.styles.css && !plan.styleFiles) {
     // A build (`hideNames`) sends the stylesheet without comments and whitespace.
     const css = plan.hideNames ? minifyCSS(plan.styles.css) : plan.styles.css;
     moduleBody.push(`const $$css = ${JSON.stringify(css)};`);

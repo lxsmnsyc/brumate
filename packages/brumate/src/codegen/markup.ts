@@ -1744,7 +1744,8 @@ export class Emitter {
   /** Emits the content of the component, without creating its scope. */
   emitComponentContent(setup: oxc.Node[]): void {
     const component = this.plan.graph.model.component;
-    if (this.plan.styles.css) {
+    // With `styleFiles`, the page links to the stylesheet of the bundle instead.
+    if (this.plan.styles.css && !this.plan.styleFiles) {
       // The stylesheet is written once per page, before the first instance. The browser adds it
       // to the head, so it is not in the markup.
       if (this.options.mode === 'client') {

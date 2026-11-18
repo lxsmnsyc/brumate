@@ -21,7 +21,8 @@ interface Rendered {
 async function renderFiles(files: Record<string, string>, hideNames = false): Promise<Rendered> {
   const results: Record<string, CompileResult> = {};
   for (const [name, source] of Object.entries(files)) {
-    const result = compile(source, { filename: name, hideNames });
+    // A build, as the Vite plugin compiles it, with the CSS in style modules.
+    const result = compile(source, { filename: name, hideNames, styleFiles: hideNames });
     results[name] = result;
     writeFileSync(new URL(`${name}.ts`, output), result.server.replace(/\.brm'/g, ".brm.ts'"));
   }
@@ -220,6 +221,8 @@ describe('scope of a block style', () => {
     const found = elements(html);
     expect(found.tag!.map(marks)).toEqual([`${attribute}-1`, `${attribute}-1`]);
     expect(found.plain!.map(marks)).toEqual(['', '']);
+    // The page links to the stylesheet of its bundle instead.
+    expect(html).not.toContain('<style');
   });
 });
 

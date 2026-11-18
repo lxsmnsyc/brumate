@@ -157,7 +157,21 @@ describe('minified styles', () => {
   const style =
     '<style>\n  /* note */\n  .card,\n  p {\n    color: red;\n    margin: 0 auto !important;\n  }\n</style>';
 
-  it('leaves out comments and whitespace in a build', () => {
+  it('leaves the stylesheet to its style module in a build', () => {
+    const result = compile(source(style), {
+      filename: 'Card.brm',
+      hideNames: true,
+      styleFiles: true,
+    });
+    for (const code of [result.server, result.render]) {
+      expect(code).not.toContain('$$css');
+      expect(code).not.toMatch(/\bstyle\(/);
+    }
+    // The Vite plugin serves `css` as the style module, and Vite's CSS pipeline minifies it.
+    expect(result.css).toMatch(/\.card\[b-c-\w+\],\s*p\[b-c-\w+\]/);
+  });
+
+  it('leaves out comments and whitespace in a build without style modules', () => {
     const { server, render } = compile(source(style), { filename: 'Card.brm', hideNames: true });
     for (const code of [server, render]) {
       expect(code).toMatch(
