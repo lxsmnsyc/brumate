@@ -1,7 +1,7 @@
 ---
 id: style-files-spike
 title: "Spike: component CSS as Vite stylesheets"
-status: active
+status: done
 priority: must
 type: experiment
 story:
@@ -20,7 +20,7 @@ exclusive: [bench]
 fulfilled_by:
 gate: true
 added: 2026-11-18
-spent:
+spent: 158000
 owns:
   - docs/roadmaps/brumate/nodes/style-files-spike/**
 shared: []
