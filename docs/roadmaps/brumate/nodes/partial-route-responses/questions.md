@@ -25,3 +25,8 @@ Today a hover fetches the full page and a click within 10 s reuses it when `x-br
 | C. Prefetch only on pointer down or touch start, partial | htmx `hx-trigger="mousedown"` pattern | least waste, least time saved |
 
 Recommendation: A. It keeps the saving where hovers happen most, and the keep tree rarely changes within 10 s; a mismatch falls back to one normal partial request.
+
+## Answers (the maintainer, 2026-11-18)
+
+1. B: partial responses are never stored in the page cache or shared caches (`cache-control: private`).
+2. A: hover prefetches the partial response with the current keep header; a click reuses it when keep and base still match, else it loads again.
