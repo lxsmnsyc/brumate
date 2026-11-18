@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-18
-spent:
+spent: 145000
 owns:
   - benchmarks/navigation/**
 shared: []

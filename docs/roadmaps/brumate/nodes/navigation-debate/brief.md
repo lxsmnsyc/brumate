@@ -1,7 +1,7 @@
 ---
 id: navigation-debate
 title: "Debate: partial responses, a component router, or the full-page swap"
-status: todo
+status: active
 priority: must
 type: docs
 story: partial-route-responses

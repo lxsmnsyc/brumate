@@ -1,0 +1,154 @@
+{
+  "goal": "Choose brumate's next navigation model: partial route responses, a component-based client router, or keeping today's full-page swap",
+  "research": false,
+  "max_rounds": 3,
+  "roadmap": "docs/roadmaps/brumate",
+  "supersedes": null,
+  "extra_axes": [],
+  "claims": [
+    {
+      "id": "J1",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "device",
+      "text": "Machine: 8 GB RAM, 13 GB free disk, load average 10 to 16 on 8 cores during this session with 2 to 3 workers running.",
+      "evidence": {
+        "type": "measured",
+        "source": "sysctl hw.memsize vm.loadavg; df -h",
+        "detail": ""
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J2",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Baseline on release/0.9 (d713634e), Chrome 157: /docs/styles to /docs/context full response 192164 B raw / 32477 B gzip, swap 61 to 71 ms median; /ui/button to /ui/dialog 321042 / 42432 B, swap 108 to 125 ms; tracker /about to /team 3155 / 1531 B, 18 to 20 ms. Load 15 to 28, medians trusted to about 20%.",
+      "evidence": {
+        "type": "measured",
+        "source": "node benchmarks/navigation/run.mjs (commit a79be26c on chore/partial-measure)",
+        "detail": "evidence/partial-measure-outcome.md"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J3",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "The route regions that change are 34% raw / 32% gzip of the docs response and 35% / 30% of the ui response, so a partial response can save at most about 68% (docs) and 70% (ui) gzip. /docs/context carries a 72.6 KB raw (10.9 KB gzip) state record outside every region and a 34.4 KB head, which a partial response must still send for the new route.",
+      "evidence": {
+        "type": "measured",
+        "source": "benchmarks/navigation/regions.mjs",
+        "detail": "evidence/partial-measure-outcome.md"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J4",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "The website deploys as static files (website/vercel.json outputDirectory dist/client; every page prerendered), so a server-rendered partial response cannot reach it unless the static build also writes partial files. examples/nitro and examples/kit-app run a server.",
+      "evidence": {
+        "type": "source",
+        "source": "website/vercel.json; website/vite.config.ts:95-100; examples/",
+        "detail": ""
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J5",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "tokens",
+      "text": "Navigation code today: runtime/navigate.ts 942 lines, runtime/client-routes.ts 233 lines. First-navigation JS is 7.3 KB gzip on docs, of which 5.1 KB is navigate plus client-routes; the first load of a docs page is 362.7 KB gzip of JS plus wasm.",
+      "evidence": {
+        "type": "measured",
+        "source": "wc -l; benchmarks/navigation/run.mjs",
+        "detail": "evidence/partial-measure-outcome.md"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J6",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "On 2026-10-30 the maintainer chose partial responses over a component router. Reasons recorded: a client router ships every page component to the browser, needs server-only components and await in components to run in the browser, and adds a render path beside resume.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/roadmaps/brumate/nodes/partial-route-responses/brief.md (Context)",
+        "detail": ""
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J7",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "browser-await is done: await $memo already runs in a browser render. server-components-spike is a 0.9.0 must, not started.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/roadmaps/brumate/nodes/browser-await/brief.md status done; nodes/server-components-spike/brief.md",
+        "detail": ""
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J8",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "tokens",
+      "text": "The partial-route-responses story is planned as 9 children: route-render-split S (built, waiting to land), partial-measure M (built), navigation-debate S, partial-render-spike M (gated, >=40% fewer gzip bytes), partial-server-render L, partial-client-apply L, partial-prefetch M, partial-fallbacks L, partial-docs S. Past L nodes in this roadmap spent about 0.3M to 0.9M tokens each (block-styles 896k, dock-graph 496k).",
+      "evidence": {
+        "type": "calibration",
+        "source": "docs/roadmaps/brumate/nodes/*/brief.md spent fields; memory of 0.8.0 nodes",
+        "detail": ""
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J9",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "GOAL.md: size is recorded, not a gate, from 2026-11-12; at equal size simpler wins (2026-11-02); the outcome from 0.9.0 is to ship the features an app needs first. Breaking changes are fine.",
+      "evidence": {
+        "type": "inferred",
+        "source": "docs/roadmaps/brumate/GOAL.md Outcome and Constraints",
+        "detail": "size does not decide; simplicity and app value do"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J10",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Static navigation today already keeps the layouts: the client shifts the IDs of the fetched static page and replaces only the changed routes.",
+      "evidence": {
+        "type": "measured",
+        "source": "partial-measure worker observation",
+        "detail": "evidence/partial-measure-outcome.md"
+      },
+      "ruling": "upheld"
+    }
+  ],
+  "questions": [],
+  "proofs": [],
+  "hypothesis": null,
+  "spend": []
+}
