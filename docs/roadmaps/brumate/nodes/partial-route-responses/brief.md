@@ -32,6 +32,8 @@ depends_on:
     why: both change how navigate.ts applies the next page; this builds on the attribute ownership it adds
 ---
 
+> 2026-11-18: the maintainer asked whether a component router would be better. Order now: partial-measure, then navigation-debate (gated), then partial-render-spike (gated: at least 40% fewer gzip bytes, or the debate's threshold). A no-go at either gate stops the story and keeps the full-page swap. route-render-split goes on, since it only splits server.ts.
+
 > 2026-11-12: a must feature of 0.9.0 (docs/debates/0.9.0-cut/debate.md). It is a story: its children merge into `feat/partial-route-responses`.
 > 2026-11-18: refined into 8 children. Two design questions are in [questions.md](./questions.md); the briefs assume the recommended answers until the maintainer decides.
 
