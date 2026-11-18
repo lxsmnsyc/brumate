@@ -1,5 +1,31 @@
 # brumate
 
+## 0.8.0
+
+### Minor Changes
+
+- 56bc064: - A `<style>` at the top level of a block body styles only the elements of that block and of the blocks inside it. The `<style>` of the file is the style of the outermost block, and `<style global>` and `:global(…)` work in any block.
+  - Its `${}` reads the item and the signals of the block script, and a change updates only the instance that reads it.
+  - The editor type-checks `${}` in a block style.
+- e532900: - `derived(sources, fn, initial?)` of `brumate/store` makes a read-only store from a store or an array of stores, for state at module level. It takes the forms of Svelte 4's `derived`: `fn(values)` returns the value, and `fn(values, set, update)` may return a cleanup. A result equal by `Object.is` does not notify, and a source and a derived store that reads it computes `fn` once per change.
+- 4829af2: - On the dev server, the plugin sets up hot updates and the devtools for a client entry that calls `start` from `brumate/loader`, so the entry only calls `start({ load })`. `devtools: false` turns the devtools off for it too, and a build ships none of it.
+- 3ce058a: - `getEvent().nonce` is the Content Security Policy nonce of the render, from the `nonce` option of `render`, `renderToStream` and the routes `handle`. A component that writes an inline script with `raw()` gives it this nonce.
+- c330ae1: A `<script data-rerun>` in the head runs again after every client navigation to a page that has it, once the new body is in place. Head scripts without the attribute keep their behavior.
+- c168ab1: - The dev server has a new dock with four workspaces: Inspect, Activity, Issues and Page.
+  - The dock has a search, a grip in place of the button, a bottom or right side, and panes you can resize.
+  - Each server call shows its arguments, result, error, timing and console output.
+  - Copy for an agent copies an error, a component or a handler run as Markdown, with long values cut and nothing from cookies or headers.
+- 437a424: - brumate uses seroval 1.8.0 and imports from its `read`, `write` and `shared` entry points.
+  - The answer of a server function is a byte stream of `@seroval/transport`, in place of brumate's own chunks. A page and a server from before this version cannot read each other's calls.
+  - The server checks the fields of brumate's values in the arguments of a call. A malformed one answers 400 with `The arguments of the call are malformed`, where it was a generic 500.
+  - The first server function call loads about 2.4 kB gzip more JavaScript (42.2 to 44.7 kB for the call chunk): seroval 1.8 and its plugins add 1.3 kB and 2.0 kB raw, and the transport reader 2.9 kB raw over the old one. The page load does not change.
+  - A result that cannot be serialized goes to the `onError` of the app.
+
+### Patch Changes
+
+- bfd1e98: The browser render wraps fewer memos. A memo that cannot throw, or that the markup always reads, no longer goes through `renderMemo` and its reads need no check. A memo that only a function, a handler or a block reads keeps the held error, which each read throws to the nearest `#try`.
+- e15b707: - The brumate skill teaches `derived` of `brumate/store`, `getEvent().nonce` with `data-rerun` for an inline head script, and `ColorScheme` with `colorScheme()` of `@brumate/ui`.
+
 ## 0.7.2
 
 ### Patch Changes
