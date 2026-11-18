@@ -80,6 +80,13 @@ export interface CompileOptions {
    */
   hideNames?: boolean;
   /**
+   * The stylesheet is a CSS module of its own, which the Vite plugin serves as
+   * `<file>?brumate-style&lang.css` in builds, so Vite's CSS pipeline makes it into the stylesheet
+   * of a bundle. The render and server modules then leave it out: they write no `$$css` and
+   * call no `style`. The CSS is in `css` of the result.
+   */
+  styleFiles?: boolean;
+  /**
    * Reads a module of reactive logic, such as `./counter.brm.ts`, that the
    * component imports. Defaults to reading it from disk next to `path`.
    */
@@ -438,7 +445,7 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
   if (errors.length > 0) {
     fail(errors);
   }
-  const plan = createPlan(file, graph, options.path, options.hideNames);
+  const plan = createPlan(file, graph, options.path, options.hideNames, options.styleFiles);
   const styleErrors = filterBySeverity([...plan.styles.diagnostics, ...plan.diagnostics], 'error');
   if (styleErrors.length > 0) {
     fail(styleErrors);
