@@ -1,7 +1,7 @@
 ---
 id: route-render-split
 title: Route rendering leaves server.ts
-status: todo
+status: active
 priority: must
 type: refactor
 story: partial-route-responses

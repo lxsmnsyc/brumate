@@ -1,7 +1,7 @@
 ---
 id: partial-route-responses
 title: A client navigation fetches only the routes that change
-status: todo
+status: active
 priority: must
 type: story
 story:
