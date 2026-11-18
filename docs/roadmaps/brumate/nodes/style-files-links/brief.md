@@ -46,5 +46,7 @@ depends_on:
 ## Acceptance
 
 - [ ] A built page has no component `<style>` in the body and links its stylesheets in the head in a fixed order; rule order no longer depends on how the user reached the page (test).
-- [ ] The byte gate of style-files-modules still holds with the links in place.
+- [ ] Website e2e passes, including the axe color-contrast check on `/ui/selection-indicator` (the demo's stylesheet must be linked before its component, not after the script; style-files-modules outcome).
+- [ ] `it.fails('reaches a render outside the routes')` in `test/styles/style-files.test.ts` becomes a plain passing `it`: `render()` and `renderToStream()` outside `routes` get the component CSS in a build.
+- [ ] Record the two-view bytes again (style-files-modules measured +862 B gzip over release/0.9; the maintainer accepted it).
 - [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck` and the brumate style tests.

@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-18
-spent:
+spent: 283000
 owns: []
 shared:
   - packages/brumate/src/vite.ts
