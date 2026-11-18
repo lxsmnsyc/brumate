@@ -1,5 +1,32 @@
 # @brumate/ui
 
+## 0.3.0
+
+### Minor Changes
+
+- 3ce058a: - A `ColorScheme` part keeps the choice of light, dark or system in a cookie. The server renders the `light` or `dark` class from it, so the first paint has no flash, and a change writes the cookie and the class. `as="html"` in the root layout puts the class on `<html>`, with a script in the head for `system` that carries the nonce of the render.
+  - `colorScheme()` from `@brumate/ui/color-scheme.brm.ts` reads the choice from the ColorScheme around a part and changes it. `ColorSchemeContext` holds it.
+  - `@brumate/ui/color-scheme.ts` has `readColorScheme`, `parseColorScheme`, `colorSchemeCookie`, `colorSchemeScript` and `resolveColorScheme`.
+- dac71c4: - `MenuTrigger` takes `trigger="contextmenu"`. The menu opens at the pointer on a right click and at a touch held for half a second, and under the focused element on the context menu key or Shift+F10. It is the same `Menu`, with its keys and submenus, and Escape gives focus back.
+  - `DialogTrigger` takes `shortcut`, such as `Mod+K`, written as the keys of `prevent`. It toggles the overlay from anywhere in the page, and leaves the key to a text field or to a handler that prevented it. `shortcutInInput` opens it from a text field too.
+  - A recipe for a command palette in the Autocomplete docs.
+  - `OverlayTriggerState` has `point`, and `followTrigger` of `position.ts` takes an `Anchor`, with `pointAnchor(x, y)`, so a Popover opens at a point.
+- 87526e7: - `PopoverGroup` keeps non-modal popovers open while focus moves between them. Inside it, focus on the trigger or the panel of another popover of the group closes none, and `Tab` from the end of a panel goes to the next element after its trigger.
+  - `Alert` is a `<div role="alert">` with no state.
+
+### Patch Changes
+
+- Updated dependencies [56bc064]
+- Updated dependencies [e532900]
+- Updated dependencies [4829af2]
+- Updated dependencies [3ce058a]
+- Updated dependencies [c330ae1]
+- Updated dependencies [c168ab1]
+- Updated dependencies [bfd1e98]
+- Updated dependencies [437a424]
+- Updated dependencies [e15b707]
+  - brumate@0.8.0
+
 ## 0.2.1
 
 ### Patch Changes

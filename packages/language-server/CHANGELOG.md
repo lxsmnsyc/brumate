@@ -1,5 +1,21 @@
 # @brumate/language-server
 
+## 0.1.18
+
+### Patch Changes
+
+- Updated dependencies [56bc064]
+- Updated dependencies [e532900]
+- Updated dependencies [4829af2]
+- Updated dependencies [3ce058a]
+- Updated dependencies [c330ae1]
+- Updated dependencies [c168ab1]
+- Updated dependencies [bfd1e98]
+- Updated dependencies [437a424]
+- Updated dependencies [e15b707]
+  - brumate@0.8.0
+  - @brumate/language-core@0.3.0
+
 ## 0.1.17
 
 ### Patch Changes

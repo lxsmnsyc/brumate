@@ -1,5 +1,26 @@
 # @brumate/language-core
 
+## 0.3.0
+
+### Minor Changes
+
+- 56bc064: - A `<style>` at the top level of a block body styles only the elements of that block and of the blocks inside it. The `<style>` of the file is the style of the outermost block, and `<style global>` and `:global(…)` work in any block.
+  - Its `${}` reads the item and the signals of the block script, and a change updates only the instance that reads it.
+  - The editor type-checks `${}` in a block style.
+
+### Patch Changes
+
+- Updated dependencies [56bc064]
+- Updated dependencies [e532900]
+- Updated dependencies [4829af2]
+- Updated dependencies [3ce058a]
+- Updated dependencies [c330ae1]
+- Updated dependencies [c168ab1]
+- Updated dependencies [bfd1e98]
+- Updated dependencies [437a424]
+- Updated dependencies [e15b707]
+  - brumate@0.8.0
+
 ## 0.2.13
 
 ### Patch Changes
