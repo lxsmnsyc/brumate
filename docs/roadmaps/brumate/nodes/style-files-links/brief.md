@@ -1,7 +1,7 @@
 ---
 id: style-files-links
 title: "Pages link component stylesheets in the head"
-status: todo
+status: active
 priority: must
 type: feature
 story: style-files

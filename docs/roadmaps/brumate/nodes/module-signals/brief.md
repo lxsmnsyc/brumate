@@ -1,7 +1,7 @@
 ---
 id: module-signals
 title: $signal and $memo at the top level of a module
-status: todo
+status: active
 priority: must
 type: feature
 story:
