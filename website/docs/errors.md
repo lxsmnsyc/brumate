@@ -118,9 +118,9 @@ A `<script>` is inside an element, or after other markup in a block.
 
 ## BRM011
 
-`<style> must be at the top level`
+`<style> must be at the top level of the file or of a block`
 
-A `<style>` is inside an element or a block.
+A `<style>` is inside an element.
 
 ```brm
 <style>
@@ -556,6 +556,25 @@ A `<style>` has an attribute other than `lang` and `global`.
     color: red;
   }
 </style>
+```
+
+## BRM207
+
+`#reveal has no style of its own`
+
+A `<style>` is in the body of a `#reveal`, which only orders the bodies inside it.
+
+```brm
+<style>
+  p {
+    color: red;
+  }
+</style>
+#reveal {
+  #loading {
+    <p>Loaded</p>
+  }
+}
 ```
 
 ## BRM190

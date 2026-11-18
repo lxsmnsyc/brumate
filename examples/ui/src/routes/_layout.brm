@@ -1,11 +1,13 @@
 <script>
   import { $props } from 'brumate/signals';
+  import ColorScheme from '@brumate/ui/ColorScheme.brm';
   import VisuallyHidden from '@brumate/ui/VisuallyHidden.brm';
 
+  // The class of the choice is on <html>.
   const { children } = $props();
 </script>
 
-<html lang="en">
+<ColorScheme as="html" lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -14,7 +16,7 @@
     <VisuallyHidden as="a" href="#main" focusable class="skip">Skip to the content</VisuallyHidden>
     <main id="main">{children}</main>
   </body>
-</html>
+</ColorScheme>
 
 <style>
   /* The parts are unstyled. These styles are the page's, so each part is easy to see. */

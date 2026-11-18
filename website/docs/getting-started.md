@@ -149,6 +149,8 @@ The dev server updates the page when you save a component, and keeps its state w
 - An edit of the markup, or one that adds or removes a value, renders the page again without reloading it. The server renders the new markup, and each signal of the component's script keeps its value, by its name. Signals in blocks, such as in a `#for` body, start again.
 - A file that does not compile reloads the page, which shows the error. See [`errorPage`](./reference-plugin.md#errorpageerror-server).
 
+A client entry that calls `start` from `brumate/loader` itself gets the same updates and the devtools: the plugin sets them up on the dev server, so the entry only calls `start({ load })`.
+
 Rendering again uses the client router. With [`navigate: false`](./navigation.md#links-that-the-browser-loads), the page reloads instead.
 
 An edit of a [module of reactive logic](./reactive-modules.md) updates the components that call it in the same way.

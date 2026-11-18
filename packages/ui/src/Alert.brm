@@ -1,0 +1,27 @@
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
+
+  export interface AlertOwnProps {
+    /** The message. */
+    children?: unknown;
+  }
+
+  /**
+   * The props of Alert. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type AlertProps<T extends AsTarget = 'div'> = AsProps<T, AlertOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'div'">
+  import { $props } from 'brumate/signals';
+
+  /**
+   * A message that a screen reader announces as it appears, such as a banner for a failed save. It
+   * has no state. Render it only while there is a message, and wrap it in `#key` to announce the
+   * same message again.
+   */
+  const { as = 'div', children, ...rest } = $props<AlertProps<T>>();
+</script>
+
+<{as} role="alert" aria-atomic="true" {...rest}>{children}</>

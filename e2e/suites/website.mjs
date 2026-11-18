@@ -338,6 +338,45 @@ export async function run({ browser, url, runner }) {
     await page.close();
   }
 
+  // The style in a block: a click changes the computed style of one row only.
+  {
+    const page = await browser.newPage();
+    const errors = watch(page);
+    const flow = runner.flow('website', { page, errors });
+    let result;
+    await flow('/docs/control-flow: the block style sample renders its rows', async () => {
+      await page.goto(`${url}/docs/control-flow`, { waitUntil: 'load' });
+      await page.locator('h2', { hasText: 'A style in a block' }).scrollIntoViewIfNeeded();
+      result = page.locator('.live-result:has(.tag)').first();
+      await result.locator('.tag').nth(2).waitFor({ timeout: TIMEOUT });
+    });
+    await flow('/docs/control-flow: a click changes the style of one row', async () => {
+      const backgrounds = () =>
+        result
+          .locator('.tag')
+          .evaluateAll((tags) => tags.map((tag) => getComputedStyle(tag).backgroundColor));
+      const before = await backgrounds();
+      assert(
+        before.every((color) => color === 'rgba(0, 0, 0, 0)'),
+        `the rows start with the backgrounds ${JSON.stringify(before)}`,
+      );
+      await result.locator('.tag').nth(1).click();
+      await page.waitForFunction(
+        () =>
+          getComputedStyle(document.querySelectorAll('.live-result .tag')[1]).backgroundColor ===
+          'rgb(65, 105, 225)',
+        null,
+        { timeout: 5000 },
+      );
+      const after = await backgrounds();
+      assert(
+        after[0] === before[0] && after[2] === before[2],
+        `the other rows changed: ${JSON.stringify(after)}`,
+      );
+    });
+    await page.close();
+  }
+
   // The home page, and client navigation between docs pages.
   {
     const page = await browser.newPage();
@@ -483,6 +522,50 @@ export async function run({ browser, url, runner }) {
         'the page still shows the state page',
       );
     });
+    await flow(
+      '/docs: a head script with data-rerun runs on a link and on the back button',
+      async () => {
+        // The website has no such script, so the pages get one from the route.
+        await page.route('**/*', async (route) => {
+          const response = await route.fetch();
+          const type = response.headers()['content-type'] ?? '';
+          if (!type.includes('text/html')) {
+            await route.fulfill({ response });
+            return;
+          }
+          const script =
+            '<script data-rerun>window.__e2eRerun = (window.__e2eRerun || 0) + 1</script>';
+          const body = (await response.text()).replace(/<head[^>]*>/, (head) => head + script);
+          await route.fulfill({ response, body });
+        });
+        try {
+          await page.goto(`${url}/docs`, { waitUntil: 'load' });
+          await page.evaluate(() => (window.__e2eSamePage = true));
+          const count = () => page.evaluate(() => window.__e2eRerun);
+          assert((await count()) === 1, `the first load ran the script ${await count()} times`);
+          await page.locator('.sidebar a[href="/docs/routing"]').click();
+          await page.waitForURL(`${url}/docs/routing`, { timeout: 5000 });
+          await page.waitForFunction(() => window.__e2eRerun === 2, null, { timeout: 5000 });
+          assert(
+            await page.evaluate(() => window.__e2eSamePage === true),
+            'the link loaded a new page',
+          );
+          await page.goBack();
+          await page.waitForURL(`${url}/docs`, { timeout: 5000 });
+          await page.waitForFunction(() => window.__e2eRerun === 3, null, { timeout: 5000 });
+          assert(
+            await page.evaluate(() => window.__e2eSamePage === true),
+            'the back button loaded a new page',
+          );
+          assert(
+            (await page.locator('script[data-rerun]').count()) === 1,
+            'the head holds more than one copy',
+          );
+        } finally {
+          await page.unroute('**/*');
+        }
+      },
+    );
     await page.close();
   }
 
@@ -1185,6 +1268,16 @@ export async function run({ browser, url, runner }) {
       await page.keyboard.press('Escape');
       await settle();
       assert((await focused()) === 'Rename', `focus is on "${await focused()}" after Escape`);
+      // A shortcut of a DialogTrigger opens its own dialog only, not the search of the site.
+      await visit('autocomplete');
+      await page.keyboard.press('ControlOrMeta+j');
+      await page.waitForSelector('[role=dialog][aria-label=Commands]');
+      assert(
+        (await page.locator('[role=dialog]').count()) === 1,
+        `${await page.locator('[role=dialog]').count()} dialogs are open after the shortcut`,
+      );
+      await page.keyboard.press('ControlOrMeta+j');
+      await page.waitForFunction(() => document.querySelectorAll('[role=dialog]').length === 0);
       // Modal: a second modal opens over the first, and Escape closes only the top one.
       await visit('modal');
       await page.locator('button.ui-button', { hasText: /^Edit the greeting$/ }).click();

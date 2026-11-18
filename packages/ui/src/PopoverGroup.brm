@@ -1,0 +1,34 @@
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
+
+  export interface PopoverGroupOwnProps {
+    /** The popovers of the group, with their triggers, such as the menus of a nav bar. */
+    children?: unknown;
+  }
+
+  /**
+   * The props of PopoverGroup. `as` takes an element name or a component, and the other props are
+   * those of the target.
+   */
+  export type PopoverGroupProps<T extends AsTarget = 'div'> = AsProps<T, PopoverGroupOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'div'">
+  import { $id, $props, $setContext } from 'brumate/signals';
+  import { PopoverGroupContext } from './contexts.ts';
+
+  /**
+   * Popovers that share focus, such as the menus of a nav bar. A non-modal Popover inside it does
+   * not close when focus moves to the trigger or the panel of another popover of the group, so
+   * Tab can go from one to the next with both open. Focus that goes anywhere else still closes it.
+   *
+   * It renders one element. A trigger belongs to the group when it is inside this element, and a
+   * panel when its Popover is.
+   */
+  const { as = 'div', children, ...rest } = $props<PopoverGroupProps<T>>();
+
+  const id = $id();
+  $setContext(PopoverGroupContext, { id });
+</script>
+
+<{as} data-popover-group=id {...rest}>{children}</>

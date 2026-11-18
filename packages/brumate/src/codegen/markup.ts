@@ -14,7 +14,7 @@ import type {
   TemplateDecl,
   ValueAttribute,
 } from '../ast.ts';
-import { forEachNode } from '../ast.ts';
+import { fileBody, forEachNode } from '../ast.ts';
 import { tryCatchesClient } from '../graph.ts';
 import { isWithin, lookup } from '../model.ts';
 import type { Declaration, Scope, Site } from '../model.ts';
@@ -41,6 +41,7 @@ import {
   templateArgs,
 } from './scopes.ts';
 import { needsScope } from '../css.ts';
+import type { BodyStyles } from '../css.ts';
 import { copy, unmarked } from '../sourcemap.ts';
 import { insertValue } from '../runtime/html.ts';
 import { paragraphComponents } from '../nesting.ts';
@@ -405,6 +406,8 @@ export class Emitter {
   private depth = 0;
   /** How many of this component's elements contain the current node. */
   private nesting = 0;
+  /** The `nesting` where the body that renders began, so its top-level elements are at this level. */
+  private bodyBase = 0;
   /** How many `#head` blocks contain the current node, where a `<title>` sets the title of the page. */
   private headBlocks = 0;
   private counter = 0;
@@ -1767,6 +1770,14 @@ export class Emitter {
    * before the markup, after the script.
    */
   emitBody(body: Body, createScope = true, markup?: () => void): void {
+    const base = this.bodyBase;
+    // The elements of the body that no element of it contains are its top-level elements.
+    this.bodyBase = this.nesting;
+    this.emitBodyContent(body, createScope, markup);
+    this.bodyBase = base;
+  }
+
+  private emitBodyContent(body: Body, createScope: boolean, markup?: () => void): void {
     const scope = this.plan.bodyScopes.get(body)!;
     const plan = this.plan.scopes.get(scope)!;
     // A body that waits holds its slots in its scope while it waits.
@@ -2117,18 +2128,18 @@ export class Emitter {
 
   /**
    * The style attribute of a top-level element, with the style variables of
-   * the component, so the elements inside inherit them. An element with
-   * spreads gets them after its attributes merge, so it returns them as code,
-   * and the style of a spread does not take the place of the variables.
+   * the component and of the block styles around it, so the elements inside
+   * inherit them. An element with spreads gets them after its attributes
+   * merge, so it returns them as code, and the style of a spread does not
+   * take the place of the variables.
    */
-  private emitVariables(node: ElementNode): string | undefined {
-    const { variables } = this.plan.styles;
-    if (variables.length === 0 || this.nesting > 0) {
+  private emitVariables(node: ElementNode, scope: Scope): string | undefined {
+    const values = this.variableValues(scope);
+    if (values === undefined) {
       return undefined;
     }
-    const values = this.variableValues();
     if (hasSpread(node.attributes)) {
-      this.emitLiveStyles();
+      this.emitLiveStyles(scope);
       return values;
     }
     const own = findStyleAttribute(node.attributes);
@@ -2139,34 +2150,88 @@ export class Emitter {
       existing = this.expression(own.value);
     }
     this.code(`$$b.attribute("style", $$b.vars(${values}, ${existing}))`);
-    this.emitLiveStyles();
+    this.emitLiveStyles(scope);
     return values;
   }
 
-  /** The style variables of the component and their values, as an object in code. */
-  private variableValues(): string {
+  /**
+   * The styles that reach the elements written in a scope: those of its body and of the bodies
+   * around it. A scope of no body is the file's.
+   */
+  private blockStyles(scope: Scope): BodyStyles | undefined {
+    return this.plan.styles.bodies.get(scope.body ?? fileBody(this.file));
+  }
+
+  /**
+   * The style variables of the element that renders now and their values, as an object in code, or
+   * undefined for none. A top-level element of a body has those of the styles that it is at the
+   * top level of.
+   */
+  private variableValues(scope: Scope): string | undefined {
     const values: string[] = [];
-    for (const variable of this.plan.styles.variables) {
-      values.push(
-        `${JSON.stringify(variable.name)}: ${variableValue(variable, this.expression(variable.expression))}`,
-      );
+    if (this.nesting === this.bodyBase) {
+      for (const block of this.blockStyles(scope)?.variables ?? []) {
+        for (const variable of block.variables) {
+          values.push(
+            `${JSON.stringify(variable.name)}: ${variableValue(variable, this.expression(variable.expression))}`,
+          );
+        }
+      }
     }
-    return `{ ${values.join(', ')} }`;
+    return values.length > 0 ? `{ ${values.join(', ')} }` : undefined;
   }
 
-  /** The ID of the component scope, which `b-v` names. */
-  private componentId(): string {
-    const component = this.plan.graph.model.component;
-    const name = this.scopeVar(component);
-    // Outside the render function of the component, the name is the scope object.
-    return this.isInside(component) ? name : `${name}.id`;
+  /**
+   * The names of the scope attributes of an element: those of the styles of its body and of the
+   * bodies around it. In a build, an attribute is left out when no selector of its style could
+   * match the element. In development, every element gets it, so a change to the styles applies
+   * without rendering the page again.
+   */
+  private scopeAttributes(
+    scope: Scope,
+    tag: string | undefined,
+    classes: string[] | undefined,
+  ): string[] {
+    const names: string[] = [];
+    for (const block of this.blockStyles(scope)?.attributes ?? []) {
+      if (!this.plan.hideNames || needsScope(block.targets, tag, classes)) {
+        names.push(block.attribute);
+      }
+    }
+    return names;
   }
 
-  private emitLiveStyles(): void {
-    if (this.plan.liveStyles) {
-      // Marks the element, so changes to the variables reach it.
+  /**
+   * The scopes whose style variables the element that renders now carries and that change on the
+   * client, as code: the IDs of the instances, or undefined for none. A top-level element of a
+   * body carries the live styles that it is at the top level of.
+   */
+  private liveVariableScopes(scope: Scope): string | undefined {
+    const ids: string[] = [];
+    if (this.nesting === this.bodyBase) {
+      for (const block of this.blockStyles(scope)?.variables ?? []) {
+        if (this.plan.liveBlocks.has(block.body)) {
+          const owner = this.plan.bodyScopes.get(block.body) ?? this.plan.graph.model.component;
+          const name = this.scopeVar(instanceScope(this.plan, owner));
+          // Inside the render function of the scope, its variable is the ID. Outside it, such as
+          // in an element the browser renders apart, the variable is the object of the instance.
+          ids.push(this.isInside(owner) ? name : `${name}.id`);
+        }
+      }
+    }
+    if (ids.length === 0) {
+      return undefined;
+    }
+    // Several IDs make one value, such as `3 5`.
+    return ids.length === 1 ? ids[0]! : `[${ids.join(', ')}].join(" ")`;
+  }
+
+  private emitLiveStyles(scope: Scope): void {
+    // Marks the element, so changes to the variables of the component and of blocks reach it.
+    const ids = this.liveVariableScopes(scope);
+    if (ids !== undefined) {
       this.html(' b-v="');
-      this.code(this.componentId());
+      this.code(ids);
       this.html('"');
     }
   }
@@ -2242,8 +2307,8 @@ export class Emitter {
       this.line(`const ${spreadHandlers}: string[] = [];`);
     }
     this.html(`<${node.tag}`);
-    if (this.hasScope(node.tag, staticClasses(node.attributes))) {
-      this.html(` ${this.plan.styles.attribute}`);
+    for (const name of this.scopeAttributes(scope, node.tag, staticClasses(node.attributes))) {
+      this.html(` ${name}`);
     }
     const anchor = this.anchor(scope, node);
     // With a spread, the element writes its own `b-b` before it. `spread` in html.ts still writes
@@ -2254,7 +2319,7 @@ export class Emitter {
       this.code(anchor.scope);
       this.html(`:${anchor.index}"`);
     }
-    const variables = this.emitVariables(node);
+    const variables = this.emitVariables(node, scope);
     const events: string[] = [];
     // With spreads, the attributes are one object in their order, so a name is written once:
     // a later value wins, and classes add up.
@@ -2511,20 +2576,6 @@ export class Emitter {
     }
   }
 
-  /**
-   * True if an element gets the scope attribute. In a build, only elements
-   * that a scoped selector could match get it. In development, every
-   * element of a component with styles gets it, so a change to the styles
-   * applies without rendering the page again.
-   */
-  private hasScope(tag: string | undefined, classes: string[] | undefined): boolean {
-    const { css, targets } = this.plan.styles;
-    if (!css) {
-      return false;
-    }
-    return !this.plan.hideNames || needsScope(targets, tag, classes);
-  }
-
   /** Renders the children of a component or a dynamic tag, for their export in the browser. */
   emitChildrenBody(node: ComponentNode | DynamicTagNode, scope: Scope): void {
     this.atTopLevel(() => this.emitNodes(node.children, scope));
@@ -2533,11 +2584,14 @@ export class Emitter {
   /** Runs a callback for markup that renders outside this component's elements, such as children. */
   private atTopLevel(callback: () => void): void {
     const nesting = this.nesting;
+    const base = this.bodyBase;
     // The elements around markup that renders elsewhere are not these.
     const elements = this.elements.splice(0);
     this.nesting = 0;
+    this.bodyBase = 0;
     callback();
     this.nesting = nesting;
+    this.bodyBase = base;
     this.elements.push(...elements);
   }
 
@@ -2776,8 +2830,8 @@ export class Emitter {
   private emitDynamic(node: DynamicTagNode, scope: Scope): void {
     const childrenName = this.emitChildren(node, scope);
     const extra: string[] = [];
-    if (this.hasScope(undefined, staticClasses(node.attributes))) {
-      extra.push(`${JSON.stringify(this.plan.styles.attribute)}: $$b.internal(true)`);
+    for (const name of this.scopeAttributes(scope, undefined, staticClasses(node.attributes))) {
+      extra.push(`${JSON.stringify(name)}: $$b.internal(true)`);
     }
     const anchor = this.anchor(scope, node);
     if (anchor) {
@@ -2805,18 +2859,17 @@ export class Emitter {
         attributes.push(attribute);
       }
     }
-    const { variables } = this.plan.styles;
+    const variableCode = this.variableValues(scope);
     // With a spread, the style variables go on after the attributes merge, so the style of the
     // spread does not take their place.
     let spreadVariables: string | undefined;
-    if (variables.length > 0 && this.nesting === 0) {
-      if (this.plan.liveStyles) {
-        extra.push(`"b-v": $$b.internal(${this.componentId()})`);
-      }
+    const liveScopes = this.liveVariableScopes(scope);
+    if (liveScopes !== undefined) {
+      extra.push(`"b-v": $$b.internal(${liveScopes})`);
     }
-    if (variables.length > 0 && this.nesting === 0 && hasSpread(attributes)) {
-      spreadVariables = this.variableValues();
-    } else if (variables.length > 0 && this.nesting === 0) {
+    if (variableCode !== undefined && hasSpread(attributes)) {
+      spreadVariables = variableCode;
+    } else if (variableCode !== undefined) {
       // A top-level dynamic tag sets the style variables, as a top-level element does.
       const own = findStyleAttribute(attributes);
       let existing = 'undefined';
@@ -2832,7 +2885,7 @@ export class Emitter {
         }
       }
       attributes = rest;
-      extra.push(`"style": $$b.vars(${this.variableValues()}, ${existing})`);
+      extra.push(`"style": $$b.vars(${variableCode}, ${existing})`);
     }
     // A tag that names a component gets the binding of `ref` as its `ref` prop, and writes the
     // element itself. A tag that names an element writes the element here.

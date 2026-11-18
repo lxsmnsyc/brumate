@@ -1,0 +1,9 @@
+<script>
+  import { getEvent } from 'brumate/server';
+  import { raw } from 'brumate/html';
+
+  const nonce = getEvent().nonce;
+  const attribute = nonce ? ` nonce="${nonce}"` : '';
+</script>
+
+{raw(`<script${attribute} data-rerun>window.__seen = (window.__seen || 0) + 1</script>`)}

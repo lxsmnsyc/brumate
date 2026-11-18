@@ -1,0 +1,6 @@
+<script>
+  import ColorScheme from '@brumate/ui/ColorScheme.brm';
+  import ThemeToggle from './ThemeToggle.brm';
+</script>
+
+<ColorScheme class="app" cookieName="theme"><ThemeToggle /></ColorScheme>

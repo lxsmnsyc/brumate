@@ -28,6 +28,7 @@ A `.brm` file is a component: scripts for its state, an optional `<style>`, and 
 - Never change a value in place. `todos.push(todo)` updates nothing. Assign a new value, or use `$produce(todos, (draft) => { … })`.
 - An attribute value is a quoted string, a plain name, a property path or a call, or an expression in parentheses. A value with an operator, such as `?:`, `+`, `>` or `&&`, or an arrow function, needs parentheses: `disabled=(count > 3)`. A bare `title=!closed` and `data-a=-1` work.
 - Use the shorthands: `<a {href}>`, `<button {onClick}>`, `<input {...rest}>`.
+- A block body can hold a `<style>` at its top level, after its optional `<script>`. It styles the elements of the block and of the blocks inside it, and its `${}` reads the item and the signals of the block script. The `<style>` of the file is the style of the outermost block, so one rule covers both, and `<style global>` and `:global(…)` work in any block.
 - Write a branch on the line of the closing brace, as the style: `} #else if (…) {` and `} #else {`. The compiler also accepts `#else` on the next line.
 - A `#for` has a key: `#for (item, index of items by item.id) { … }`. Without `by`, each item is its own key.
 - `$effect` never runs on mount. Its first run is after the first change of a value it reads. Code that must run when the page loads or comes into view is `$client(callback, trigger)`. The default trigger is `'visible'`.
@@ -38,15 +39,18 @@ A `.brm` file is a component: scripts for its state, an optional `<style>`, and 
 - Markup is never a value in code or in an attribute. Use `#template name(parameters) { … }` and call it as `{name(arguments)}`.
 - Browser wrappers of a handler come from `brumate/events`: `prevent`, `stop`, `once`, `capture`, `transition`. Write them in the attribute, with keys as string literals. `prevent(handler, 'Enter')` prevents only Enter with Ctrl, Meta and Alt up. `'Mod+ArrowDown'` names Ctrl or Meta. Calling `event.preventDefault()` in a handler is too late.
 - A server function is an `async` function with `'use server'` on its first line. It reads no variable of the instance script. Pass values as arguments.
+- A store computed from other stores is `derived(sources, fn)` of `brumate/store`, read with `$store`. It is one-way, and never goes in a provided value or a prop.
+- An inline script is `raw('<script nonce=… data-rerun>…</script>')` in `#head`, with `getEvent().nonce` of `brumate/server` as the nonce. `data-rerun` runs it after each client navigation.
+- The light and dark choice of the page is `ColorScheme` and `colorScheme()` of `@brumate/ui`, not a signal and an effect.
 - Do not use `$ref`, `$watch`, `$settled`, `$cleanup`, `$get`, `$set`, or modifiers such as `onSubmit:prevent`.
 
 ## References
 
 Read the file for the part of the work that you do.
 
-- [references/syntax.md](references/syntax.md): the parts of a file, attributes, props, children, templates and control flow.
+- [references/syntax.md](references/syntax.md): the parts of a file, attributes, props, children, templates, control flow, head scripts and `ColorScheme`.
 - [references/signals.md](references/signals.md): every function of `brumate/signals`, with what it returns and where it goes.
-- [references/state.md](references/state.md): signals, memos, async data, effects, `$client` and refs.
+- [references/state.md](references/state.md): signals, memos, async data, effects, `$client`, refs, context and derived stores.
 - [references/events.md](references/events.md): handlers, the wrappers of `brumate/events`, and `$handler`.
 - [references/errors.md](references/errors.md): every compile error, its cause, and the form to write instead.
 

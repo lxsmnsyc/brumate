@@ -47,32 +47,74 @@ Use it when a component ships more than you expect. The "Changes on the client" 
 
 ## Devtools
 
-The dev server adds a small grip to the bottom edge of each page. On hover or focus it grows into a tab with the logo and the version of brumate, and the number of errors. The grip turns red when the page has errors. Click it, drag it up, or press Alt+Shift+D to open a panel docked at the bottom of the page. Drag the top edge of the panel to change its height, which the browser keeps. Its header shows the versions of brumate and Vite, the page, and how many components, scopes and parts of code the page has, with the size of its state. It has these tabs:
+The dev server adds a grip to the bottom edge of each page: a thin bar that grows on hover or focus into a tab with the logo, the version of brumate and, when the page has errors, a red count of issues. Until you open the dock, only a small listener runs, so the page behaves as in production. Opening it loads the core of the page, so it can show the components before any event. Production builds have no devtools. `devtools: false` in the plugin options removes the grip.
 
-- **Errors** shows errors of a render on the server, of Vite, such as a compile error after an edit, and of code in the browser. The selected error shows the lines of its file, highlighted, with the line and the word at its column marked, and its stack. Click a place of the stack to see its code, or the file to open it in your editor. An error of the server or of Vite opens the panel on it, in place of Vite's overlay. An error of the browser counts on the button.
-- **Overview** shows the page, the versions, the size of the client code and the state, the blocks, and each component on the page with its file, instances, scopes and the parts of its code that loaded.
+### Open and close
 
-- **Components** shows a tree of the components on the page and their scopes, and the signals and memos of the selected scope by name, with their type and value. A scope that just changed flashes. Filter the tree by a component or a value.
-- **Elements** shows the element that **Pick** found: its component, its scope and anchor, its place in the `.brm` file, its handlers with the part of each one and whether it loaded, and the values that its updates read. The inserts and blocks inside it are listed too. Click the place in the file to open it in your editor.
-- **Graph** shows what changes in the browser in a component, left to right: its signals and props, its memos, and the markup and effects that read them, with the current value of each. A value that changes marks its box and every box after it in yellow for a moment, so you can see what an event updated. Click a node to see what it reads and what reads it, and its place in the file. Every node links to its place: `line N` in the side panel opens the editor at that line and column, and the tooltip of a node names it. A node that comes from a module function links to the file of the module. Drag to pan, and scroll or use the buttons to zoom.
-- **Log** lists each handler that ran, each module of client code that loaded, each value that changed, and each server function call with its status and how long it took. Filter it by kind, search it, pause it, or clear it.
-- **Timeline** shows each handler that ran, on a bar of its own: the wait for its code and the handlers before it, its run, and its promise. Under it are the server functions it called, with the time on the server from the `Server-Timing` header of the dev server, and the updates that followed.
-- **Page state** lists each value that the page state sent, by the slot that holds it, largest first, with about how many bytes it takes and the code of the browser that reads it, such as a handler or an update. A value is sent because that code reads it. One over 1 kB is marked, so you can see a value that the browser needs only part of.
-- **Effects** lists each `$effect` and `$client` callback that ran, with how many times, how many in the last second, how long its runs took, and how many times its cleanup ran. One that ran 10 times or more in the last second is marked, and one whose cleanup ran without a new run is grey, such as in a scope that went.
-- **Navigation** shows each client navigation of the page, newest first: the routes that stayed, such as a layout, and the slots whose route was replaced, with the old and the new route, or that the whole page was replaced and why. It also shows how long the page took to change, and how far the IDs of the new page moved, when they did not start where the page asked, such as for a prerendered page.
-- **Server** shows what the server did for the last page that it rendered, on one scale: the render until the page could stream, each memo that loaded, by name, and each server function call of a `'use server'` file, each `#loading` body, and the rest of the stream. A slow call or memo stands out by its bar. The dev server writes the trace at the end of each page, as a `<script type="application/json" b-trace>`, and a build writes none.
-- **Blocks** lists the `#loading`, `#defer` and `#client` blocks and the `$client` callbacks of the page, with their trigger and state: `streaming`, `waiting`, `loading` or `rendered`, and when they rendered. **Fire** runs the trigger of a `#defer` or `#client` block now, to see its body without scrolling to it. **Fallback** shows the fallback of a `#loading` or `#defer` body again, to check how it looks, and **Body** brings the body back. While the fallback shows, the body is out of the page.
-- **Report** shows the `brumate inspect` report of a component.
+- Click the grip, drag it up, or press Alt+Shift+D to open the dock.
+- Press Alt+Shift+D, press Escape, or click the close button to close it. Escape does nothing while Pick, the search or a field uses it. Focus goes back to the grip.
+- An error of the server or of Vite, such as a compile error after an edit, opens the dock on it, in place of Vite's overlay. An error of the browser only counts on the grip.
 
-In Components:
+### Sides and size
 
-- Click a value to change it. Type JSON, or text for a string, and press Enter. The page updates as if a handler wrote the value. Elements and functions cannot be changed.
-- Hover the label of a scope to outline its elements on the page.
-- Press **Pick**, then point at an element of the page. A card shows its component, its place in the file, its scope, its handlers with whether their code loaded, and the values it reads. Click to see it in the **Elements** tab, or press Escape to stop.
+The dock sits at the bottom of the page or at its right. **Dock side** in the header switches it, and so does the search. The page gets matching padding, so nothing hides behind the dock.
 
-**Updates** in the header outlines each element as it changes: green for one that changes now and then, yellow and red for one that changes often. The choice is kept between pages.
+- Drag the edge of the dock to change its height at the bottom, or its width at the right. The edge is a separator you can focus: the arrow keys move it by 16 pixels, and Shift moves it by 64.
+- Workspaces with two panes, such as the component tree and its detail, have a handle between the panes. Drag it, or focus it and use the arrow keys, Home and End. Double-click it to reset the split. At the right the panes stack, and the handle is horizontal.
+- The browser keeps the side, the size, the splits and the last workspace between pages.
 
-Until you press the button, only a small listener runs, so the page behaves as in production. Opening the panel loads the core of the page, so it can show the components before any event. Production builds have no devtools. `devtools: false` in the plugin options removes the button.
+### Header
+
+The header shows the logo, the version of brumate (hover it for the version of Vite), the four workspaces and these buttons:
+
+- **Search** (Cmd+K, or Ctrl+K off macOS) opens a palette of the components, the issues and actions, such as Pick, the dock side and opening a workspace. Arrow keys move, Enter runs, Escape closes.
+- **Pick** arms a pick: point at an element of the page, and the dock selects the row of its component in Inspect. Escape stops it.
+- **Outline updates** outlines each element as it changes: green for one that changes now and then, yellow and red for one that changes often. The choice is kept between pages. The outlines are drawn on one canvas over the page, so they follow scrolling and fixed elements, and they add no elements to your page.
+
+A footer shows whether the log is live or paused, the route, the number of components and scopes, the size of the page state, the version of Vite and how long the page has been up.
+
+### Inspect
+
+Inspect shows the components of the page. A filter and a tree of the components and their scopes are at the left. A dot marks a scope that was written lately. Hovering a row outlines its elements on the page.
+
+The detail of the selected component shows its file, which opens in your editor, and two views:
+
+- **Values** lists the signals and memos of the scope by name, with their type, their value and the code that reads them. Click a value to change it: type JSON, or text for a string, and press Enter. The page updates as if a handler wrote the value. Elements and functions cannot be changed.
+- **Graph** shows what changes in the browser in the component, left to right: its signals and props, its memos, and the markup and effects that read them, with the current value of each. A node is as wide as its name needs, and a long chain is never folded. When a value changes, its node and every node after it light up in yellow, one after the other, so you can see what an event updated. Click a node to dim everything outside its lineage and to open a side with its kind, its place in the file, its value, what it reads and what reads it. Click an entry there to go to that node. Drag to pan, scroll to zoom at the pointer, or use the zoom and fit buttons.
+
+### Activity
+
+Activity is one log, oldest first, of what ran on the page. A chip for each kind filters it: Navigation, Block, Handler, Write, Effect and Server. **Pause** stops the log and **Clear** empties it. A ruler above the log has a tick for each row. The writes, effects and server calls made while a handler ran hang under that handler.
+
+Select a server call to see its details at the right of the log. Click it again, or close the detail, to hide it.
+
+### Server call details
+
+The detail of a server call shows:
+
+- the arguments, and the result or the error,
+- for an error, the real message and the lines of the stack that are in your app, with the code of the line you choose, and a link to open the file in your editor,
+- the time of the call, split into the wait for the module, the network, the server and the decoding,
+- what ran on the server: the `console.*` output, the server functions that the call used, and the memos it reloaded,
+- the handler that made the call, and the writes that followed it.
+
+**Run again** posts the same request again, after you confirm that its side effects happen again. **Copy as fetch** and **Copy for an agent** put the call on the clipboard.
+
+Server call details exist in development only. They need the dev server: when the answer comes from elsewhere, such as a server that runs in a Nitro worker, the detail shows only what the browser saw.
+
+> **Security.** The dev server sends the real error message, the stack and the `console.*` output of a server function to the browser, in the dev header `x-brumate-dev` of the answer. With `server.host` set, the dev server is open to other machines, and anyone who can reach it can read them. A dev server on a shared network is not a place for secrets in logs or error messages. A production build never sends the header.
+
+### Issues
+
+Issues lists the errors of a render on the server, of Vite, of the compiler and of code in the browser. A dot shows the source: red for errors of the browser and the server, yellow for the checks of the compiler. The selected issue shows its full message, the lines of its file with the failing line highlighted, its stack, and a hint with a link to the page of the error when brumate knows its code. Click a place of the stack to see its code. **Open in editor** opens the file, **Copy for an agent** copies the issue, and **Show in Activity** goes to the log at that time, for errors of the browser. The arrow keys move between issues.
+
+### Page
+
+Page summarizes the running page in four numbers: the components with their scopes, the size of the page state, the handlers that ran with the server calls, and how long the page took to be ready. Below them:
+
+- **Page state** lists each value that the page sent, largest first, with about how many bytes it takes and the code of the browser that reads it. A value is sent because that code reads it. One over 1 kB is marked, so you can see a value that the browser needs only part of. A bar splits the state by component.
+- **Blocks** lists the `#loading`, `#defer` and `#client` blocks and the `$client` callbacks, with their trigger and state: `streaming`, `waiting`, `loading` or `rendered`. **Trigger now** runs the trigger of a `#defer` or `#client` block, to see its body without scrolling to it. The fallback toggle shows the fallback of a `#loading` or `#defer` body again, to check how it looks. While the fallback shows, the body is out of the page.
+- **Environment** shows the versions of brumate and Vite, the route and how long the page has been open, with buttons to Issues and Activity.
 
 ## Workbench
 

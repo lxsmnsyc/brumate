@@ -9,7 +9,7 @@
   "BRM008": "Unexpected end of file, expected a closing tag",
   "BRM009": "Unexpected closing tag",
   "BRM010": "<script> must be at the top level or at the start of a block",
-  "BRM011": "<style> must be at the top level",
+  "BRM011": "<style> must be at the top level of the file or of a block",
   "BRM012": "#template must be at the top level or at the start of a block",
   "BRM013": "#{branch} must follow its block",
   "BRM014": "Expected a tag name",
@@ -201,5 +201,6 @@
   "BRM201": "\"{name}\" cannot be a handler. {fix}",
   "BRM202": "$gate takes a value and a function, as in $gate(value, (prev, next) => next > prev)",
   "BRM203": "$gate takes a value that is ready. Use $memo for a promise or a server function",
-  "BRM204": "Declare a gated value with \"const name = $gate(value, (prev, next) => boolean)\" at the top level of a script"
+  "BRM204": "Declare a gated value with \"const name = $gate(value, (prev, next) => boolean)\" at the top level of a script",
+  "BRM207": "#reveal has no style of its own"
 }

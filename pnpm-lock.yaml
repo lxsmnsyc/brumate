@@ -436,6 +436,9 @@ importers:
 
   packages/brumate:
     dependencies:
+      '@seroval/transport':
+        specifier: ^0.1.0
+        version: 0.1.0(seroval@1.8.0)
       '@twinkleplop/core':
         specifier: 0.3.1
         version: 0.3.1
@@ -458,11 +461,11 @@ importers:
         specifier: ^7.1.6
         version: 7.1.6
       seroval:
-        specifier: ^1.7.0
-        version: 1.7.0
+        specifier: ^1.8.0
+        version: 1.8.0
       seroval-plugins:
-        specifier: ^1.7.0
-        version: 1.7.0(seroval@1.7.0)
+        specifier: ^1.8.0
+        version: 1.8.0(seroval@1.8.0)
     devDependencies:
       '@oxc-project/types':
         specifier: ^0.154.0
@@ -2399,6 +2402,12 @@ packages:
     resolution: {integrity: sha512-Nqc90v4lWCXyakD6xNyNACBJNJ0tNCwj2WNk/7ivyacYHxiITVgmLUFXTBOeCdy79iz6HtN9Y31uw/jbLrdOAg==}
     engines: {node: '>=20.0.0'}
 
+  '@seroval/transport@0.1.0':
+    resolution: {integrity: sha512-T3sCgShGYz74KcZwHVP4YV/IneoQV7RhorGOyiLs8vsuCb1qP+pH7yyPPd1xP9tlPacyfmHYLeSkheINMZiC0w==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      seroval: ^1.8.0
+
   '@sindresorhus/merge-streams@2.3.0':
     resolution: {integrity: sha512-LtoMMhxAlorcGhmFYI+LhPgbPZCkgP6ra1YL604EeF6U98pLlQ3iWIGMdWSC+vWmPBWBNgmDBAhnAobLROJmwg==}
     engines: {node: '>=18'}
@@ -4064,8 +4073,18 @@ packages:
     peerDependencies:
       seroval: ^1.0
 
+  seroval-plugins@1.8.0:
+    resolution: {integrity: sha512-96vBb12rDvPPwdKUgWw1op3fGq8AVBFOr0IllbnM72yR5J9WWXF18cQ4g1XfDO7HCyh2dt70P3XdtyRayP8FWg==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      seroval: ^1.8.0
+
   seroval@1.7.0:
     resolution: {integrity: sha512-FU+LUkmDzWNsJ6oubZFN3dGPKny53DRhPJG6nftEaXDL8MIn19+kEE1Gvc+63Go+qPOwVUlKIdKhsu2HN6tksw==}
+    engines: {node: '>=20'}
+
+  seroval@1.8.0:
+    resolution: {integrity: sha512-W5N4cMPc58lypAsScCmhGTyZxNZ6gPHvLHtMqtyvDFpfyNDsH1QjU0nI9Lr34+Q5ZLPsWeqOhkgTY5XtaPVQ4A==}
     engines: {node: '>=20'}
 
   shell-quote@1.12.0:
@@ -5803,6 +5822,10 @@ snapshots:
       istextorbinary: 9.5.0
 
   '@secretlint/types@10.2.2': {}
+
+  '@seroval/transport@0.1.0(seroval@1.8.0)':
+    dependencies:
+      seroval: 1.8.0
 
   '@sindresorhus/merge-streams@2.3.0': {}
 
@@ -7567,7 +7590,13 @@ snapshots:
     dependencies:
       seroval: 1.7.0
 
+  seroval-plugins@1.8.0(seroval@1.8.0):
+    dependencies:
+      seroval: 1.8.0
+
   seroval@1.7.0: {}
+
+  seroval@1.8.0: {}
 
   shell-quote@1.12.0: {}
 

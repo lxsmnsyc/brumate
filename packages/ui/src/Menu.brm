@@ -68,6 +68,7 @@
   } from './collection.ts';
   import { DialogContext, DisabledContext, FieldInputContext } from './contexts.ts';
   import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
+  import { warnUnnamedMenu } from './context-menu.ts';
   import { MENU_ITEMS, MenuContext, MenuTriggerContext, SubmenuContext } from './menu.ts';
   import type { MenuState } from './menu.ts';
 
@@ -116,6 +117,10 @@
   const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
   const isDisabled = $memo(Boolean(inheritedDisabled));
   const menuId = $id();
+  // A context menu has no Button to name it.
+  if (trigger?.isContextMenu && label === undefined && !(rest as Record<string, unknown>)['aria-labelledby']) {
+    warnUnnamedMenu();
+  }
   let focusedId = $signal<string>();
 
   function action(key: Key) {

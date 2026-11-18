@@ -1,0 +1,7 @@
+<script>
+  import { colorScheme } from '@brumate/ui/color-scheme.brm.ts';
+
+  const { value, setValue } = colorScheme();
+</script>
+
+<button class="toggle" onClick=(() => setValue(value === 'light' ? 'dark' : 'light'))>Scheme: {value}</button>

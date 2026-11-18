@@ -1,0 +1,9 @@
+<script>
+  import { colorScheme } from '../../src/color-scheme.brm.ts';
+
+  const { value, resolved, setValue } = colorScheme();
+</script>
+
+<button id="dark" onClick=(() => setValue('dark'))>Dark</button>
+<button id="system" onClick=(() => setValue('system'))>System</button>
+<span id="seen">{value} {resolved ?? 'unknown'}</span>

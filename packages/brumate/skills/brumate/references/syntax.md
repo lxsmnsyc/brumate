@@ -23,7 +23,7 @@
 ```
 
 - `<script>` runs once for each instance, on the server. `<script module>` runs once per module, and its exports can be imported.
-- `<style>` is scoped to the component. `<style global>` is not: its rules apply to the whole page, such as `body` or `.toolbar button`, with no `:global(…)` around them. `lang="scss"` and `lang="less"` work in both. Both are top level only.
+- `<style>` is scoped to the component. `<style global>` is not: its rules apply to the whole page, such as `body` or `.toolbar button`, with no `:global(…)` around them. `lang="scss"` and `lang="less"` work in both. Both are allowed at the top level of the file and of a block body.
 - A file has at most one of each script. Markup can come before or after them.
 - Markup in a script, an expression or an attribute value is an error. Use a `#template`.
 
@@ -182,6 +182,7 @@ A file uses another component by importing it, and renders it with a capitalized
 ```
 
 - The body of a block can start with a `<script>` of its own, which runs for each instance, such as each item of a `#for`. It can declare signals and functions.
+- The body of a block can hold a `<style>` at its top level. It matches the elements of the body and of the bodies inside it, and its `${}` reads the item, the signals of the block script and the values of the component. A change updates only the instance that reads it. The `<style>` of the file is the style of the outermost block, so the same rule covers it, and `<style global>` and `:global(…)` work in a block as at the top level.
 - `#for (item of list) { … }` has no `by` for a list that needs no key: each item is its own key. Use `by item.id` when items are objects that change.
 - Write `} #else if (…) {` and `} #else {` on the line of the closing brace, as the style. The compiler accepts `#else` on the next line too.
 - `#for (item of list) window(32) { … }` renders only the items in view, for a long list. `32` is the height of an item.
@@ -217,6 +218,22 @@ A file uses another component by importing it, and renders it with a capitalized
 - `$id()` gives an ID that is the same on the server and in the browser: `const field = $id();`, then `<label for=field>` and `<input id=field>`.
 - `<script>` can export nothing. A value that other files import goes in `<script module>`.
 - `#head { <title>{title}</title> <meta name="description" content="…"> }` sets the head of the page. A `<title>` outside `#head` is an error.
+- A script in the head is HTML in a string, since `<script>` is not markup in a `.brm` file. Send it with `raw()` from `brumate/html`, and give it the nonce of the render, which is `undefined` without one: `getEvent().nonce` of `brumate/server`. A client navigation does not run a head script again. Add `data-rerun` to one that must run after each navigation.
+
+```brm
+<script>
+  import { getEvent } from 'brumate/server';
+  import { raw } from 'brumate/html';
+
+  const nonce = getEvent().nonce;
+  const attribute = nonce ? ` nonce="${nonce}"` : '';
+</script>
+
+#head {
+  {raw(`<script${attribute} data-rerun>document.documentElement.dataset.visits = '1'</script>`)}
+}
+```
+
 - A value that changes in a `<textarea>` or `<title>` must be its whole content: `<textarea>{text}</textarea>`.
 
 ## Modules of reactive logic
@@ -248,3 +265,30 @@ export function counter(start: number) {
 
 - The function ends with `return { … }`, an object of plain keys, and returns nowhere else.
 - A component calls it at the top level of its script, and destructures the result with plain names.
+
+## Parts of @brumate/ui
+
+The light, dark or system choice of the page is `ColorScheme` of `@brumate/ui`. It keeps the choice in a cookie, so the server renders the first response with it. `colorScheme()` reads and changes it from a component inside, at the top level of its script.
+
+```brm
+<script>
+  import ColorScheme from '@brumate/ui/ColorScheme.brm';
+  import ThemeToggle from './ThemeToggle.brm';
+</script>
+
+<ColorScheme class="app" cookieName="theme"><ThemeToggle /></ColorScheme>
+```
+
+```brm uses
+<script>
+  import { colorScheme } from '@brumate/ui/color-scheme.brm.ts';
+
+  const { value, resolved, setValue } = colorScheme();
+</script>
+
+<button onClick=(() => setValue(resolved === 'dark' ? 'light' : 'dark'))>Scheme: {value}</button>
+```
+
+- `value` is `light`, `dark` or `system`. `resolved` is `light` or `dark`, and undefined for `system` until the browser knows the preference.
+- Destructure what `colorScheme()` returns. Outside a `ColorScheme`, `setValue` does nothing.
+- `as="html"` in the root layout puts the class on `<html>`.

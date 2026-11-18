@@ -42,6 +42,7 @@ export {
   dynamicNodes,
   elementAt,
   foreignNodes,
+  memoNow,
   place,
   readMemo,
   renderMemo,

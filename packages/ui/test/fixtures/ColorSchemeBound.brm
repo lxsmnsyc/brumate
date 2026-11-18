@@ -1,0 +1,11 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorScheme from '../../src/ColorScheme.brm';
+  import Choices from './ColorSchemeChoices.brm';
+
+  let scheme = $signal<'light' | 'dark' | 'system' | undefined>(undefined);
+</script>
+
+<button id="outside" onClick=(() => (scheme = 'light'))>Light</button>
+<span id="signal">{scheme ?? 'none'}</span>
+<ColorScheme class="app" cookieName="theme" value=$bind(scheme)><Choices /></ColorScheme>

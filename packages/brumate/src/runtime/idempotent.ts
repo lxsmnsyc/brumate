@@ -3,7 +3,8 @@
 // its URL, and the server answers a post with a key that it has seen with
 // the result that it kept, without running the function again.
 
-import { fromJSON, toJSON } from 'seroval';
+import { fromJSON } from 'seroval/read';
+import { toJSON } from 'seroval/write';
 import { cacheStore } from './cache.ts';
 import {
   IDEMPOTENT,

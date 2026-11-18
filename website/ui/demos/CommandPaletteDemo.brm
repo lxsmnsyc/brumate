@@ -11,7 +11,6 @@
   import Modal from '@brumate/ui/Modal.brm';
   import ModalOverlay from '@brumate/ui/ModalOverlay.brm';
   import SearchField from '@brumate/ui/SearchField.brm';
-  import type { Key } from '@brumate/ui/collection.ts';
 
   let shown = $signal(false);
   let last = $signal('nothing yet');
@@ -25,8 +24,8 @@
 </script>
 
 <div class="ui-stack">
-  <DialogTrigger isOpen=$bind(shown)>
-    <Button class="ui-button">Commands</Button>
+  <DialogTrigger shortcut="Mod+J" isOpen=$bind(shown)>
+    <Button class="ui-button">Commands (Ctrl or Cmd+J)</Button>
     <ModalOverlay class="ui-backdrop" transition>
       <Modal class="ui-modal">
         <Dialog class="ui-dialog" aria-label="Commands">

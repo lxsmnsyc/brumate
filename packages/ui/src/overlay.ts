@@ -252,17 +252,46 @@ export function pressOutside(
 }
 
 /**
+ * Whether a node belongs to the popover group: it is inside the element of the group, such as a
+ * trigger, or inside the layer of a popover of the group.
+ */
+export function inPopoverGroup(group: string, target: Node): boolean {
+  const element = target instanceof Element ? target : target.parentElement;
+  return Boolean(
+    element?.closest(`[data-popover-group="${group}"], [data-popover-group-panel="${group}"]`),
+  );
+}
+
+/**
+ * Tells the other popovers of a group that this one opened, so they close. Returns the function
+ * that stops listening for the others.
+ */
+export function closeOthersInGroup(group: string, layer: Element, close: () => void): () => void {
+  document.dispatchEvent(new CustomEvent('brumate-popover-open', { detail: { group, layer } }));
+  function listener(event: Event): void {
+    const detail = (event as CustomEvent<{ group: string; layer: Element }>).detail;
+    if (detail.group === group && detail.layer !== layer) {
+      close();
+    }
+  }
+  document.addEventListener('brumate-popover-open', listener);
+  return () => document.removeEventListener('brumate-popover-open', listener);
+}
+
+/**
  * Calls `close` when focus moves outside the layer and the trigger, for an overlay that is not
- * modal. Returns the function that stops it.
+ * modal. Focus on a node that `keeps` returns true for closes nothing, such as the trigger of
+ * another popover of the group. Returns the function that stops it.
  */
 export function blurOutside(
   layer: Element,
   trigger: Element | null,
   close: () => void,
+  keeps?: (target: Node) => boolean,
 ): () => void {
   function listener(event: FocusEvent): void {
     const target = event.target as Node | null;
-    if (target && !layer.contains(target) && !trigger?.contains(target)) {
+    if (target && !layer.contains(target) && !trigger?.contains(target) && !keeps?.(target)) {
       close();
     }
   }

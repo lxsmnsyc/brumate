@@ -1,6 +1,8 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { toJSON } from 'seroval';
+import { toJSON } from 'seroval/write';
+import { ElementReference } from '../src/runtime/shared.ts';
+import { callPlugins, plugins, serialOptions } from '../src/runtime/serial.ts';
 import { compile } from '../src/index.ts';
 import { getEvent, handleRequest, isCrossSite, render } from '../src/runtime/server.ts';
 import type { RequestCall } from '../src/runtime/server.ts';
@@ -46,6 +48,83 @@ describe('server functions and the request', () => {
   it('reads the request in a call', async () => {
     const response = await call('whoami', [], { 'x-user': 'Grace' });
     expect(await fromChunkStream(response!.body!)).toBe('Grace');
+  });
+
+  it('refuses arguments with a malformed plugin node', async () => {
+    // An element whose anchor is a string, not a number.
+    const args = toJSON([new ElementReference(1, 2)], { plugins, ...serialOptions() });
+    const json = JSON.parse(JSON.stringify(args));
+    json.t.a[0].s.b = { t: 1, s: 'not a number' };
+    const response = await handleRequest(
+      session.rpc,
+      new Request(`http://localhost/_brumate/${encodeURIComponent('Session_1fdcuk2#whoami')}`, {
+        method: 'POST',
+        body: JSON.stringify(json),
+      }),
+    );
+    expect(response!.status).toBe(400);
+    expect(await response!.json()).toEqual({
+      error:
+        'The arguments of the call are malformed: Plugin "brumate/element" received a value for "b" that failed its validator.',
+    });
+  });
+
+  it('refuses an upload whose index is negative or fractional', async () => {
+    const sent: Blob[] = [];
+    const json = JSON.parse(
+      JSON.stringify(toJSON([new Blob(['x'])], { plugins: callPlugins(sent), ...serialOptions() })),
+    );
+    for (const index of [-1, 1.5]) {
+      json.t.a[0].s.i = { t: 0, s: index };
+      const form = new FormData();
+      form.set('args', JSON.stringify(json));
+      form.set('file0', new Blob(['x']));
+      const response = await handleRequest(
+        { echo: (blob: Blob) => blob.size },
+        new Request('http://localhost/_brumate/echo', {
+          method: 'POST',
+          headers: { 'x-brumate-args': 'form' },
+          body: form,
+        }),
+      );
+      expect(response!.status).toBe(400);
+      expect(((await response!.json()) as { error: string }).error).toContain(
+        'The arguments of the call are malformed',
+      );
+    }
+  });
+
+  it('refuses arguments with a plugin that the server does not have', async () => {
+    const json = JSON.parse(
+      JSON.stringify(toJSON([new ElementReference(1, 2)], { plugins, ...serialOptions() })),
+    );
+    json.t.a[0].c = 'nobody/knows';
+    const response = await handleRequest(
+      { echo: (value: unknown) => value },
+      new Request('http://localhost/_brumate/echo', {
+        method: 'POST',
+        body: JSON.stringify(json),
+      }),
+    );
+    expect(response!.status).toBe(400);
+    expect(((await response!.json()) as { error: string }).error).toContain(
+      'The arguments of the call are malformed',
+    );
+  });
+
+  it('gives the onError of the app a result that cannot be serialized', async () => {
+    const seen: unknown[] = [];
+    const response = await handleRequest(
+      { bad: () => ({ f: () => 1 }) },
+      new Request('http://localhost/_brumate/bad', {
+        method: 'POST',
+        body: JSON.stringify(toJSON([])),
+      }),
+      '/_brumate',
+      { onError: (error) => void seen.push(error) },
+    );
+    await expect(fromChunkStream(response!.body!)).rejects.toThrow(/./);
+    expect(seen).toHaveLength(1);
   });
 
   it('sets response headers', async () => {

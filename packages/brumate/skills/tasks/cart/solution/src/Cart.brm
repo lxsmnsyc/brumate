@@ -1,0 +1,9 @@
+<script>
+  import { $store } from 'brumate/signals';
+  import { cart, total } from './cart.ts';
+
+  const sum = $store(total);
+</script>
+
+<button class="add" onClick=(() => cart.set([...cart.get(), 5]))>Add 5</button>
+<p class="total">Total {sum}</p>

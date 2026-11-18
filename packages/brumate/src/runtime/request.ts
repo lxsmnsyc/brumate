@@ -1,4 +1,4 @@
-import { toJSON } from 'seroval';
+import { toJSON } from 'seroval/write';
 import { deleteCookie, getCookies, setCookie } from './cookies.ts';
 import type { CookieOptions } from './cookies.ts';
 import { serialOptions, syncPlugins } from './serial.ts';
@@ -156,6 +156,11 @@ export class RequestEvent {
   readonly address?: string;
   /** True while the build prerenders the page. */
   readonly prerender: boolean;
+  /**
+   * The Content Security Policy nonce of the render, from its `nonce` option. Undefined without
+   * one. A component that writes an inline script with `raw()` gives it this nonce.
+   */
+  nonce?: string;
   /**
    * The pattern of the route files that matched the path, such as
    * `/todos/[id]`. `handleRoute` sets it. Undefined for a path that no route
@@ -426,6 +431,8 @@ export const idempotentIds: Set<string> = new Set();
 /** The ID of each function that `idempotent` made, once the server registered it. */
 export const idempotentId: WeakMap<object, string> = new WeakMap();
 
+const CALL_HOOK = Symbol.for('brumate.callHook');
+
 export function dedupe<F extends (...args: any[]) => unknown>(fn: F, id: string): F {
   // A form of a function that `idempotent` made gets a key when it renders.
   if (IDEMPOTENT in fn) {
@@ -435,7 +442,11 @@ export function dedupe<F extends (...args: any[]) => unknown>(fn: F, id: string)
   const wrapper = ((...args: unknown[]) => {
     const cache = currentCalls;
     if (!cache) {
-      return fn(...args);
+      // The dev server records the calls that a call made, with this hook.
+      const hook = (globalThis as { [CALL_HOOK]?: (id: string, run: () => unknown) => unknown })[
+        CALL_HOOK
+      ];
+      return hook ? hook(id, () => fn(...args)) : fn(...args);
     }
     let key: string;
     try {

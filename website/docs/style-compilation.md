@@ -19,7 +19,7 @@ How the compiler scopes the CSS of a component, turns `${}` values into custom p
 - The top-level elements of the component set the properties in their `style` attribute, so the elements inside inherit them. An element's own `style` comes after them.
 - Markup that the component renders outside its own elements counts as top level too: `children` passed to a component, and the markup of a `#template`.
 - A top-level dynamic tag sets them as well. A component in a dynamic tag gets them as its `style` prop.
-- When a value can change in the browser, the top-level elements get `b-v="<scope>"`. A change sets the property on each of them. A block that the browser renders later reads the current values.
+- When a value can change in the browser, the top-level elements get `b-v="<scope>"`. A change sets the property on each of them. An element that carries the values of several scopes lists their IDs, separated by spaces. A style in a block works the same way for each instance of the block: see [A style in a block](./styles.md#a-style-in-a-block). A block that the browser renders later reads the current values.
 
 ## SCSS and Less
 

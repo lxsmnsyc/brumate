@@ -1,5 +1,6 @@
 <script module>
   import type { Bindable } from 'brumate/signals';
+  import type { KeyName } from 'brumate/events';
 
   export interface DialogTriggerProps {
     /** Runs with each change of whether the overlay is open. */
@@ -8,22 +9,32 @@
     children?: unknown;
     /** Whether the overlay is open. Alone it holds its own state, which starts closed, and `$bind` writes your signal. A start value of `true` opens the overlay once the page has loaded. */
     isOpen?: Bindable<boolean>;
+    /** A key that toggles the overlay from anywhere in the page, such as `Mod+K` for a command palette. It is written as the keys of `prevent`, and a letter matches in either case. */
+    shortcut?: KeyName;
+    /** Whether the shortcut also opens the overlay while a text field has focus. By default it does not, so the field keeps the key. */
+    shortcutInInput?: boolean;
   }
 </script>
 
 <script>
-  import { $id, $memo, $props, $setContext, $toStore } from 'brumate/signals';
+  import { $client, $id, $memo, $props, $setContext, $toStore } from 'brumate/signals';
   import { ButtonContext, OverlayTriggerContext } from './contexts.ts';
   import type { OverlayTriggerState } from './contexts.ts';
+  import { isTyping, matchesShortcut } from './shortcut.ts';
 
   /**
    * Opens an overlay, such as a Popover or a Modal, from a Button inside it. The Button gets
    * aria-expanded and aria-controls, and a press toggles the overlay. It gets no aria-haspopup. It renders
    * only its children.
    *
+   * `shortcut="Mod+K"` toggles the overlay from anywhere in the page. `Mod` is Ctrl or Meta. The key is
+   * left to the page when something handled it first, such as a field that called `preventDefault`,
+   * and while a text field has focus, unless `shortcutInInput` is set. An open overlay closes on
+   * the shortcut wherever focus is. Focus goes back to where it was.
+   *
    * `isOpen` alone holds its own state, which starts closed, and `isOpen=$bind(signal)` writes the caller's. A start value of `true` opens the overlay once the page has loaded, with focus and the inert page as after a press.
    */
-  const { onOpenChange, children } = $props<DialogTriggerProps>();
+  const { onOpenChange, children, shortcut, shortcutInInput = false } = $props<DialogTriggerProps>();
   let { isOpen = false } = $props<DialogTriggerProps>();
 
   const triggerId = $id();
@@ -48,6 +59,26 @@
   function toggle() {
     setOpen(!isOpen);
   }
+
+  // The listener is on the page, after the handlers of the elements, so a field that wants the key keeps it.
+  function keyPressed(event: KeyboardEvent) {
+    if (!shortcut || event.defaultPrevented || event.repeat || event.isComposing) {
+      return;
+    }
+    if (!matchesShortcut(shortcut, event)) {
+      return;
+    }
+    if (!isOpen && !shortcutInInput && isTyping(document.activeElement)) {
+      return;
+    }
+    event.preventDefault();
+    toggle();
+  }
+
+  $client(() => {
+    document.addEventListener('keydown', keyPressed);
+    return () => document.removeEventListener('keydown', keyPressed);
+  }, 'load');
 
   const buttonState = $memo({
     id: triggerId,

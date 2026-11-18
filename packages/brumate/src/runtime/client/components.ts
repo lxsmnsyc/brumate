@@ -174,21 +174,26 @@ export function dynamic(
 const memoLoads = new WeakMap<object, number>();
 
 /**
- * Computes a memo of a render. A promise or a stream is marked, so `setSlots` starts its load
- * once the scope is in the page. A throw is held in a `MemoError`, as the server holds the error
- * of a memo until a read.
+ * Marks the value of a memo of a render that cannot hold an error: a promise or a stream is
+ * loaded by `setSlots` once the scope is in the page.
  */
-export function renderMemo(compute: () => unknown): unknown {
-  let value: unknown;
-  try {
-    value = compute();
-  } catch (error) {
-    return new MemoError(error);
-  }
+export function memoNow(value: unknown): unknown {
   if (isThenable(value) || isAsyncIterable(value)) {
     memoLoads.set(value as object, (memoLoads.get(value as object) ?? 0) + 1);
   }
   return value;
+}
+
+/**
+ * Computes a memo of a render. A throw is held in a `MemoError`, as the server holds the error
+ * of a memo until a read.
+ */
+export function renderMemo(compute: () => unknown): unknown {
+  try {
+    return memoNow(compute());
+  } catch (error) {
+    return new MemoError(error);
+  }
 }
 
 /** Reads a memo of a render: the error that a throw held is thrown at the read. */

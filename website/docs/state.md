@@ -106,6 +106,8 @@ Compute the starting value in the call instead: `let count = $signal(5)`.
 
 A memo can also hold a promise, such as the result of a server function. [Async data](./async-data.md) covers that.
 
+For a value at module level that is computed from stores, see [Derived stores](./context.md#derived-stores).
+
 ## `$gate`
 
 `$gate(value, guard)` is a memo that takes its new value only when the guard returns true. Otherwise it keeps its value, and its readers do not run. The guard gets the value the memo holds and the new one.

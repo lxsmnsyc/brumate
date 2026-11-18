@@ -1,0 +1,14 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import { colorScheme } from '@brumate/ui/color-scheme.brm.ts';
+
+  const { value, setValue } = colorScheme();
+</script>
+
+<section aria-labelledby="color-scheme">
+  <h2 id="color-scheme">ColorScheme</h2>
+  <Button class="press scheme-light" onPress=(() => setValue('light'))>Light</Button>
+  <Button class="press scheme-dark" onPress=(() => setValue('dark'))>Dark</Button>
+  <Button class="press scheme-system" onPress=(() => setValue('system'))>System</Button>
+  <span class="scheme-value">{value}</span>
+</section>

@@ -27,7 +27,7 @@ A build groups the client code by root components: the components that no other 
 
 - The loader starts the bundles of the components in the page state at once, with the core.
 - A page of `handleRoute` gets `<link rel="modulepreload">` for the loader, the core and the bundles of its route and layouts, so they download with the HTML.
-- The dev server loads each component's module on its own, so an edit updates the page in place.
+- The dev server loads each component's module on its own, so an edit updates the page in place. This holds for an entry that calls `start({ load })` from `brumate/loader` too: the plugin adds the hot updates and the devtools to it on the dev server, and a build ships none of that.
 
 ## Events and calls
 

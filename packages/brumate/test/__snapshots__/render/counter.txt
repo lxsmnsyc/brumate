@@ -51,12 +51,12 @@ export default function Counter($$props: Record<string, never>): string | Docume
   const $$s1 = $$b.createScope(1, undefined, "Counter_m86gta");
   const label = 'Clicks';
   let count = (0);
-  const double = $$b.renderMemo(() => (count * 2));
+  const double = (count * 2);
   const $$e = $$b.clone($$t0), $$f = $$e[4];
   $$b.setContent($$e[0], (label));
   $$b.keep($$s1, 0, $$e[1]);
   $$b.keepText($$s1, 1, $$e[2], (count));
-  $$b.appendText($$s1, 2, $$e[3], ($$b.readMemo(double)));
+  $$b.appendText($$s1, 2, $$e[3], (double));
   $$b.setSlots($$s1, [count, double]);
   return $$f;
 }

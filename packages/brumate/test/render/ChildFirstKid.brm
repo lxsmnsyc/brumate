@@ -1,0 +1,10 @@
+<script>
+  import { $memo } from 'brumate/signals';
+  import { bad } from './orderData.ts';
+  import Thrower from './Thrower.brm';
+
+  const a = $memo(bad('memo'));
+</script>
+
+<Thrower />
+<p>{a}</p>

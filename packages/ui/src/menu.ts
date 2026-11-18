@@ -15,9 +15,11 @@ export type FocusStrategy = 'first' | 'last' | 'none';
 
 /** What a MenuTrigger or a SubmenuTrigger gives the Menu inside its Popover. It changes, so it is in a store. */
 export interface MenuTriggerState {
-  /** The ID of the trigger, which names the menu. */
-  triggerId: string;
+  /** The ID of the trigger, which names the menu. A context menu has none. */
+  triggerId?: string;
   focusStrategy: FocusStrategy;
+  /** True for a context menu, which has no trigger element to name it. */
+  isContextMenu?: boolean;
   /** True for a submenu, which ArrowLeft closes. */
   isSubmenu: boolean;
 }

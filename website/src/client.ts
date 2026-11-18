@@ -1,6 +1,5 @@
 // The only script before the first interaction: the loader of brumate.
 import type { ClientModule } from 'brumate/client';
-import { hotLoad } from 'brumate/hot';
 import { start } from 'brumate/loader';
 import { load } from 'virtual:brumate/manifest';
 
@@ -12,11 +11,6 @@ function samples(): Map<string, () => Promise<ClientModule>> | undefined {
 }
 
 start({
-  // On the dev server, an edit of a component can update the page without a reload.
-  load: hotLoad(import.meta.hot, (id) => samples()?.get(id)?.() ?? load(id)),
+  load: (id) => samples()?.get(id)?.() ?? load(id),
   navigate: { transition: true },
 });
-
-if (import.meta.env.DEV) {
-  void import('brumate/devtools').then(({ installDevtools }) => installDevtools());
-}

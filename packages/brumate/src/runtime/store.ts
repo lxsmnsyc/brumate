@@ -183,6 +183,267 @@ export function sendStore<T>(target: Store<T>, value: T, force?: boolean): void 
   }
 }
 
+// Derived stores: a read-only store that computes its value from other stores, with the API of
+// Svelte 4's `derived`.
+
+/** The stores that `derived` reads: one store, or an array of them. */
+export type Stores = StoreLike<any> | [StoreLike<any>, ...StoreLike<any>[]] | StoreLike<any>[];
+
+/** The values of `Stores`: a value for one store, an array of values for an array. */
+export type StoresValues<S> =
+  S extends StoreLike<infer U>
+    ? U
+    : { [K in keyof S]: S[K] extends StoreLike<infer U> ? U : never };
+
+/** The derived stores that heard of a change and wait to compute. */
+const waiting: Computed[] = [];
+/** The listener sets that have a trailing listener, which computes the waiting stores. */
+const armed = new Set<Set<unknown>>();
+/** True while the waiting stores compute. */
+let flushing = false;
+
+/** Computes the waiting derived stores, the ones that read the fewest derived stores first. */
+function flushComputed(): void {
+  flushing = true;
+  try {
+    while (waiting.length > 0) {
+      let next = 0;
+      for (let i = 1; i < waiting.length; i++) {
+        if (waiting[i]!.level < waiting[next]!.level) {
+          next = i;
+        }
+      }
+      const [computed] = waiting.splice(next, 1);
+      computed!.waits = false;
+      computed!.run();
+    }
+  } catch (error) {
+    // The stores that still wait would never hear a source again, so they leave the queue.
+    for (const computed of waiting) {
+      computed.waits = false;
+    }
+    waiting.length = 0;
+    throw error;
+  } finally {
+    flushing = false;
+  }
+}
+
+/** The state of a derived store while it has subscribers. */
+interface Computed {
+  /** The number of derived stores below it, so a store computes after the ones it reads. */
+  level: number;
+  /** True while it waits in the queue. */
+  waits: boolean;
+  run(): void;
+}
+
+/**
+ * A store computed from `sources`. With a function of one parameter, the result is the value. With
+ * two or three, the function calls `set` or `update`, and a function it returns runs before the
+ * next call and when the last subscriber leaves. It follows its sources only while it has
+ * subscribers; `get` computes from the sources otherwise. A source change that reaches it in one
+ * pass computes it once, after the stores it reads.
+ */
+export function derived<S extends Stores, T>(
+  sources: S,
+  fn: (
+    values: StoresValues<S>,
+    set: (value: T) => void,
+    update: (change: (value: T) => T) => void,
+  ) => (() => void) | void,
+  initial?: T,
+): StoreLike<T>;
+export function derived<S extends Stores, T>(
+  sources: S,
+  fn: (values: StoresValues<S>) => T,
+  initial?: T,
+): StoreLike<T>;
+export function derived<T>(
+  sources: Stores,
+  fn: (
+    values: unknown,
+    set: (value: T) => void,
+    update: (change: (value: T) => T) => void,
+  ) => unknown,
+  initial?: T,
+): StoreLike<T> {
+  const single = !Array.isArray(sources);
+  const list: StoreLike<unknown>[] = single ? [sources] : sources;
+  for (const source of list) {
+    if (!source) {
+      throw new Error('derived() expects stores as input, got a falsy value');
+    }
+  }
+  const auto = fn.length < 2;
+  const out = new Store<T>(initial as T);
+  const subscribers = new Set<() => void>();
+  let level = 1;
+  for (const source of list) {
+    level = Math.max(level, ((source as { d?: number }).d ?? 0) + 1);
+  }
+
+  // The state of one run: `cleanup` is what `fn` returned, and `write` is where `set` goes.
+  let cleanup: (() => void) | undefined;
+  let started = false;
+  let starting = false;
+  let stops: (() => void)[] = [];
+
+  /** Runs `fn` over the current values of the sources. */
+  const compute = (write: (value: T) => void): void => {
+    const values: unknown[] = [];
+    for (const source of list) {
+      values.push(source.get());
+    }
+    const set = write;
+    const update = (change: (value: T) => T): void => write(change(out.v));
+    cleanup?.();
+    cleanup = undefined;
+    const result = fn(single ? values[0] : values, set, update);
+    if (auto) {
+      write(result as T);
+    } else if (typeof result === 'function') {
+      cleanup = result as () => void;
+    }
+  };
+
+  // The value is written without a notice while the first subscriber starts it, since nobody
+  // listens yet and `subscribe` does not call the listener.
+  const send = (value: T): void => {
+    if (starting) {
+      out.v = value;
+    } else if (started) {
+      sendStore(out, value);
+    } else {
+      // A late `set` after the last subscriber left keeps its value, as Svelte's store does.
+      out.v = value;
+    }
+  };
+
+  const state: Computed = {
+    level,
+    waits: false,
+    run() {
+      if (started) {
+        compute(send);
+      }
+    },
+  };
+
+  /**
+   * Called by a source. The store waits until the source has called all its listeners, so a store
+   * that reads this one and the source computes once, after this one.
+   */
+  const heard = (source: StoreLike<unknown>): void => {
+    if (!started || state.waits) {
+      return;
+    }
+    state.waits = true;
+    waiting.push(state);
+    if (flushing) {
+      return;
+    }
+    const listeners = (source as Partial<Store<unknown>>).l;
+    if (!listeners || armed.has(listeners)) {
+      if (!listeners) {
+        // A store of another library has no listeners to wait behind.
+        flushComputed();
+      }
+      return;
+    }
+    // A listener added now runs after the ones of the source, in the same send.
+    const trail = (): void => {
+      listeners.delete(trail);
+      armed.delete(listeners);
+      flushComputed();
+    };
+    armed.add(listeners);
+    listeners.add(trail as never);
+  };
+
+  const start = (): void => {
+    starting = true;
+    started = true;
+    try {
+      compute(send);
+      for (const source of list) {
+        stops.push(source.subscribe(() => heard(source)));
+      }
+    } catch (error) {
+      // A store that failed to start has no subscriptions, so it can start again.
+      started = false;
+      for (const end of stops) {
+        end();
+      }
+      stops = [];
+      cleanup?.();
+      cleanup = undefined;
+      throw error;
+    } finally {
+      starting = false;
+    }
+  };
+
+  const stop = (): void => {
+    started = false;
+    for (const end of stops) {
+      end();
+    }
+    stops = [];
+    cleanup?.();
+    cleanup = undefined;
+    if (state.waits) {
+      state.waits = false;
+      waiting.splice(waiting.indexOf(state), 1);
+    }
+  };
+
+  return Object.assign(
+    {
+      get(): T {
+        if (started) {
+          return out.v;
+        }
+        // No subscriber: compute once from the sources and stop. The async form keeps the
+        // initial value until `set` runs.
+        let value = out.v;
+        started = true;
+        try {
+          compute((next) => {
+            value = next;
+          });
+        } finally {
+          started = false;
+          cleanup?.();
+          cleanup = undefined;
+        }
+        return value;
+      },
+      subscribe(listener: (value: T) => void): () => void {
+        const stopListening = out.subscribe(listener);
+        if (!started) {
+          try {
+            start();
+          } catch (error) {
+            stopListening();
+            throw error;
+          }
+        }
+        subscribers.add(stopListening);
+        return () => {
+          if (subscribers.delete(stopListening)) {
+            stopListening();
+            if (subscribers.size === 0) {
+              stop();
+            }
+          }
+        };
+      },
+    },
+    { d: level },
+  );
+}
+
 // Bridges: a store of another library that can cross the page state. `bridge()` names how to make
 // the library's store, read it and listen to it, and the page state sends the data that `get`
 // reads, with the name of the bridge. The browser makes the library's store again, once, from

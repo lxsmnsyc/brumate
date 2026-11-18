@@ -1,0 +1,16 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import { colorScheme } from '@brumate/ui/color-scheme.brm.ts';
+  import type { ColorSchemeChoice } from '@brumate/ui/color-scheme.ts';
+
+  const { value, setValue } = colorScheme();
+  const choices: ColorSchemeChoice[] = ['light', 'dark', 'system'];
+</script>
+
+<div class="ui-row">
+  #for (choice of choices by choice) {
+    <Button class="ui-button color-scheme-demo-choice" aria-pressed=(value === choice) onPress=(() => setValue(choice))>
+      {choice}
+    </Button>
+  }
+</div>

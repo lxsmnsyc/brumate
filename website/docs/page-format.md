@@ -35,7 +35,7 @@ An anchor is a node that client code must find. Each anchor has an index within 
 - `b-b` is the anchor.
 - An element whose only client code is its handlers has no `b-b` when an element around it in the same scope has one. The core finds the scope of its handlers with `closest('[b-b]')`. The compiler does this only when that element is one the browser keeps whole, so not a `<p>`, a heading, a table section or a `<select>`.
 - `b-on` lists the event handlers, separated by spaces. Each entry is `<event>[:<modifier>…]=<reference>`. A handler that a spread passed on adds `@<scope>`, the scope it runs in, and one that `$handler` made adds `@<arguments>`, its arguments as JSON encoded with `encodeURIComponent`, such as `click:prevent=Page_x1#h9@3@%5B1%5D`.
-- `b-v="<scope>"` marks a top-level element of a component whose style variables can change.
+- `b-v="<scope>"` marks a top-level element of a component or of a block instance whose style variables can change. The value is one scope ID, or a space-separated list when the element carries the variables of several scopes, such as a component root that is also the top level of a block, with the component first.
 
 A reference is `<component ID>#<export name>`. The component ID is the component name and a hash of its path relative to the root. Handlers export as `h<n>`, and `$client` callbacks as `c<n>`.
 
@@ -284,7 +284,7 @@ The client keeps the layouts only when the root route of both pages is the same,
 
 A prerendered file on a static host starts its IDs at 0, whatever the request asks. Before it reads such a page, the client moves its IDs up by the difference:
 
-- In the markup: `b-b`, `b-v`, `b-result`, `b-l`, `b-h`, and the `t`, `b`, `i`, `l`, `P` and `R` comments. An ID with a dot moves its first number, so `1.0` becomes `3.0`.
+- In the markup: `b-b`, `b-v` (each ID of its list), `b-result`, `b-l`, `b-h`, and the `t`, `b`, `i`, `l`, `P` and `R` comments. An ID with a dot moves its first number, so `1.0` becomes `3.0`.
 - In the swap scripts: the numbers of `$bS(…)` and `$bH(…)`.
 - In `b-next` and `b-root`.
 - In the state: each record with scopes gets `b-offset`, and the core moves the scope IDs, the parent and child IDs, and the element and function references in its value. The code of the record does not change. Promises in it are moved when they settle.

@@ -56,7 +56,7 @@ The server variables of `src/env.ts` never ship. The browser gets the file witho
 
 ## Untrusted arguments
 
-The arguments of a server function and the fields of a form come from the browser. Their types are not checked when they arrive. A user can send any value that seroval reads.
+The arguments of a server function and the fields of a form come from the browser. Their types are not checked when they arrive. A user can send any value that seroval reads. The fields of brumate's own values in the arguments, such as an element reference or a file index, are validated, and a bad one answers 400 with `The arguments of the call are malformed`. So does a plugin that the server does not have.
 
 - Check them with `parse`, `safeParse` or `parseForm` from `brumate/server` and a [Standard Schema](https://standardschema.dev). See [Validating arguments](./server-functions.md#validating-arguments).
 - `parse` answers with status 400 and the message of the first issue, cut at 300 characters. The issues stay on the server.
@@ -94,6 +94,8 @@ response?.headers.set('content-security-policy', `script-src 'self' 'nonce-${non
 ```
 
 The client code loads as modules from your origin, which `'self'` allows.
+
+A component that writes an inline script of its own with `raw()` gives it `getEvent().nonce`, which is the nonce of the render, or undefined without one.
 
 A policy from a header stays for the whole visit, so the client router gives the state records and swap scripts of each later page the nonce of the page that the browser loaded. Each response can still make its own nonce.
 

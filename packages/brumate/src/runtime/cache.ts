@@ -3,7 +3,8 @@
 // can keep them too. Tags name what a result depends on, and `revalidate`
 // drops every result of a tag.
 
-import { fromJSON, toJSON } from 'seroval';
+import { fromJSON } from 'seroval/read';
+import { toJSON } from 'seroval/write';
 import { currentEvent, withEvent } from './request.ts';
 import { serialOptions, syncPlugins } from './serial.ts';
 

@@ -1,0 +1,91 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { AsProps, AsTarget } from './as.ts';
+  import type { ColorSchemeChoice } from './color-scheme.ts';
+
+  export interface ColorSchemeOwnProps {
+    /** The name of the cookie, `color-scheme` by default. Give a plain name. */
+    cookieName?: string;
+    /** A Content Security Policy nonce for the script of the head. The nonce of the render by default. */
+    nonce?: string;
+    /** Whether `as="html"` puts a script in the head that sets the class from the device before the first paint. */
+    script?: boolean;
+    /** The page. */
+    children?: unknown;
+    /** The choice. Alone, or undefined, it is the cookie. `$bind` writes your signal. */
+    value?: Bindable<ColorSchemeChoice | undefined>;
+  }
+
+  /**
+   * The props of ColorScheme. `as` takes an element name or a component, and the other props are
+   * those of the target.
+   */
+  export type ColorSchemeProps<T extends AsTarget = 'div'> = AsProps<T, ColorSchemeOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'div'">
+  import { getEvent } from 'brumate/server';
+  import { raw } from 'brumate/html';
+  import { $client, $effect, $memo, $props, $setContext, $signal, $toStore } from 'brumate/signals';
+  import {
+    COLOR_SCHEME_COOKIE,
+    colorSchemeCookie,
+    colorSchemeScript,
+    readColorScheme,
+    resolveColorScheme,
+  } from './color-scheme.ts';
+  import { ColorSchemeContext } from './contexts.ts';
+
+  /**
+   * The light, dark or system choice, kept in a cookie. The server reads the cookie, so the first
+   * response has the class `light` or `dark` on the element, and the page has no flash. Use
+   * `as="html"` in a layout for the class on `<html>`. The element shows `data-color-scheme` with
+   * the choice, and `color-scheme` in its style. A Button inside reads and changes the choice with
+   * `colorScheme()` from `color-scheme.brm.ts`.
+   */
+  const { as = 'div', cookieName = COLOR_SCHEME_COOKIE, nonce, script = true, children, ...rest } = $props<ColorSchemeProps<T>>();
+  let { value } = $props<ColorSchemeOwnProps>();
+
+  const cookie = readColorScheme(getEvent(), cookieName);
+  const choice = $memo<ColorSchemeChoice>(value ?? cookie);
+
+  // Whether the device prefers dark. The server does not know, so it is undefined until the code loads.
+  let prefersDark = $signal<boolean | undefined>(undefined);
+  const resolved = $memo(
+    choice === 'system' && prefersDark === undefined ? undefined : resolveColorScheme(choice, prefersDark === true),
+  );
+
+  function setValue(next: ColorSchemeChoice) {
+    value = next;
+  }
+
+  const state = $memo({ value: choice, resolved });
+  $setContext(ColorSchemeContext, { state: $toStore(state), setValue });
+
+  // The cookie follows every change of the choice. It does not run when the page loads.
+  $effect(() => {
+    document.cookie = colorSchemeCookie(cookieName, choice, location.protocol === 'https:');
+  });
+
+  // The preference is known as soon as the page loads, since `system` can be chosen at any time and
+  // the element can be <html>, which no trigger of the viewport watches.
+  $client(() => {
+    const query = matchMedia('(prefers-color-scheme: dark)');
+    prefersDark = query.matches;
+    function change(event: MediaQueryListEvent) {
+      prefersDark = event.matches;
+    }
+    query.addEventListener('change', change);
+    return () => query.removeEventListener('change', change);
+  }, 'load');
+
+  // With no cookie, a script in the head puts the preference of the device on <html> before the first paint.
+  const headScript = script && as === 'html' && (value ?? cookie) === 'system' ? colorSchemeScript(nonce ?? getEvent().nonce) : '';
+</script>
+
+#if (headScript) {
+  #head {
+    {raw(headScript)}
+  }
+}
+<{as} class=(resolved) style=(`color-scheme: ${resolved ?? 'light dark'}`) data-color-scheme=(choice) {...rest}>{children}</>

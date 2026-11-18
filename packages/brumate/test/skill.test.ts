@@ -18,6 +18,7 @@ import { ERRORS, findError, matchesError, renderErrors } from '../src/error-cata
 
 const SKILL = fileURLToPath(new URL('../skills/brumate/', import.meta.url));
 const SRC = fileURLToPath(new URL('../src/', import.meta.url));
+const UI_SRC = fileURLToPath(new URL('../../ui/src/', import.meta.url));
 
 /** The files of the skill, as paths under its folder. */
 const FILES = [
@@ -105,6 +106,11 @@ function compileBlock(block: Block): ReturnType<typeof compile> {
   return compile(block.source, {
     filename: 'Example.brm',
     resolveModule: (specifier) => {
+      // A module of @brumate/ui is read from its package.
+      const ui = /^@brumate\/ui\/(.*\.brm\.ts)$/.exec(specifier);
+      if (ui && existsSync(`${UI_SRC}${ui[1]}`)) {
+        return { path: `${UI_SRC}${ui[1]}`, source: readFileSync(`${UI_SRC}${ui[1]}`, 'utf8') };
+      }
       const source = block.modules.get(specifier.replace(/^\.\//, ''));
       return source === undefined ? undefined : { path: `/skill/${specifier}`, source };
     },

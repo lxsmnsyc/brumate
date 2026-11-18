@@ -97,6 +97,9 @@ skip('A child that throws on purpose; the pages that render it cover where the e
   'AwaitReadKid',
   'AwaitShownKid',
   'GapMarkupFailKid',
+  'OrderKid',
+  'ChildFirstKid',
+  'Thrower',
   'PrimitiveAwaitFailKid',
   'memoErrorAwaitOutside',
 ]);

@@ -146,7 +146,7 @@ The compile:
 - Each block with a style gets an attribute of scope, such as `s-<hash>-2`, on its elements and on the elements of the blocks inside it. Its selectors get that attribute, as the selectors of the component get `s-<hash>`.
 - The custom properties of `${}` go on the top-level elements of each instance of the block, as they go on the top-level elements of a component now. A change sets them on the elements of that instance.
 - The styles of the blocks join the stylesheet of the component, so it still loads once per page.
-- A style in a block cannot hold `:global(…)`. A global rule reads as if it applied while the block shows, and it would not. Global rules stay in the `<style>` of the component.
+- A style in a block can hold `<style global>` and `:global(…)`, with the same output as in the style of the file: the rules join the sheet unscoped. The file is the outermost block, and its `<style>` is the style of that block (maintainer rework, 2026-11-11).
 - A `<style>` in markup is an error today, so nothing that works now changes.
 
 A style in an `#if` matches only the elements of its branch, which exist only while the branch shows. So the CSS needs no condition of its own.

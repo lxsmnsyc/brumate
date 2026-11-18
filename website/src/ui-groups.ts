@@ -52,7 +52,16 @@ export const groups: { title: string; pages: string[] }[] = [
   },
   {
     title: 'Overlays',
-    pages: ['dialog', 'popover', 'modal', 'sheet', 'tooltip', 'preview-trigger', 'toast'],
+    pages: [
+      'dialog',
+      'popover',
+      'popover-group',
+      'modal',
+      'sheet',
+      'tooltip',
+      'preview-trigger',
+      'toast',
+    ],
   },
   {
     title: 'Collections',
@@ -70,8 +79,8 @@ export const groups: { title: string; pages: string[] }[] = [
   },
   { title: 'Data', pages: ['table', 'tree', 'navigation-tree', 'virtualizer', 'data'] },
   { title: 'Navigation', pages: ['disclosure', 'disclosure-group', 'breadcrumbs', 'toolbar'] },
-  { title: 'Status', pages: ['meter', 'progress-bar'] },
+  { title: 'Status', pages: ['meter', 'progress-bar', 'alert'] },
   { title: 'Layout', pages: ['group', 'separator', 'heading'] },
   { title: 'Animation', pages: ['transition'] },
-  { title: 'Utilities', pages: ['visually-hidden', 'keyboard', 'i18n-provider'] },
+  { title: 'Utilities', pages: ['visually-hidden', 'keyboard', 'i18n-provider', 'color-scheme'] },
 ];
