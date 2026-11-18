@@ -47,9 +47,6 @@ depends_on:
   - on: style-scope-where
     kind: hard
     why: a must feature of the 0.9.0 cut
-  - on: mcp-server
-    kind: hard
-    why: a must feature of the 0.9.0 cut
   - on: observability
     kind: hard
     why: a must feature of the 0.9.0 cut

@@ -58,3 +58,7 @@ GOAL.md: size is recorded, not a gate.
 ## Amendment, 2026-11-12
 
 The maintainer dropped drop-marker-index: its rule lives in no-html-string-fallback, clone-remaining-bodies and no-client-html, and the rest saves almost nothing. fixed-walks stays parked and now waits for clone-remaining-bodies.
+
+## Amendment, 2026-11-18
+
+The maintainer deferred mcp-server to the backlog (priority later): they want to learn more about MCP before building it. The cut now has 7 features. style-files stays should; it is the reserve and is not promoted by this change. The brief keeps the notes of the analysis for when it is refined.
