@@ -1,0 +1,11 @@
+# Log: partial-measure
+
+- Read the story, the brief and the navigation code. The website has no `@sidebar` slot. A parallel slot exists in examples/tracker (`@aside`), so the deeper pair is `/about` to `/team` there.
+- The website is deployed as a static site (vercel.json, `outputDirectory: dist/client`). A static host ignores `x-brumate-base`, so no partial response can come from it. The harness measures the website in two modes: `static` (the repo's `scripts/preview.ts`, as deployed) and `server` (the built `dist/server` behind a small HTTP server, every page rendered by `route`). Only the server mode can ever answer in part.
+- In static mode the client still replaces routes and not the body: the prerendered page has no `b-root`, `shiftFor` moves its IDs, and `planRoutes` goes on. I first expected a body swap and the check caught it. The harness marks a layout element before the click and reads the mark after the swap to tell the two apart.
+- A real mouse click focuses the link, and focus or a hover of 80 ms starts `prefetch`. The click then reuses that response, and the wait is not the cost of a navigation. The default input is `link.click()` from the page (no hover, no focus). `--input mouse` keeps the real click.
+- A first run took the entry of the prefetch fetch (negative wait). The fix: use `link.click()`, and wait for the resource entry of the fetch to exist, since it is added when the response ends.
+- The end of the swap is the call to `history.pushState`, which runs right after `replaceRoutes` in the same task (navigate.ts, after the swap). The init script wraps it. A `requestAnimationFrame` after it gives the time to the next frame.
+- Sizes: the body comes from Playwright (`response.body()`), raw = its UTF-8 length, checked against `decodedBodySize` of Resource Timing. Gzip is computed in Node at level 9, since neither server compresses.
+- The machine stayed at load 11 to 28 during all runs. Two full runs and one run with a mouse click are recorded in outcome.md.
+- State record: in the docs response the `script[b-state]` is 72.6 KB raw (10.9 KB gzip) of 193.8 KB, outside every region. Counting the regions alone leaves it out, so the saving ceiling is lower than the full minus regions figure.
