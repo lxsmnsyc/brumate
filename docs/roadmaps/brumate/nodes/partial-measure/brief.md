@@ -1,7 +1,7 @@
 ---
 id: partial-measure
 title: Measure a docs navigation, bytes and time
-status: active
+status: done
 priority: must
 type: chore
 story:

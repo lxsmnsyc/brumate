@@ -1,7 +1,7 @@
 ---
 id: style-files-modules
 title: "Component CSS as Vite style modules in builds"
-status: active
+status: done
 priority: must
 type: feature
 story: style-files
