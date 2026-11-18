@@ -1,0 +1,703 @@
+{
+  "round": 3,
+  "claims": {
+    "J1": {
+      "id": "J1",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "device",
+      "text": "Machine: 8 GB RAM, 13 GB free disk, load average 10 to 16 on 8 cores during this session with 2 to 3 workers running.",
+      "evidence": {
+        "type": "measured",
+        "source": "sysctl hw.memsize vm.loadavg; df -h",
+        "detail": ""
+      }
+    },
+    "J2": {
+      "id": "J2",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Baseline on release/0.9 (d713634e), Chrome 157: /docs/styles to /docs/context full response 192164 B raw / 32477 B gzip, swap 61 to 71 ms median; /ui/button to /ui/dialog 321042 / 42432 B, swap 108 to 125 ms; tracker /about to /team 3155 / 1531 B, 18 to 20 ms. Load 15 to 28, medians trusted to about 20%.",
+      "evidence": {
+        "type": "measured",
+        "source": "node benchmarks/navigation/run.mjs (commit a79be26c on chore/partial-measure)",
+        "detail": "evidence/partial-measure-outcome.md"
+      }
+    },
+    "J3": {
+      "id": "J3",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "The route regions that change are 34% raw / 32% gzip of the docs response and 35% / 30% of the ui response, so a partial response can save at most about 68% (docs) and 70% (ui) gzip. /docs/context carries a 72.6 KB raw (10.9 KB gzip) state record outside every region and a 34.4 KB head, which a partial response must still send for the new route.",
+      "evidence": {
+        "type": "measured",
+        "source": "benchmarks/navigation/regions.mjs",
+        "detail": "evidence/partial-measure-outcome.md"
+      }
+    },
+    "J4": {
+      "id": "J4",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "The website deploys as static files (website/vercel.json outputDirectory dist/client; every page prerendered), so a server-rendered partial response cannot reach it unless the static build also writes partial files. examples/nitro and examples/kit-app run a server.",
+      "evidence": {
+        "type": "source",
+        "source": "website/vercel.json; website/vite.config.ts:95-100; examples/",
+        "detail": ""
+      }
+    },
+    "J5": {
+      "id": "J5",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "tokens",
+      "text": "Navigation code today: runtime/navigate.ts 942 lines, runtime/client-routes.ts 233 lines. First-navigation JS is 7.3 KB gzip on docs, of which 5.1 KB is navigate plus client-routes; the first load of a docs page is 362.7 KB gzip of JS plus wasm.",
+      "evidence": {
+        "type": "measured",
+        "source": "wc -l; benchmarks/navigation/run.mjs",
+        "detail": "evidence/partial-measure-outcome.md"
+      }
+    },
+    "J6": {
+      "id": "J6",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "On 2026-10-30 the maintainer chose partial responses over a component router. Reasons recorded: a client router ships every page component to the browser, needs server-only components and await in components to run in the browser, and adds a render path beside resume.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/roadmaps/brumate/nodes/partial-route-responses/brief.md (Context)",
+        "detail": ""
+      }
+    },
+    "J7": {
+      "id": "J7",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "browser-await is done: await $memo already runs in a browser render. server-components-spike is a 0.9.0 must, not started.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/roadmaps/brumate/nodes/browser-await/brief.md status done; nodes/server-components-spike/brief.md",
+        "detail": ""
+      }
+    },
+    "J8": {
+      "id": "J8",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "tokens",
+      "text": "The partial-route-responses story is planned as 9 children: route-render-split S (built, waiting to land), partial-measure M (built), navigation-debate S, partial-render-spike M (gated, >=40% fewer gzip bytes), partial-server-render L, partial-client-apply L, partial-prefetch M, partial-fallbacks L, partial-docs S. Past L nodes in this roadmap spent about 0.3M to 0.9M tokens each (block-styles 896k, dock-graph 496k).",
+      "evidence": {
+        "type": "calibration",
+        "source": "docs/roadmaps/brumate/nodes/*/brief.md spent fields; memory of 0.8.0 nodes",
+        "detail": ""
+      }
+    },
+    "J9": {
+      "id": "J9",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "GOAL.md: size is recorded, not a gate, from 2026-11-12; at equal size simpler wins (2026-11-02); the outcome from 0.9.0 is to ship the features an app needs first. Breaking changes are fine.",
+      "evidence": {
+        "type": "inferred",
+        "source": "docs/roadmaps/brumate/GOAL.md Outcome and Constraints",
+        "detail": "size does not decide; simplicity and app value do"
+      }
+    },
+    "J10": {
+      "id": "J10",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Static navigation today already keeps the layouts: the client shifts the IDs of the fetched static page and replaces only the changed routes.",
+      "evidence": {
+        "type": "measured",
+        "source": "partial-measure worker observation",
+        "detail": "evidence/partial-measure-outcome.md"
+      }
+    },
+    "P1": {
+      "id": "P1",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Ship the planned server partial response as the main model: the client sends x-brumate-keep, the server runs kept layouts silently and streams only the changed route regions with the new routes' head entries, html attributes and state records, in the same region-comment HTML so planRoutes/replaceRoutes stay. Every case the server cannot answer in part gets today's full page, so the full swap is the fallback, not a competitor. Gate: partial-render-spike must show at least 40% fewer gzip bytes.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "https://github.com/vercel/next.js/blob/a86aeba10e7b32041ead6e252f807ad080166ef6/packages/next/src/client/components/app-router-headers.ts",
+        "detail": "Next.js sends next-router-state-tree (the client's kept segments) and the server renders from the changed segment; React Router single fetch filters by route ID at https://github.com/remix-run/react-router/blob/c9a237a0bd095714fd0111c7e49e18768e1eb8ba/packages/react-router/lib/dom/ssr/single-fetch.tsx. Both keep one render path on the server and fall back to the full tree when state is unknown. Brumate's contract already follows this (partial-route-responses brief, decisions 1 to 4)."
+      },
+      "axis": "time",
+      "estimate": {
+        "value": 15,
+        "unit": "KB gzip per docs navigation (from 32.5 KB, about 54% less)"
+      },
+      "estimate_detail": "regions 10.5 KB gzip (J3) plus changed head entries and the new route's state record, about 4 to 5 KB; the 10.9 KB state record outside the regions is mostly kept layouts and is not resent"
+    },
+    "P2": {
+      "id": "P2",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Make partial navigation reach the static website: the static build writes, for each prerendered page, a routes-only file (changed regions, head entries, state records, no layouts) beside the full page, and the client fetches it instead of the full file. Static navigation already shifts the IDs of the fetched page and replaces only the changed routes (J10), so the file needs no per-client scope IDs and no keep header. Same swap code as P1.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "https://github.com/remix-run/react-router/blob/c9a237a0bd095714fd0111c7e49e18768e1eb8ba/packages/react-router/lib/dom/ssr/single-fetch.tsx",
+        "detail": "React Router prerenders .data files at build time and loads them from a static server or CDN on navigation (single-fetch.tsx lines 255 to 295); Qwik Router fetches q-route.json per route on SPA navigation, https://github.com/QwikDev/qwik/blob/da40f0f9916999e1e74348f4b7f4b380d565ee75/packages/qwik-router/src/runtime/src/qwik-router-component.tsx line 217. Both are partial data files that work on a static host."
+      },
+      "axis": "time",
+      "estimate": {
+        "value": 16,
+        "unit": "KB gzip per website navigation (from 33.2 KB, about 50% less) and about 0.4M tokens"
+      },
+      "estimate_detail": "J4 says the website is static, so P1 alone gives it nothing; regions 10.5 KB plus head about 5 KB; one M node (J8 calibration: M nodes 0.2 to 0.4M)"
+    },
+    "P3": {
+      "id": "P3",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Order: (1) route-render-split lands (S, built); (2) navigation-debate and partial-render-spike with the 40% gate, which freezes the contract; (3) partial-server-render and partial-client-apply, one worker at a time on navigate.ts and server.ts; (4) partial-fallbacks (the full-page cases, one e2e each); (5) partial-prefetch with the keep header, answers Q1 B and Q2 A already given; (6) static routes-only files (P2) once the contract is frozen; (7) partial-docs with final numbers. A no-go at the spike stops everything after step 2 and keeps the full swap with no wasted L node.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/roadmaps/brumate/nodes/partial-route-responses/brief.md Children table and questions.md Answers",
+        "detail": "children, dependencies and the maintainer's answers 2026-11-18"
+      },
+      "axis": "tokens",
+      "estimate": {
+        "value": 2.4,
+        "unit": "M tokens for the whole story (spike M 0.3, server L 0.6, client L 0.6, fallbacks L 0.5, prefetch M 0.3, docs S 0.1)"
+      },
+      "estimate_detail": "J8: past L nodes 0.3M to 0.9M each (block-styles 896k, dock-graph 496k)"
+    },
+    "P4": {
+      "id": "P4",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Do not build a component-based client router now. It ships every page component to the browser and adds a render path beside resume (J6); await in the browser exists (J7) but server-only components do not (server-components-spike not started). Revisit only if the server-components-spike lands a way to run pages in the browser and the partial measure then misses its gate. Partial responses keep the resume model and ship no page code a navigation does not need.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "https://github.com/solidjs/solid-router/tree/def64e609e6bed5f08f5558b2d6e6769e9259b77",
+        "detail": "Solid Router and React Router in data mode load route components in the browser and render them there; React Router needs a manifest of every route module and clientLoader paths. That is the cost J6 recorded. Qwik City avoids it by fetching route data (q-route.json) and resuming, which is the closest match to P1 and P2."
+      },
+      "axis": "device",
+      "estimate": {
+        "value": 0,
+        "unit": "KB added to first load for pages that need no code"
+      },
+      "estimate_detail": "a client router adds page components for every route to the client graph; the first docs load is already 362.7 KB gzip of JS (J5)"
+    },
+    "P5": {
+      "id": "P5",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Trim what a partial response carries beyond the regions: send the new routes' state records and head diff only. This is the part that decides whether the 50% target is met, since the head is 34.4 KB raw and the state record 72.6 KB raw sit outside the regions (J3). The spike's first question is how much of each the new route needs; if the answer is most of it, the gate fails early and cheaply.",
+      "evidence": {
+        "type": "measured",
+        "source": "docs/debates/navigation/evidence/partial-measure-outcome.md (J3)",
+        "detail": "ceiling 68% (docs) and 70% (ui) gzip; head 8.2 KB gz and state record 10.9 KB gz outside regions"
+      },
+      "axis": "time",
+      "estimate": {
+        "value": 50,
+        "unit": "percent fewer gzip bytes, expected range 45 to 60"
+      },
+      "estimate_detail": "from J3: full 32.5 KB, regions 10.5 KB, must-send head and route state about 4 to 6 KB"
+    },
+    "A1": {
+      "id": "A1",
+      "round": 1,
+      "by": "proponent",
+      "kind": "alternative",
+      "text": "Static-first, server later: build only P2 (routes-only static files, one M node, about 0.4M tokens) for the website, which is brumate's flagship app and static (J4), and leave server partial responses (P1) until an app with a server asks for them. Cheaper on tokens (0.4M against 2.4M) and on simplicity (no keep header, no silent layouts, no cache question), but nitro and kit-app apps keep the full swap.",
+      "evidence": {
+        "type": "inferred",
+        "source": "docs/roadmaps/brumate/GOAL.md Outcome and Constraints (J9) and website/vercel.json (J4)",
+        "detail": "ship what apps need first, simpler wins at equal size; the only measured app is the static website"
+      },
+      "axis": "tokens",
+      "estimate": {
+        "value": 0.4,
+        "unit": "M tokens"
+      }
+    },
+    "A2": {
+      "id": "A2",
+      "round": 1,
+      "by": "proponent",
+      "kind": "alternative",
+      "text": "Keep the full-page swap and shrink the full response instead: dedupe the head and state record, and prefetch on hover (exists). No new request header, no second response shape, S to M size (about 0.2M tokens). It cuts at most the state and head share, and a full page still carries the kept layouts' region bytes (about 66% of the response, J3).",
+      "evidence": {
+        "type": "measured",
+        "source": "docs/debates/navigation/evidence/partial-measure-outcome.md (J3)",
+        "detail": "regions are 34% of raw bytes, so shrinking head and state alone cannot pass 40%"
+      },
+      "axis": "tokens",
+      "estimate": {
+        "value": 0.2,
+        "unit": "M tokens, at most about 25% fewer gzip bytes"
+      },
+      "estimate_detail": "head 8.2 KB plus state 10.9 KB gzip of 32.5 KB is 59% outside regions, but part of that is the new route's own state"
+    },
+    "O1": {
+      "id": "O1",
+      "kind": "rebuttal",
+      "axis": "time",
+      "answers": [
+        "P1",
+        "P2",
+        "P5"
+      ],
+      "text": "A synthetic partial built from the prerendered pages (new head entries, the changed route region, the state record without the layout entries) is 18.7 KB gzip for /docs/context (38% less than 30.4 KB) and 24.1 KB for /ui/dialog (32% less than 35.7 KB). That is not the 15 to 16 KB (50 to 54%) of P1/P2/P5 and it misses the 40% gate on the ui pair; with brotli it is 42% and 37%. Keeping the whole state record gives 35% and 31%.",
+      "estimate": {
+        "value": 32,
+        "unit": "to 38 percent fewer gzip bytes (brotli 37 to 42), against the 50 to 54 percent claimed"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "node docs/debates/navigation/evidence/synthetic-partial.mjs .claude/worktrees/node-style-files-modules/website/dist/client (build of d713634e, 117 prerendered pages)",
+        "detail": "docs/debates/navigation/evidence/synthetic-partial.out"
+      },
+      "round": 1,
+      "by": "opponent"
+    },
+    "O2": {
+      "id": "O2",
+      "kind": "rebuttal",
+      "axis": "time",
+      "answers": [
+        "P1",
+        "P5"
+      ],
+      "text": "P1 puts head and state at 4 to 5 KB and says the 10.9 KB state record is mostly kept layouts. Measured the other way: the new route needs only 7 new head tags (0.26 KB gzip), but the state record is about 96% route entries: the layout entries are 2.4 KB raw of 72 KB, so the new route still needs about 10 KB gzip of state (13.5 KB for ui). The spike will see its gate fail on the state record, not the head.",
+      "estimate": {
+        "value": 10,
+        "unit": "KB gzip of route state a partial must still send (docs), 13.5 for ui"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "evidence/synthetic-partial.mjs: freshHeadGz 259 and 219 B, stateGz 10913 and 14483 B; layout entries before the first route entry are 2.4 KB raw",
+        "detail": "docs/debates/navigation/evidence/synthetic-partial.out"
+      },
+      "round": 1,
+      "by": "opponent"
+    },
+    "O3": {
+      "id": "O3",
+      "kind": "cost",
+      "axis": "device",
+      "severity": "medium",
+      "answers": [
+        "P2"
+      ],
+      "text": "Routes-only static files add about 74% (docs) to 83% (ui) of the raw size of each page on top of the full page. The website has 117 prerendered pages with 30.3 MB of HTML, so P2 adds roughly 23 MB of deploy output, and the build writes each page twice, on a machine with 13 GB free of 228 GB at 94% use. Every page needs both files kept in step with the contract.",
+      "estimate": {
+        "value": 23,
+        "unit": "MB more static HTML in website/dist/client"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "find website/dist/client -name \"*.html\" | xargs cat | wc -c; partialRaw/fullRaw in synthetic-partial.out",
+        "detail": "docs/debates/navigation/evidence/synthetic-partial.out"
+      },
+      "round": 1,
+      "by": "opponent"
+    },
+    "O4": {
+      "id": "O4",
+      "kind": "risk",
+      "axis": "time",
+      "severity": "medium",
+      "answers": [
+        "P1"
+      ],
+      "text": "A second response shape on the same URL selected by a header is a known cache hazard. Next.js adds an `_rsc` search param to every router request \"for CDNs that don't support custom headers... rather than relying on Vary\", and htmx users get the fragment on reopen-tab and reload (issues 724, 497). Brumate already varies on x-brumate-base; Q1 B (private) avoids shared caches but not the browser history cache, and it removes any CDN hit for navigation responses. Likelihood medium; the fix is option C (a separate URL), which is a larger change than P1 states.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "https://github.com/vercel/next.js/blob/a86aeba10e7b32041ead6e252f807ad080166ef6/packages/next/src/client/components/router-reducer/set-cache-busting-search-param.ts; https://github.com/bigskysoftware/htmx/issues/724; https://github.com/bigskysoftware/htmx/issues/497",
+        "detail": "Next.js moved off Vary-only keys to a hashed query param; htmx shows a header-varied fragment served as the page on tab restore"
+      },
+      "round": 1,
+      "by": "opponent"
+    },
+    "O5": {
+      "id": "O5",
+      "kind": "cost",
+      "axis": "tokens",
+      "severity": "high",
+      "answers": [
+        "P3"
+      ],
+      "text": "P3 spends about 2.4M tokens over 5 nodes (4 L or M builds plus spike) for a measured 32 to 38% gzip saving. The server still runs every kept layout (brief decision 2), so the server-mode wait (32 to 46 ms of the 61 to 125 ms) does not shrink, and the bytes cross localhost in the baseline. The read, parse and swap share (39 to 67 ms) is the only part that can fall, and the baseline did not isolate how much of it is the layout DOMParser work. The gate measures bytes while the acceptance asks for \"no slower swap\"; no number links the two.",
+      "estimate": {
+        "value": 2.4,
+        "unit": "M tokens for 32 to 38% fewer gzip bytes"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "docs/debates/navigation/evidence/partial-measure-outcome.md (split of the median, run A); partial-route-responses brief decision 2",
+        "detail": "wait 32.2 + read 38.7 ms docs-server, 46.4 + 62.3 ui-server; kept layouts run silently on the server"
+      },
+      "round": 1,
+      "by": "opponent"
+    },
+    "O6": {
+      "id": "O6",
+      "kind": "alternative",
+      "axis": "tokens",
+      "text": "Do the state dedupe first, and gate the partial work on its result: 59 KB raw of the 72 KB docs state record (98% of its long strings) and 107 KB of the 135 KB ui record are page prose and highlighted code that is already in the page HTML. Removing the repeats cuts the full response by 24% gzip (30.4 to 23.2 KB docs, 35.7 to 27.8 KB ui) and 13 to 15% brotli, on the first load, the static website, every server and every deploy, with no new header, no second response shape and no cache question. A partial on top would shed the same strings from its own state (estimate: state 10.9 to 3.2 KB gzip, so the partial about 11 KB). One M node, about 0.3M tokens, and it keeps today's render path count.",
+      "estimate": {
+        "value": 24,
+        "unit": "percent fewer gzip bytes of the full response, at about 0.3M tokens"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "node docs/debates/navigation/evidence/dedupe-state.mjs .claude/worktrees/node-style-files-modules/website/dist/client",
+        "detail": "docs/debates/navigation/evidence/dedupe-state.out"
+      },
+      "round": 1,
+      "by": "opponent"
+    },
+    "O7": {
+      "id": "O7",
+      "kind": "alternative",
+      "axis": "time",
+      "text": "Keep the full-page swap as the model and drop the component router (P4 agrees), and change the spike gate so that it measures what a person sees: swap milliseconds under a throttled network and CPU, not only gzip bytes. At 0 ms of network the baseline shows 61 to 125 ms swaps that bytes cannot explain, and a 40% byte gate that the real numbers sit at the edge of (O1) may reject a model that helps on a slow link or accept one that does not.",
+      "evidence": {
+        "type": "inferred",
+        "source": "docs/roadmaps/brumate/GOAL.md Outcome (ship what apps need) and the partial-measure outcome (no network throttle, load 15 to 28)",
+        "detail": "the harness ran without network or CPU throttle, so transfer time was not measured"
+      },
+      "round": 1,
+      "by": "opponent"
+    },
+    "O8": {
+      "id": "O8",
+      "kind": "rebuttal",
+      "axis": "time",
+      "answers": [
+        "O1",
+        "P1",
+        "P2",
+        "P5"
+      ],
+      "text": "On a release/0.9 build the synthetic partial is 20.1 to 21.0 KB gzip for /docs/context (36.7% to 39.6% fewer than 33.2 KB) and 26.2 to 26.9 KB for /ui/dialog (37.8% to 39.4% fewer than 43.2 KB); the low figure drops the layout entries from the state, the high one keeps all state. Brotli gives 40.8% to 43.9% and 41.9% to 43.9%. This replaces O1: the gate of 40% gzip is missed by 0.4 to 3 points on both pairs and cleared only with brotli. The claimed 50 to 54% (P1, P2, P5) is still out of reach.",
+      "estimate": {
+        "value": 37,
+        "unit": "to 40 percent fewer gzip bytes (brotli 41 to 44), against 50 to 54 claimed"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "node docs/debates/navigation/evidence/synthetic-partial.mjs on website/dist/client built from origin/release/0.9 (d713634e) in a scratch worktree; full page 193760 B raw / 33232 B gzip for /docs/context, equal to J2",
+        "detail": "docs/debates/navigation/evidence/synthetic-partial-base.out"
+      },
+      "round": 1,
+      "by": "opponent"
+    },
+    "O9": {
+      "id": "O9",
+      "kind": "rebuttal",
+      "axis": "time",
+      "answers": [
+        "O2",
+        "P1",
+        "P5"
+      ],
+      "text": "O2 holds on release/0.9: the new route needs 7 head tags (259 B and 219 B gzip) but state of 10.9 KB gzip (docs) and 14.4 KB (ui) of which the layout entries are about 2.4 KB raw. A partial must still send about 10 KB of state, so the state record and not the head decides the gate. Region gzip is 10.5 KB (docs) and 12.7 KB (ui), equal to J3.",
+      "estimate": {
+        "value": 10.9,
+        "unit": "KB gzip of state, 14.4 for ui"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "evidence/synthetic-partial.mjs, release/0.9 build",
+        "detail": "docs/debates/navigation/evidence/synthetic-partial-base.out"
+      },
+      "round": 1,
+      "by": "opponent"
+    },
+    "O10": {
+      "id": "O10",
+      "kind": "cost",
+      "axis": "device",
+      "severity": "medium",
+      "answers": [
+        "O3",
+        "P2"
+      ],
+      "text": "On release/0.9 the routes-only static files are 70% (docs, 136.5 of 193.8 KB) to 76% (ui, 244.7 of 323.9 KB) of the raw size of a page. The website has 117 prerendered pages and 33.8 MB of HTML, so P2 adds about 24 MB of deploy output. This replaces the 23 MB of O3.",
+      "estimate": {
+        "value": 24,
+        "unit": "MB more static HTML"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "find website/dist/client -name \"*.html\" | xargs cat | wc -c (33768073 B, 117 files); partialRaw/fullRaw",
+        "detail": "docs/debates/navigation/evidence/synthetic-partial-base.out"
+      },
+      "round": 1,
+      "by": "opponent"
+    },
+    "O11": {
+      "id": "O11",
+      "kind": "alternative",
+      "axis": "tokens",
+      "answers": [
+        "O6"
+      ],
+      "text": "On release/0.9 the state dedupe is smaller than O6 said: 58.7 KB of the docs state record and 106.5 KB of the ui record repeat text already in the HTML, which cuts the full response by 21.7% gzip (33.2 to 26.0 KB, docs) and 18.3% (43.2 to 35.3 KB, ui), and 12.1% and 12.3% brotli. It still needs no new header or response shape and one M node (about 0.3M tokens), but alone it does not reach 40%. This replaces O6.",
+      "estimate": {
+        "value": 18,
+        "unit": "to 22 percent fewer gzip bytes of the full response, 12 percent brotli, at about 0.3M tokens"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "node docs/debates/navigation/evidence/dedupe-state.mjs on website/dist/client built from origin/release/0.9 (d713634e) in a scratch worktree; full page 193760 B raw / 33232 B gzip for /docs/context, equal to J2",
+        "detail": "docs/debates/navigation/evidence/dedupe-state-base.out"
+      },
+      "round": 1,
+      "by": "opponent"
+    },
+    "P6": {
+      "id": "P6",
+      "round": 2,
+      "by": "proponent",
+      "kind": "concession",
+      "text": "Dropped: the static routes-only files (P2, A1), the 50 to 54% claim of P1 and P5, and the plan to ship partial first. O10 measured 24 MB more deploy output for the website, O8 measured 36.7 to 39.6% for a partial alone, and O9 measured that the new route needs about 96% of the state.",
+      "answers": [
+        "P1",
+        "P2",
+        "P5",
+        "A1"
+      ],
+      "why": "O8, O9 and O10 are measured on release/0.9 and the partial alone misses the 40% gate; the static website then gets no partial, only whatever helps the full page"
+    },
+    "P7": {
+      "id": "P7",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "New first step: the state dedupe of O11 (A2 made concrete) as one M node, before any partial work. It needs no header, no second response shape and no new file, so it reaches the static website and every server app, and it removes the biggest part of the 96% state that a partial must resend (O9). It is also the only piece that works on a prerendered page.",
+      "evidence": {
+        "type": "measured",
+        "source": "node docs/debates/navigation/evidence/combined-partial.mjs on the release/0.9 build (d713634e, scratchpad worktree, full /docs/context 193761 B raw / 33232 B gzip, equal to J2); reuses the strip rule of dedupe-state.mjs and the cut of synthetic-partial.mjs",
+        "detail": "docs/debates/navigation/evidence/combined-partial-base.out: dedupe alone gives 21.7% (docs) and 18.3% (ui) fewer gzip bytes, 26.0 and 35.3 KB, matching O11"
+      },
+      "axis": "time",
+      "estimate": {
+        "value": 20,
+        "unit": "percent fewer gzip bytes of every full response, about 0.3M tokens (one M node, J8)"
+      }
+    },
+    "P8": {
+      "id": "P8",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Then the partial response on top of the dedupe, as the planned story with two cuts: no static files, and the fetch URL carries a marker query parameter that the server strips (as Next.js does with _rsc) so a partial can never be served as the page from the history cache or a CDN that drops Vary (O4). Measured with the dedupe applied to the partial too: 12.9 KB gzip for /docs/context, 61.1% fewer than today's full page and 50.3% fewer than the deduped full page; /ui/dialog 18.3 KB, 57.6% and 48.1%. The layout state entries are left out as in the low case of O8, which assumes the client keeps the state of its kept layouts.",
+      "evidence": {
+        "type": "measured",
+        "source": "node docs/debates/navigation/evidence/combined-partial.mjs on the release/0.9 build (d713634e, scratchpad worktree, full /docs/context 193761 B raw / 33232 B gzip, equal to J2); reuses the strip rule of dedupe-state.mjs and the cut of synthetic-partial.mjs",
+        "detail": "docs/debates/navigation/evidence/combined-partial-base.out"
+      },
+      "axis": "time",
+      "estimate": {
+        "value": 50,
+        "unit": "percent fewer gzip bytes than the deduped full page (48 to 50), 58 to 61 against today's full page (brotli: 10.8 and 13.9 KB)"
+      }
+    },
+    "P9": {
+      "id": "P9",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Change the spike gate to what O7 asks: it passes when the partial on top of the dedupe is at least 40% smaller in gzip than the deduped full page on the docs and ui pairs, and the median swap time under Chrome's Fast 4G profile with a 4x CPU slowdown is not worse than the deduped full page. At 0 ms of network the swap time cannot show the saving, so the throttled run decides. Sizes on the wire for the pair: 26.0 KB deduped full against 12.9 KB partial is 13 KB less per click, about 12 ms on a 9 Mbit/s link and about 65 ms on 1.6 Mbit/s.",
+      "evidence": {
+        "type": "estimate",
+        "source": "arithmetic from combined-partial-base.out bytes divided by the Chrome Fast 4G (9 Mbit/s) and Slow 4G (1.6 Mbit/s) profiles",
+        "detail": "transfer time only; the throttled swap has not been run, so the harness run is the spike's first job"
+      }
+    },
+    "P10": {
+      "id": "P10",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Stage the cost so a no-go costs little (O5): dedupe 0.3M tokens, then the spike 0.3M with the new gate, then the 2.1M of server-render, client-apply, fallbacks, prefetch and docs only if the gate passes. Total 2.7M if all ships, 0.6M if the spike says no-go; the full swap with the dedupe stays as the end state of a no-go. Cache answers Q1 B (private) and Q2 A are kept, with the marker parameter of P8 added to the prefetch URL.",
+      "evidence": {
+        "type": "calibration",
+        "source": "docs/roadmaps/brumate/nodes/*/brief.md spent fields (J8)",
+        "detail": "L nodes 0.3M to 0.9M each, M nodes 0.2M to 0.4M; the same estimates as O5 plus the dedupe node of O11"
+      },
+      "axis": "tokens",
+      "estimate": {
+        "value": 2.7,
+        "unit": "M tokens if all ships, 0.6M at a spike no-go"
+      }
+    },
+    "O12": {
+      "id": "O12",
+      "kind": "risk",
+      "axis": "time",
+      "severity": "high",
+      "answers": [
+        "P7",
+        "P8"
+      ],
+      "text": "The dedupe script blanks any long state string whose text is in the HTML; it does not check that resume never reads it. In DocPage.brm the loop `#for (part, index of page.parts by index)` renders `{part.html}` from `page = pages[slug]`, and `slug` is a prop. State records exist so the browser can re-run a block (a changed prop, `#key`, a `#loading` reload, a refresh), and a block that re-runs with \"\" would render empty prose. A safe dedupe needs the compiler to prove that the value only reaches a one-time raw insert whose DOM is already there, or the client must read it back from the DOM, whose serialization differs from the string (entities, attribute order). That is a compiler analysis, larger than the M node P7 and P10 assume. Likelihood of a silent blank render without it: high for any page that updates a prop.",
+      "evidence": {
+        "type": "source",
+        "source": "website/src/components/DocPage.brm lines 12-17 and 112-139; docs/decisions.md line 142 (blocks re-run on update); evidence/dedupe-state.mjs strips by substring match only",
+        "detail": "the script measures size, it proves nothing about resume; read of packages/brumate resume was not changed by it"
+      },
+      "round": 2,
+      "by": "opponent"
+    },
+    "O13": {
+      "id": "O13",
+      "kind": "risk",
+      "axis": "time",
+      "severity": "medium",
+      "answers": [
+        "P8"
+      ],
+      "text": "A constant marker query parameter does not cure O4. The partial body depends on x-brumate-keep and x-brumate-base, so two clients at the same marker URL need different bodies, and a CDN that drops Vary stores the first. Next.js knows this: its `_rsc` value is a hash of the prefetch, segment-prefetch, router-state-tree and next-url headers. A hashed parameter makes a URL per client state, which is a shared cache that never hits, the same result as Q1 B (private). So the marker only adds URL churn and a strip step in the server; the safety comes from `cache-control: private`, and the history-cache case is covered only if the marker is in the URL of every partial fetch.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "https://github.com/vercel/next.js/blob/a86aeba10e7b32041ead6e252f807ad080166ef6/packages/next/src/client/components/router-reducer/set-cache-busting-search-param.ts",
+        "detail": "computeCacheBustingSearchParam takes the prefetch, segment prefetch, state tree and url headers"
+      },
+      "round": 2,
+      "by": "opponent"
+    },
+    "O14": {
+      "id": "O14",
+      "kind": "risk",
+      "axis": "time",
+      "severity": "low",
+      "answers": [
+        "P8"
+      ],
+      "text": "The combined script cuts the layout entries by position, and a route entry reads a reference that only the dropped part assigns: in the /docs/context record the route part uses `$R[8]` (the params object), which the layout part assigns, and `$R` numbers are per render. A real partial must renumber or resend, and the client must keep its layouts' state (assumed by P8). The cost is small, so the margin stays: all state kept adds about 0.7 to 0.95 KB gzip (O8: 21.0 against 20.1 KB docs), which puts P8 near 13.9 KB (46% against the deduped page) and 19 KB for ui, still above 40%. The risk is correctness of the reference scheme, not the number.",
+      "estimate": {
+        "value": 0.9,
+        "unit": "KB gzip more if the layout entries are sent"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "regex scan of the state record of docs/context and ui/dialog for `$R[n]=` assigned before the first route entry and used after it (style-files-modules dist, same structure); evidence/combined-partial.mjs cut; O8 difference of the two cases",
+        "detail": "$R[8] used in the route part, assigned only in the layout part, on both pages"
+      },
+      "round": 2,
+      "by": "opponent"
+    },
+    "O15": {
+      "id": "O15",
+      "kind": "cost",
+      "axis": "time",
+      "severity": "high",
+      "answers": [
+        "P9",
+        "P8",
+        "P10"
+      ],
+      "text": "The saving that P8 buys is 13 KB per click, about 12 ms on Fast 4G (P9's own arithmetic), and the server wait does not shrink because kept layouts still run (brief decision 2). The harness record says a change under 15 ms or 25% is not visible in its data (medians trusted to about 20%), so the throttled swap-time half of the P9 gate cannot show a 12 ms effect: it will read \"not worse\" by noise, and the byte gate decides alone. The gate is therefore the byte gate P9 meant to replace, and the 2.1M tokens after the spike buy a 12 to 65 ms gain on links where the page already waits one round trip.",
+      "estimate": {
+        "value": 12,
+        "unit": "ms saved per click on 9 Mbit/s, 65 on 1.6 Mbit/s"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "docs/debates/navigation/evidence/partial-measure-outcome.md (How far to trust the timings); P9 arithmetic",
+        "detail": "a change of under 25% or 15 ms on the median is not visible in this data"
+      },
+      "round": 2,
+      "by": "opponent"
+    },
+    "O16": {
+      "id": "O16",
+      "kind": "alternative",
+      "axis": "tokens",
+      "answers": [
+        "P8",
+        "P10"
+      ],
+      "text": "Settle on P7 plus today's full swap, and park the partial story (spike and 2.1M tokens) until an app with a server asks for it: P6 concedes the static website gets nothing from a partial, and the only apps that do are examples/nitro and examples/kit-app. P8 adds render paths (partial server, silent layouts, client apply, and the full-page fallback of 8 cases listed in the brief), each with tests, for 12 to 65 ms. Do the dedupe, measure the deduped page on the throttled link (the missing measurement of O7), and restart the spike from that number if it shows a wait that a person notices.",
+      "estimate": {
+        "value": 0.3,
+        "unit": "M tokens now, instead of 0.6M to 2.7M"
+      },
+      "evidence": {
+        "type": "inferred",
+        "source": "docs/roadmaps/brumate/GOAL.md Outcome and Constraints; accepted axes simplicity and app-value; brief of partial-route-responses acceptance list (8 full-page cases)",
+        "detail": "simpler wins at equal size and features an app needs come first; the only measured app is static"
+      },
+      "round": 2,
+      "by": "opponent"
+    },
+    "P11": {
+      "id": "P11",
+      "round": 3,
+      "by": "proponent",
+      "kind": "concession",
+      "text": "Conceded: the partial story is parked, and the full swap stays as the navigation model, with the component router out (P4). What changed my mind: O15 puts the 13 KB saved per click at 12 to 65 ms, below what the harness can see, for about 2.1M tokens; O13 and O14 add a cache fix that is private only and a reference scheme ($R renumbering) to build; and P6 already gave up the static website, the only measured app. The story restarts from a throttled run of the deduped page, as O16 says, or when an app with a server asks.",
+      "answers": [
+        "P8",
+        "P9",
+        "P10"
+      ],
+      "why": "O13, O14, O15 and O16 upheld; the saving is real in bytes but not shown to change what a person waits for, and the measured app is static"
+    },
+    "P12": {
+      "id": "P12",
+      "round": 3,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Frame the dedupe spike as a server-side serialization choice with a test, not a compiler proof and not a client read-back. The server writes the state, so it can mark a long string that its own markup already printed (the raw html of an insert) and leave it out of the record. The spike's first question is the one O12 raised: does any re-run read such a string? Evidence from the code: the docs page is `<DocPage slug=(params.page) />` and DocPage reads `pages[slug]` of a module, so a prop change there can only be a navigation. The spike must prove that case against the key rule of `plan` (navigate.ts:123), which pairs routes by slot name and key: if a changed param gives a new key the region is replaced and its new state runs, and nothing re-runs with the blank. It stays an unknown until measured. Exit: a test that changes the prop, `#key`, a `#loading` reload and a refresh on a blanked page and renders the same HTML, else no-go and the full swap stays as it is.",
+      "evidence": {
+        "type": "source",
+        "source": "website/src/routes/docs/[page].brm line 13; website/src/components/DocPage.brm lines 12-17; packages/brumate/src/runtime/navigate.ts:123 (plan, from the partial-route-responses brief); docs/decisions.md line 142",
+        "detail": "slug is a route param; whether a changed param keeps the key is not read in the code yet, so the safety claim is unproven"
+      },
+      "axis": "time",
+      "estimate": {
+        "value": 0.4,
+        "unit": "M tokens for the spike, then one M node of 0.3M if go; saving 18 to 22% gzip per full response (O11)"
+      }
+    },
+    "P13": {
+      "id": "P13",
+      "round": 3,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Measure before building more: the first job is the throttled run that O7 left open, on the current full page and, once the spike is a go, the deduped page (Chrome Fast 4G and Slow 4G, 4x CPU, 20 runs, benchmarks/navigation harness). The result decides whether the partial story restarts, and costs one run of an existing harness, not a node.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/debates/navigation/evidence/partial-measure-outcome.md (harness flags, no throttle in the baseline)",
+        "detail": "the harness runs without network or CPU throttle; throttle is a Chrome setting, not a code change"
+      },
+      "axis": "tokens",
+      "estimate": {
+        "value": 0.05,
+        "unit": "M tokens"
+      }
+    }
+  }
+}
