@@ -1,7 +1,7 @@
 ---
 id: style-scope-where
 title: Scope attributes add no specificity
-status: todo
+status: active
 priority: must
 type: feature
 story:

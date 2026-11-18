@@ -25,7 +25,10 @@ owns: []
 shared: []
 reserves: []
 provides: []
-depends_on: []
+depends_on:
+  - on: style-files-spike
+    kind: hard
+    why: the story is built only after the spike's go and its design
 ---
 
 > 2026-11-18: made a must of 0.9.0 by the maintainer, after mcp-server was deferred (docs/debates/0.9.0-cut/debate.md, amendment 2026-11-18).
