@@ -1,7 +1,7 @@
 ---
 id: style-files-links
 title: "Pages link component stylesheets in the head"
-status: active
+status: done
 priority: must
 type: feature
 story: style-files
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-18
-spent:
+spent: 206000
 owns: []
 shared:
   - packages/brumate/src/vite.ts
