@@ -32,7 +32,8 @@ A `.brm` file is a component: scripts for its state, an optional `<style>`, and 
 - Write a branch on the line of the closing brace, as the style: `} #else if (…) {` and `} #else {`. The compiler also accepts `#else` on the next line.
 - A `#for` has a key: `#for (item, index of items by item.id) { … }`. Without `by`, each item is its own key.
 - `$effect` never runs on mount. Its first run is after the first change of a value it reads. Code that must run when the page loads or comes into view is `$client(callback, trigger)`. The default trigger is `'visible'`.
-- Reach for a handler first, then `$memo`, and `$effect` last. An effect is only for work outside the page's state, such as an element method, a cookie, `document.title`, a timer or a library. Never write an effect that only sets a signal from other signals: that value is a `$memo`, or a write in the handler.
+- Reach for a handler first, then `$memo`, and `$effect` last. An effect is only for work outside the page's state, such as an element method, a cookie, `document.title`, a timer or a library. Never write an effect that only sets a signal from other signals: that value is a `$memo`, or a write in the handler. The compiler warns about it with BRM209.
+- The callback of `$effect` and `$client` can be `async`, and returns its cleanup after the `await`: `return async () => await connection.close()`. Reads after an `await` are dependencies too.
 - An element that browser code needs is `ref=$bind(name)`, where `name` is a signal. A bare `ref=name` is an error.
 - To let a child write a value, destructure its prop with `let` and type it `Bindable<T>`. The parent passes `$bind(signal)`.
 - A component never receives a signal. A function prop writes the parent's value: `onChange=((next) => (count = next))`.
@@ -40,8 +41,10 @@ A `.brm` file is a component: scripts for its state, an optional `<style>`, and 
 - Browser wrappers of a handler come from `brumate/events`: `prevent`, `stop`, `once`, `capture`, `transition`. Write them in the attribute, with keys as string literals. `prevent(handler, 'Enter')` prevents only Enter with Ctrl, Meta and Alt up. `'Mod+ArrowDown'` names Ctrl or Meta. Calling `event.preventDefault()` in a handler is too late.
 - A server function is an `async` function with `'use server'` on its first line. It reads no variable of the instance script. Pass values as arguments.
 - To time the server, export `onTrace(span)` from `src/middleware.ts`, next to `onError`. It gets each finished span (`brumate.request`, `brumate.render`, `brumate.call` and others) and makes none when it is not exported. The browser takes `onTrace` in the options of `start`. `otel()` of `brumate/otel` is an `onTrace` for OpenTelemetry. See the page Observability in `website/docs` of the repository.
+- `$signal` and `$memo` at the top level of a `.brm.ts` module or of `<script module>` give one value for the module, shared by its importers and by every request on the server. A component writes an imported one only through a function that the module exports.
+- `viewTransition="name"` marks an element for a view transition of `transition(handler)` or of `navigate: { transition: true }`. `viewTransitionName=(expr)` pairs an element across two pages.
 - A store computed from other stores is `derived(sources, fn)` of `brumate/store`, read with `$store`. It is one-way, and never goes in a provided value or a prop.
-- An inline script is `raw('<script nonce=… data-rerun>…</script>')` in `#head`, with `getEvent().nonce` of `brumate/server` as the nonce. `data-rerun` runs it after each client navigation.
+- A script in markup is `<script inline>…</script>`, with the code as written, or `<script src="…"></script>`. `trigger="idle"`, `"visible"`, `"interaction"` or `"load"` says when it loads. `data-rerun` runs a head script again after each client navigation. The script gets the nonce of the page.
 - The light and dark choice of the page is `ColorScheme` and `colorScheme()` of `@brumate/ui`, not a signal and an effect.
 - Do not use `$ref`, `$watch`, `$settled`, `$cleanup`, `$get`, `$set`, or modifiers such as `onSubmit:prevent`.
 
@@ -49,10 +52,10 @@ A `.brm` file is a component: scripts for its state, an optional `<style>`, and 
 
 Read the file for the part of the work that you do.
 
-- [references/syntax.md](references/syntax.md): the parts of a file, attributes, props, children, templates, control flow, head scripts and `ColorScheme`.
+- [references/syntax.md](references/syntax.md): the parts of a file, attributes, props, children, templates, control flow, styles, scripts in markup, module signals and `ColorScheme`.
 - [references/signals.md](references/signals.md): every function of `brumate/signals`, with what it returns and where it goes.
-- [references/state.md](references/state.md): signals, memos, async data, effects, `$client`, refs, context and derived stores.
-- [references/events.md](references/events.md): handlers, the wrappers of `brumate/events`, and `$handler`.
+- [references/state.md](references/state.md): signals, memos, `$produce` on maps and sets, async data, effects and async effects, `$client`, refs, context and derived stores.
+- [references/events.md](references/events.md): handlers, the wrappers of `brumate/events`, view transitions and `$handler`.
 - [references/errors.md](references/errors.md): every compile error, its cause, and the form to write instead.
 
 ## Checking your work

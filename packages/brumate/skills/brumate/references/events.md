@@ -75,6 +75,32 @@ A handler runs after the event has finished dispatching, so the browser has acte
 <ul onKeyDown=(prevent(move, 'NotAKey'))></ul>
 ```
 
+## View transitions
+
+`transition(handler)` runs the handler inside a view transition. The browser animates the elements that the page marks:
+
+```brm
+<script>
+  import { $signal } from 'brumate/signals';
+  import { transition } from 'brumate/events';
+
+  let items = $signal(['Ada', 'Grace', 'Linus']);
+</script>
+
+<button onClick=(transition(() => (items = [...items].reverse())))>Reverse</button>
+<ul>
+  #for (item of items by item) {
+    <li viewTransition="item">{item}</li>
+  }
+</ul>
+```
+
+- `viewTransition="item"` is a class of the element, which CSS matches as `::view-transition-group(.item)`. Each marked element gets a name of its own while the transition runs, so an item that moves slides, a new one fades in and a removed one fades out.
+- `viewTransitionName=(expr)` is the name, to pair an element of one page with the element of the next one: ``<img viewTransition="photo" viewTransitionName=(`photo-${photo.id}`) src={photo.src}>``.
+- `brumate({ navigate: { transition: true } })` in the plugin options changes pages inside a view transition. The marks work there too.
+- The transition holds the writes that the handler makes before its first `await`. `transition(handler, ...types)` gives types, which CSS matches with `:active-view-transition-type(type)`.
+- A transition of a handler does not start with `prefers-reduced-motion`. A navigation does not check it, so switch the animation off in CSS.
+
 ## Cancel from a part
 
 `cancelWhen(element, 'click' | 'submit', check)` from `brumate/events` cancels the event of the element or of an element inside it while `check(event)` returns true, before any brumate handler runs. It returns a function that removes the check. It calls `preventDefault()` and does not stop the event, so plain `addEventListener` listeners still run and can read `event.defaultPrevented`. An element inside a shadow root is not reached.
