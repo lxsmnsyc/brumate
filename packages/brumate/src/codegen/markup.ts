@@ -30,6 +30,7 @@ import type { Patch } from './patch.ts';
 import {
   awaitedMemos,
   blockingMemos,
+  callsPending,
   mayBePromise,
   mayWait,
   plainValues,
@@ -76,6 +77,8 @@ export const TYPE_DECLARATIONS: Set<string> = new Set([
 export interface Settled {
   names: string[];
   scope: string;
+  /** True when the write calls code that can read a memo that is still loading. */
+  pend?: true;
 }
 
 /**
@@ -666,6 +669,17 @@ export class Emitter {
   }
 
   /**
+   * In the browser, the code of a value of markup that calls code that can read a memo that is
+   * still loading. The value is a promise then, which the clone waits for.
+   */
+  private pended(code: string, expression: Expression, scope: Scope): string {
+    const promise = this.promiseScope(expression, scope);
+    return promise && callsPending(this.sitesByNode.get(expression.ast))
+      ? `$$b.pend(() => (${code}), ${promise})`
+      : code;
+  }
+
+  /**
    * In the browser, the scope of a value of markup that can be a promise: one that calls code,
    * such as `{load(id)}`, or reads a prop typed as a promise. The clone writes its value once it
    * settles, and a `#loading` around it shows its fallback until then.
@@ -682,11 +696,12 @@ export class Emitter {
    * promise, such as an insert, the headers of a block or the props of a component. No update
    * writes them when the memos settle, so the clone holds back what reads them.
    */
-  private settledMemos(expressions: Expression[], scope: Scope): Settled | undefined {
+  private settledMemos(expressions: Expression[], scope: Scope, waits = true): Settled | undefined {
     if (this.options.mode !== 'client') {
       return undefined;
     }
     const names: string[] = [];
+    let pend = false;
     for (const expression of expressions) {
       const site = this.sitesByNode.get(expression.ast);
       // A site that reads a live memo is live too, as the graph spreads liveness to its readers,
@@ -694,6 +709,7 @@ export class Emitter {
       if (!site || this.liveSites.has(site)) {
         return undefined;
       }
+      pend ||= waits && callsPending(site);
       for (const reference of site.reads) {
         const declaration = reference.declaration;
         // A read inside a function counts too, such as `list.map(() => value)`, as the function
@@ -709,9 +725,11 @@ export class Emitter {
         }
       }
     }
-    return names.length > 0
-      ? { names, scope: this.scopeVar(instanceScope(this.plan, scope)) }
-      : undefined;
+    if (names.length === 0 && !pend) {
+      return undefined;
+    }
+    const own = this.scopeVar(instanceScope(this.plan, scope));
+    return pend ? { names, scope: own, pend } : { names, scope: own };
   }
 
   flush(): void {
@@ -1953,12 +1971,17 @@ export class Emitter {
             ? `, ${this.ctxArgument}, ${this.scopeVar(instanceScope(this.plan, scope))}${rest}`
             : '';
         // A primitive renders as text, so it needs neither the place of the insert nor an await.
+        const inner = this.pended(this.expression(node.expression), node.expression, scope);
         const value = this.isPrimitiveInsert(node.expression)
-          ? `$$b.insert(${this.expression(node.expression)})`
-          : this.ready(`$$b.insert(${this.expression(node.expression)}${at})`);
+          ? `$$b.insert(${inner})`
+          : this.ready(`$$b.insert(${inner}${at})`);
         // A literal renders when the component compiles.
         const text = literalText(node.expression.ast);
-        const settled = this.settledMemos([node.expression], scope);
+        const settled = this.settledMemos(
+          [node.expression],
+          scope,
+          !this.promiseScope(node.expression, scope),
+        );
         const promise = this.promiseScope(node.expression, scope);
         const emitValue = (): void =>
           text === undefined ? this.code(value, settled, promise) : this.html(text);
@@ -2377,10 +2400,10 @@ export class Emitter {
           }
           // The server waits for a promise, so the element is sent with its final attributes. A
           // string or a number is no promise.
-          const call = `$$b.attribute(${JSON.stringify(attribute.name)}, ${this.expression(attribute.value)})`;
+          const call = `$$b.attribute(${JSON.stringify(attribute.name)}, ${this.pended(this.expression(attribute.value), attribute.value, scope)})`;
           this.code(
             isPrimitive(attribute.value.ast) ? call : this.ready(call),
-            this.settledMemos([attribute.value], scope),
+            this.settledMemos([attribute.value], scope, !this.promiseScope(attribute.value, scope)),
             this.promiseScope(attribute.value, scope),
           );
           // `value=$bind(name)` writes the name back as the element changes, before the element's
@@ -3172,7 +3195,11 @@ export class Emitter {
       return false;
     }
     let call: string;
+    const headers: Expression[] = [];
     if (fill.kind === 'if' && block.kind === 'if') {
+      for (const branch of block.branches) {
+        headers.push(branch.condition);
+      }
       // The index of the branch that shows, or of the fallback, or -1.
       let index = block.fallback ? String(block.branches.length) : '-1';
       for (let at = block.branches.length - 1; at >= 0; at--) {
@@ -3180,9 +3207,14 @@ export class Emitter {
       }
       call = `$$b.fillBranch($$m, ${anchor.scope}, ${anchor.index}, ${index}, [${fill.renders.join(', ')}])`;
     } else if (fill.kind === 'for' && block.kind === 'for') {
+      headers.push(block.list);
       call = `$$b.fillList($$m, ${anchor.scope}, ${anchor.index}, $$b.toList(${this.expression(block.list)}), ${fill.render})`;
     } else {
       return false;
+    }
+    // A header that calls code that can read a memo that is still loading waits for it.
+    if (this.settledMemos(headers, scope)?.pend) {
+      call = `$$b.fillPend(${anchor.scope}, () => { ${call}; })`;
     }
     this.open(scope, block, fill.kind === 'if' ? '-1' : undefined);
     this.end(block);

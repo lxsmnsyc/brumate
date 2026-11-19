@@ -1,0 +1,7 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { title } = $props<{ title: string }>();
+</script>
+
+<p class="prop">{title}</p>

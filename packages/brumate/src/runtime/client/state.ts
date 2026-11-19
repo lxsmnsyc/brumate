@@ -58,6 +58,8 @@ export interface Scope {
   /** The component ID, for a component's root scope. */
   m?: string;
   s: unknown[];
+  /** True once the scope is removed, so a wait that ends later computes nothing. */
+  gone?: boolean;
   /** The item of a list item scope. */
   i?: unknown;
   c?: Record<number, ScopeId>;

@@ -14,7 +14,7 @@ import {
   isSlotReference,
 } from '../shared.ts';
 import type { ScopeId } from '../shared.ts';
-import { findElement } from './blocks.ts';
+import { findElement, rendered } from './blocks.ts';
 import { childrenReady } from './children.ts';
 import { codeAbove, loadModule } from './code.ts';
 import { fail, reportOnce } from './errors.ts';
@@ -50,12 +50,20 @@ export function get(scope: Scope, slot: number): any {
   // Update code reads a slot that the scope has not reached, as it waits at an earlier `await`:
   // `setSlots` and resumed records write every slot, so only a wait leaves one out. The queued
   // update skips on `NotReady`, since the rest of the render writes the page from the slots.
-  if (value === undefined && exempt > 0 && !(slot in scope.s)) {
-    throw new NotReady(Promise.resolve());
+  if (value === undefined && (exempt > 0 || reading > 0) && !(slot in scope.s)) {
+    throw new NotReady(unreached);
   }
   if (value instanceof Promise && !scope.plain?.has(slot)) {
     // A memo that reads any promise waits for it.
     if (computing > 0) {
+      throw new NotReady(value);
+    }
+    if (reading > 0 && loadingValues.has(value)) {
+      // Code of a render, such as a function prop that a memo of the render calls, waits too.
+      const result = memoResults.get(value);
+      if (result) {
+        return result.value;
+      }
       throw new NotReady(value);
     }
     if (loadingValues.has(value)) {
@@ -409,13 +417,64 @@ export function asyncMemo(scope: Scope, slot: number, promise: Promise<unknown>)
 }
 
 /** Thrown when a memo reads a value that is still loading. */
-class NotReady extends Error {
-  readonly source: Promise<unknown>;
+export class NotReady extends Error {
+  readonly source: PromiseLike<unknown>;
 
-  constructor(source: Promise<unknown>) {
+  constructor(source: PromiseLike<unknown>) {
     super('The value is still loading');
     this.source = source;
   }
+}
+
+/** The values of the promises of memos of a render that settled, which a read of the memo gives. */
+export const memoResults: WeakMap<object, { value: unknown }> = new WeakMap();
+
+// More than 0 while a memo of a render or a value of markup computes.
+let reading = 0;
+
+export function isReading(): boolean {
+  return reading > 0;
+}
+
+// The wait for a slot that its scope has not written, which is one promise, so a second stop at it
+// is no wait.
+const unreached = Promise.resolve();
+
+/**
+ * Computes a value of a render that can read a memo that is still loading, as an update does:
+ * the value is a promise that computes again once the memo settles, so what reads it waits.
+ * A second stop at the same wait is no wait for it, so it throws. A scope that goes, `owner`,
+ * computes nothing more. The scopes and the work that a stopped compute started are dropped.
+ */
+export function pend(
+  compute: () => unknown,
+  owner?: Scope | ScopeId,
+  last?: PromiseLike<unknown>,
+): unknown {
+  const at =
+    owner === undefined || typeof owner === 'object'
+      ? owner
+      : (scopes.get(owner) ?? findRendered(owner));
+  const made = rendered.length;
+  const queued = afterInsert.length;
+  reading++;
+  try {
+    return compute();
+  } catch (error) {
+    if (error instanceof NotReady && error.source !== last) {
+      rendered.length = made;
+      afterInsert.length = queued;
+      const source = error.source;
+      return Promise.resolve(source).then(() => (at?.gone ? undefined : pend(compute, at, source)));
+    }
+    throw error;
+  } finally {
+    reading--;
+  }
+}
+
+function findRendered(id: ScopeId): Scope | undefined {
+  return rendered.find((scope) => scope.id === id);
 }
 
 // More than 0 while a memo computes, so reading a value that is still loading stops it.

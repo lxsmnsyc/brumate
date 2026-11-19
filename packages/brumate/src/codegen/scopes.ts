@@ -322,6 +322,47 @@ const PLAIN_METHODS = new Set([
 ]);
 
 /**
+ * True if a value of markup calls code that can read a memo that is still loading: a function
+ * prop, or a function of the component that reads a memo, also through the functions it calls. The
+ * browser render waits for the memo, as an update does.
+ */
+export function callsPending(site: Site | undefined): boolean {
+  if (!site) {
+    return false;
+  }
+  if (site.opaqueCalls) {
+    return true;
+  }
+  const seen = new Set<Site>();
+  function reads(from: Site): boolean {
+    if (seen.has(from)) {
+      return false;
+    }
+    seen.add(from);
+    if (from.opaqueCalls) {
+      return true;
+    }
+    for (const read of from.reads) {
+      if (isMemo(read.declaration)) {
+        return true;
+      }
+    }
+    for (const callee of from.calls) {
+      if (callee.kind === 'function' && callee.site && reads(callee.site)) {
+        return true;
+      }
+    }
+    return false;
+  }
+  for (const callee of site.calls) {
+    if (callee.kind === 'function' && callee.site && reads(callee.site)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * True if a value of markup can be a promise, which the browser writes once it settles: a call,
  * such as `{load(id)}` or `title=getTitle()`, or a read of a prop typed as a promise. A call of a
  * macro of brumate, such as `$isPending`, of `String` or of a method of strings and arrays, such

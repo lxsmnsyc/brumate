@@ -120,6 +120,7 @@ export function removeScope(scope: Scope): void {
     hiding?.bodies.delete(scope.h);
   }
   scopes.delete(scope.id);
+  scope.gone = true;
   // A `$resolve` of a memo of the scope rejects.
   for (const [check, owner] of waiters) {
     if (owner === scope) {

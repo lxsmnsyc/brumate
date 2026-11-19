@@ -46,6 +46,18 @@ skip('The server render throws without the props of a parent: a function, a list
 ]);
 
 skip(
+  'The server render waits for a memo that only the test settles, or needs the props of a parent.',
+  [
+    'PendingReadDirect',
+    'PendingReadFail',
+    'PendingReadForms',
+    'PendingReadFormsKid',
+    'PendingReadFn',
+    'PendingReadLive',
+  ],
+);
+
+skip(
   'The server render throws without the context that a parent provides, since a context has no default.',
   [
     'ContextAs',
@@ -169,11 +181,6 @@ export const CAUSES: Record<string, Cause> = {
     reason:
       'A ref inside a list whose source reads the signal that the ref writes loops: each pass makes a new row and a new element, so the next write differs. The browser render loops at mount, the resumed page after one write, until the update guard stops it with BRM187. Svelte 5 (bind:this in an each) and Solid (ref in a For) loop on this program too.',
   },
-  'pending-read': {
-    verdict: 'remove',
-    reason:
-      'A memo or a function prop that reads a property of a memo that is still pending: the server holds back the markup, and the first browser render reads undefined and throws.',
-  },
   'await-in-script': {
     verdict: 'accepted',
     reason:
@@ -230,7 +237,6 @@ diverge('lazy-ref', [
   'restRefTagPageSwap',
 ]);
 diverge('ref-loop', ['refLoop']);
-diverge('pending-read', ['fnReadAsync', 'loadingChain', 'loadingOnChain']);
 diverge('await-in-script', ['PromiseLateChild', 'promiseLate']);
 diverge('defer-template', ['deferredLater']);
 diverge('try-rollback', ['tryRollback']);

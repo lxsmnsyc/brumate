@@ -10080,6 +10080,11 @@ describe('#loading (memo)', () => {
 
   const settled = new Set<UserLoad>();
 
+  // The loads of a test are of no use to the next one.
+  afterEach(() => {
+    delete (globalThis as { userLoads?: UserLoad[] }).userLoads;
+  });
+
   /** Settles the first load of each user that has not settled yet. */
   async function settleUser(...ids: number[]): Promise<void> {
     for (const id of ids) {
@@ -10221,6 +10226,126 @@ describe('#loading (memo)', () => {
     await waitFor(() => expect(shown('.user')).toEqual(['ADA2']));
     expect(shown('.fallback')).toEqual([]);
     expect(document.querySelector('.user')).toBe(name);
+  });
+
+  it('holds a #loading body whose memo reads a property of a pending memo, in the browser', async () => {
+    const errors: unknown[] = [];
+    const onError = (event: Event): void => {
+      errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    };
+    window.addEventListener('brumate:error', onError);
+    onTestFinished(() => window.removeEventListener('brumate:error', onError));
+    await resume('pendingReadChainHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(shown('.fallback')).toEqual(['Loading']));
+    expect(shown('.label')).toEqual([]);
+    await settleUser(1);
+    await waitFor(() => expect(shown('.label')).toEqual(['ADA1']));
+    expect(shown('.fallback')).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+
+  it('reads a property of a pending memo in a function prop that the browser renders', async () => {
+    const errors: unknown[] = [];
+    const onError = (event: Event): void => {
+      errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    };
+    window.addEventListener('brumate:error', onError);
+    onTestFinished(() => window.removeEventListener('brumate:error', onError));
+    await resume('pendingReadFnHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(text('.title')).toBe('USER1'));
+    await waitFor(() => expect(text('.live')).toBe('user1'));
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(text('.live')).toBe('user2'));
+    await waitFor(() => expect(text('.title')).toBe('USER2'));
+    expect(errors).toEqual([]);
+  });
+
+  it('reads a property of a pending memo in a function prop of a page without signals', async () => {
+    const errors: unknown[] = [];
+    const onError = (event: Event): void => {
+      errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    };
+    window.addEventListener('brumate:error', onError);
+    onTestFinished(() => window.removeEventListener('brumate:error', onError));
+    await resume('pendingReadStaticHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(userLoads()).toHaveLength(1));
+    await settleUser(1);
+    await waitFor(() => expect(text('.live')).toBe('ada1'));
+    await waitFor(() => expect(text('.title')).toBe('ADA1'));
+    expect(errors).toEqual([]);
+  });
+
+  it('writes a markup read of a pending memo through a function prop once the memo settles', async () => {
+    await resume('pendingReadDirectHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(userLoads()).toHaveLength(1));
+    expect(document.querySelector('.live')?.textContent ?? '').toBe('');
+    await settleUser(1);
+    await waitFor(() => expect(text('.live')).toBe('ada1'));
+  });
+
+  describe.each([
+    ['#if header', () => text('.if'), 'yes'],
+    [
+      '#for list',
+      () => [...document.querySelectorAll('.for')].map((item) => item.textContent),
+      ['ada1', 'b'],
+    ],
+    ['#key value', () => document.querySelector('.key')?.getAttribute('data-name'), 'ada1'],
+    ['component prop', () => text('.prop'), 'ada1'],
+    ['class value', () => document.querySelector('.cls-ada1') !== null, true],
+    ['style value', () => document.querySelector<HTMLElement>('.cls-ada1')?.style.color, 'red'],
+    ['value attribute', () => document.querySelector('.bound')?.getAttribute('value'), 'ada1'],
+  ])('a function that reads a pending memo in a %s', (_name, read, expected) => {
+    it('waits for the memo and shows its value', async () => {
+      const errors: unknown[] = [];
+      const onError = (event: Event): void => {
+        errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+      };
+      window.addEventListener('brumate:error', onError);
+      onTestFinished(() => window.removeEventListener('brumate:error', onError));
+      await resume('pendingReadFormsHost', {});
+      click(document.querySelector('.toggle')!);
+      await waitFor(() => expect(userLoads()).toHaveLength(1));
+      await settleUser(1);
+      await waitFor(() => expect(read()).toEqual(expected));
+      expect(errors).toEqual([]);
+    });
+  });
+
+  it('reports the rejection of a pending memo that a memo reads once, to the #try', async () => {
+    const errors: unknown[] = [];
+    const onError = (event: Event): void => {
+      errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    };
+    window.addEventListener('brumate:error', onError);
+    onTestFinished(() => window.removeEventListener('brumate:error', onError));
+    await resume('pendingReadFailHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(userLoads()).toHaveLength(1));
+    userLoads()[0]!.fail(new Error('no user'));
+    await waitFor(() => expect(text('.caught')).toContain('no user'));
+    expect(document.querySelectorAll('.caught')).toHaveLength(1);
+    await new Promise((done) => setTimeout(done, 20));
+    expect(errors).toEqual([]);
+  });
+
+  it('computes nothing for a block that closed before the pending memo settled', async () => {
+    onTestFinished(() => {
+      delete (globalThis as { computes?: number }).computes;
+    });
+    await resume('pendingReadFailHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(userLoads()).toHaveLength(1));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('.fallback')).toBe(null));
+    await settleUser(1);
+    await new Promise((done) => setTimeout(done, 20));
+    expect((globalThis as { computes?: number }).computes).toBeUndefined();
+    expect(document.querySelector('.label')).toBe(null);
   });
 
   it('holds a body that the browser rendered', async () => {

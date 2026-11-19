@@ -5,6 +5,7 @@ import { VOID_ELEMENTS, onAttribute, ownValue } from '../html.ts';
 import type { Raw } from '../html.ts';
 import { ElementReference, MemoError, addEntryHandlers, isAsyncIterable } from '../shared.ts';
 import type { ComponentValue, ScopeId } from '../shared.ts';
+import { rendered } from './blocks.ts';
 import { insert } from './children.ts';
 import type { Children } from './children.ts';
 import { callable, spread } from './handlers.ts';
@@ -13,7 +14,16 @@ import { afterInsert, nextId, resolveScope, setOwner } from './scopes.ts';
 import { loadingValues, loads, scopes, valueRenders } from './state.ts';
 import type { Scope } from './state.ts';
 import { setContent } from './templates.ts';
-import { asyncMemo, isThenable, noop, set } from './updates.ts';
+import {
+  NotReady,
+  asyncMemo,
+  isReading,
+  isThenable,
+  memoResults,
+  noop,
+  pend,
+  set,
+} from './updates.ts';
 
 /** A component's client render function, from its `?brumate-render` module. */
 // oxlint-disable-next-line typescript/no-explicit-any -- Components take any props.
@@ -181,6 +191,9 @@ export function memoNow(value: unknown): unknown {
   if (isThenable(value) || isAsyncIterable(value)) {
     memoLoads.set(value as object, (memoLoads.get(value as object) ?? 0) + 1);
   }
+  if (isThenable(value)) {
+    value.then((result) => memoResults.set(value, { value: result }), noop);
+  }
   return value;
 }
 
@@ -190,16 +203,29 @@ export function memoNow(value: unknown): unknown {
  */
 export function renderMemo(compute: () => unknown): unknown {
   try {
-    return memoNow(compute());
+    return memoNow(pend(compute, rendered.at(-1)));
   } catch (error) {
     return new MemoError(error);
   }
 }
 
-/** Reads a memo of a render: the error that a throw held is thrown at the read. */
+/**
+ * Reads a memo of a render: the error that a throw held is thrown at the read. A memo that is
+ * still loading stops the code that reads it, which waits for the memo.
+ */
 export function readMemo(value: unknown): unknown {
   if (value instanceof MemoError) {
     throw value.error;
+  }
+  if (isThenable(value) && memoLoads.has(value)) {
+    // A memo that settled gives its value to every read, as the server's does.
+    const result = memoResults.get(value);
+    if (result) {
+      return result.value;
+    }
+    if (isReading()) {
+      throw new NotReady(value);
+    }
   }
   return value;
 }

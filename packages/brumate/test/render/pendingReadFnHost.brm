@@ -1,0 +1,11 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import FnReadAsync from './fnReadAsync.brm';
+
+  let open = $signal(false);
+</script>
+
+<button class="toggle" onClick=(() => (open = true))>Toggle</button>
+#if (open) {
+  <FnReadAsync />
+}
