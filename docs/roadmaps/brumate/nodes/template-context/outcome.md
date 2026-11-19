@@ -48,3 +48,5 @@
 - The first version landed on batch/brumate-main as 1c96dc1f and was reverted (f7c5f578): its range test missed templates that only render a component, which broke 2 DateField tests of @brumate/ui. The rework adds the `inRange` change and its resume test.
 
 Landed on batch/brumate-main as 9625bb2e (rework, after the revert f7c5f578).
+
+Cut into main on 2026-11-19 (078262b1).

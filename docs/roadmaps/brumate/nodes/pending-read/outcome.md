@@ -44,3 +44,5 @@
 - Estimated M, actual M.
 
 Landed on batch/brumate-main as eed80e4b. Side effect confirmed by the fresh review: ResolveGoneChild now renders the same in the browser (a settled memo gives its value to every readMemo).
+
+Cut into main on 2026-11-19 (078262b1).

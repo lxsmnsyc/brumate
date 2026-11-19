@@ -42,3 +42,5 @@
 - A failed URL stays in `failed` until a new record (a navigation or a `#defer` body) names it and its import succeeds; nothing retries it on its own (fresh review).
 
 Landed on batch/brumate-main as 910f27dd.
+
+Cut into main on 2026-11-19 (078262b1).

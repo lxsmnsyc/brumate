@@ -35,3 +35,5 @@
 - Estimated S, actual S.
 
 Landed on batch/brumate-main as 873c81f4. A fresh review showed the guard test fails 3 of 3 with the #281 guard disabled.
+
+Cut into main on 2026-11-19 (078262b1).

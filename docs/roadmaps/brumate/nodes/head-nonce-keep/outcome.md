@@ -38,3 +38,5 @@
 - Estimated S, actual S.
 
 Landed on batch/brumate-main as f5f1ccfd.
+
+Cut into main on 2026-11-19 (078262b1).
