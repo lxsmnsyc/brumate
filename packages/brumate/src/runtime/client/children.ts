@@ -31,9 +31,9 @@ export function templateReference(
 
 /**
  * A call of a `#template` of the file, which an insert can update in place. `render` is the
- * template's code, and `owner` the scope that holds the template. The call finds its contexts
- * where the template is written, as the output of a template does, so it does not render as
- * children of the owner.
+ * template's code, and `owner` the scope that holds the template. The call renders as children
+ * of its owner, where the component that gets it inserts it, so it reads the contexts there, as
+ * on the server.
  */
 export function templateCall(
   ref: string,
@@ -41,7 +41,7 @@ export function templateCall(
   render: (...args: unknown[]) => unknown,
   args: unknown[],
 ): TemplateCall {
-  return new TemplateCall(ref, owner, args, (at) => insert(render(...args), undefined, at), true);
+  return new TemplateCall(ref, owner, args, (at) => insert(render(...args), undefined, at));
 }
 
 // Rendering on the client
@@ -141,10 +141,8 @@ export class TemplateCall extends Children {
     owner: Scope | undefined,
     args: unknown[],
     html: (at?: Scope) => string,
-    lexical = false,
   ) {
-    // A call of a template of the file is not children of its owner.
-    super(lexical ? undefined : owner, html);
+    super(owner, html);
     this.ref = ref;
     this.owner = owner;
     this.args = args;

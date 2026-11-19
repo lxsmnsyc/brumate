@@ -240,7 +240,8 @@ function renderedTemplate(
       call.owner &&
       scope.p === call.owner &&
       scope.k === k &&
-      (scope.t === at || (scope.l === at && inRange(scope, first, end)))
+      (scope.t === at || scope.l === at) &&
+      inRange(scope, first, end)
     ) {
       // Two templates of the same component at one insert cannot be told apart.
       if (found) {
