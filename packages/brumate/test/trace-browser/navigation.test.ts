@@ -78,7 +78,9 @@ it('gives error for a 5xx answer, with no path in the label or the route', async
   expect(span!.status).toBe('error');
   expect(span!.label).toBe('GET');
   expect(span!.attributes).toEqual({ 'http.method': 'GET', 'http.status_code': 503 });
-  expect(JSON.stringify(span)).not.toContain('42');
+  expect(
+    JSON.stringify({ ...span, traceId: '', spanId: '', parentId: '', start: 0, end: 0 }),
+  ).not.toMatch(/issues|42|secret/);
 });
 
 it('gives error for a request that fails, with no path', async () => {
@@ -126,7 +128,9 @@ it('ends a navigation that a later one replaced with no path', async () => {
   const [replaced] = second.spans.named('brumate.navigation');
   expect(replaced!.label).toBe('GET');
   expect(replaced!.attributes).toEqual({ 'http.method': 'GET' });
-  expect(JSON.stringify(replaced)).not.toContain('42');
+  expect(
+    JSON.stringify({ ...replaced, traceId: '', spanId: '', parentId: '', start: 0, end: 0 }),
+  ).not.toMatch(/issues|42|secret/);
 });
 
 it('sends no traceparent with a prefetch', async () => {
