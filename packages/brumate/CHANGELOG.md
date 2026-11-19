@@ -1,5 +1,14 @@
 # brumate
 
+## 0.8.1
+
+### Patch Changes
+
+- 910f27d: A page loads again after a deploy that removed its bundles. When a bundle that the server named fails to import, `load` rejects instead of resolving to nothing, so a click on a handler reaches the skew reload, or reports the error when the build is the same.
+- f5f1ccf: A client navigation keeps the head elements that carry a CSP nonce. The nonce is left out when the head of the new page is compared with the loaded one, so styles do not reapply and a head script does not run again.
+- eed80e4: A memo or a function that the browser renders and that reads a property of a memo that is still loading waits for it, as the server does. It no longer reads `undefined` and throws a `TypeError`.
+- 9625bb2: A `#template` that a component passes to a child, and that the child calls, now reads the contexts of the child in a browser render, as it does on the server and on a resumed page. Before, it read the contexts where the template is written, so a context that the child provides was missing or read as its default.
+
 ## 0.8.0
 
 ### Minor Changes
