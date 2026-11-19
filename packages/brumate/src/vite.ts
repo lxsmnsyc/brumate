@@ -183,7 +183,7 @@ export interface BrumateOptions {
   /**
    * Whether the client build has the spans of `onTrace` of the loader. `'auto'` (the default)
    * turns them on when a script under `src/` imports `brumate/loader` or `brumate/static-loader`
-   * and names `onTrace`, and always on the dev server. Set `true` when the entry that passes
+   * and names `onTrace`, and always on the dev server; `true` and `false` apply to the dev server too. Set `true` when the entry that passes
    * `onTrace` is elsewhere, such as in a package, or `false` to leave the code out.
    */
   trace?: boolean | 'auto';
