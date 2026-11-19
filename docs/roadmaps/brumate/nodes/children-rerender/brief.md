@@ -1,7 +1,7 @@
 ---
 id: children-rerender
 title: A spread onto a component does not render its children again
-status: active
+status: done
 priority: must
 type: fix
 story:
@@ -17,10 +17,10 @@ spike: false
 hypothesis:
 verify: pnpm --filter @brumate/ui exec vitest run test/navigation-tree.test.ts test/tree.test.ts
 exclusive: []
-fulfilled_by:
+fulfilled_by: "#281"
 gate: false
 added: 2026-11-12
-spent:
+spent: 115000
 owns: []
 shared:
   - packages/ui/test/navigation-tree.test.ts
