@@ -1,7 +1,7 @@
 ---
 id: style-files-navigation
 title: "Client navigation loads the next page's stylesheets before the swap"
-status: todo
+status: active
 priority: must
 type: feature
 story: style-files

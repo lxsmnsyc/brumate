@@ -1,7 +1,7 @@
 ---
 id: effect-copy-warning
 title: A warning for an effect that only copies signals
-status: todo
+status: active
 priority: must
 type: feature
 story:
