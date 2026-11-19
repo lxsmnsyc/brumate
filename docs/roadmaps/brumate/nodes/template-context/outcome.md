@@ -39,3 +39,7 @@
 - Estimated M, actual S: two small edits; the in-place lookup needed one more condition.
 
 Landed on batch/brumate-main as 1c96dc1f.
+
+## Reverted
+
+2026-11-19: the batch cut check found `packages/ui/test/datefield.test.ts` failing 2 of 10 with this commit (bisected: f5f1ccfd and 873c81f4 pass, 1c96dc1f fails; origin/main passes). Reverted on batch/brumate-main. The fix must keep DateField working: the review ran only the brumate suites and the ui e2e, not the ui unit tests.

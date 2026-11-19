@@ -1,7 +1,7 @@
 ---
 id: template-context
 title: "A #template that a child calls reads the context of its caller in the browser"
-status: done
+status: active
 priority: must
 type: fix
 story:
