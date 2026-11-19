@@ -2,6 +2,15 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  // Coverage is for local use through `pnpm --filter brumate coverage`. CI does not run it.
+  test: {
+    coverage: {
+      provider: 'v8',
+      reportOnFailure: true,
+      include: ['src/runtime/**'],
+      reporter: ['text-summary', 'text'],
+    },
+  },
   resolve: {
     alias: {
       'brumate/server': fileURLToPath(new URL('./src/runtime/server.ts', import.meta.url)),

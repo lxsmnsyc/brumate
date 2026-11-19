@@ -305,7 +305,7 @@ describe('resume', () => {
     document.body.append(holder);
     appendChunk(`<p>Inserted</p>${records[0]!}`, holder);
     // The core reads a record as soon as its script runs.
-    expect(client.get(client.getScope(0)!, 0)).toBe(7);
+    expect(client.get(client.scopes.get(0)!, 0)).toBe(7);
     client.dispose();
   });
 
@@ -351,14 +351,14 @@ describe('resume', () => {
       listen: () => {},
     });
     // A read outside an update throws while the value is loading.
-    expect(() => client.get(client.getScope(0)!, 0)).toThrow('still loading');
+    expect(() => client.get(client.scopes.get(0)!, 0)).toThrow('still loading');
 
     settle(42);
     await done;
     expect(records).toHaveLength(2);
     appendChunk(records[1]!);
     // The slot holds the value once it arrives.
-    await waitFor(() => expect(client.get(client.getScope(0)!, 0)).toBe(42));
+    await waitFor(() => expect(client.get(client.scopes.get(0)!, 0)).toBe(42));
     client.dispose();
   });
 
@@ -720,7 +720,7 @@ describe('resume', () => {
       await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
       expect(String(errors.mock.calls[0]![0])).toContain('await $resolve(memo)');
       await settle(42);
-      await waitFor(() => expect(client.get(client.getScope(0)!, 0)).toBe(42));
+      await waitFor(() => expect(client.get(client.scopes.get(0)!, 0)).toBe(42));
       await client.handle(button, 'Test#c1');
       await new Promise((done) => setTimeout(done, 50));
       expect(errors).toHaveBeenCalledTimes(1);
@@ -730,7 +730,7 @@ describe('resume', () => {
       const { client } = await streamed();
       const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
       onTestFinished(() => errors.mockRestore());
-      const scope = client.getScope(0)!;
+      const scope = client.scopes.get(0)!;
       client.effect(scope, 'c', () => client.get(scope, 0), true);
       await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
       expect(String(errors.mock.calls[0]![0])).toContain('await $resolve(memo)');
@@ -738,7 +738,7 @@ describe('resume', () => {
 
     it('skips an effect that reads it, and runs it once when the value lands', async () => {
       const { client, settle } = await streamed();
-      const scope = client.getScope(0)!;
+      const scope = client.scopes.get(0)!;
       const seen: unknown[] = [];
       const run = (): unknown => seen.push(client.get(scope, 0));
       // The effect reaches the memo through a function, so no compiled input runs it again.
@@ -754,7 +754,7 @@ describe('resume', () => {
       const { client } = await streamed();
       const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
       onTestFinished(() => errors.mockRestore());
-      const scope = client.getScope(0)!;
+      const scope = client.scopes.get(0)!;
       const late = async (): Promise<unknown> => {
         await Promise.resolve();
         return client.get(scope, 0);
@@ -770,14 +770,14 @@ describe('resume', () => {
       const failing = Promise.reject(reason);
       const id = client.createScope(1, undefined, undefined);
       client.setSlots(id, [failing]);
-      const scope = client.getScope(id)!;
+      const scope = client.scopes.get(id)!;
       client.effect(scope, 'e', () => client.get(scope, 0));
       await waitFor(() => expect(errors).toHaveBeenCalledWith(reason));
     });
 
     it('keeps the value of a newer load when the state record arrives before it settles', async () => {
       const { client, settle } = await streamed();
-      const scope = client.getScope(0)!;
+      const scope = client.scopes.get(0)!;
       let load!: (value: number) => void;
       client.asyncMemo(
         scope,
@@ -796,7 +796,7 @@ describe('resume', () => {
 
     it('keeps the value of a newer load that settled before the state record arrives', async () => {
       const { client, settle } = await streamed();
-      const scope = client.getScope(0)!;
+      const scope = client.scopes.get(0)!;
       client.asyncMemo(scope, 0, Promise.resolve(2));
       await waitFor(() => expect(client.get(scope, 0)).toBe(2));
       await settle(1);
@@ -806,7 +806,7 @@ describe('resume', () => {
 
     it('passes a promise that is not a loading memo to a handler as a value', async () => {
       const { client } = await streamed();
-      const scope = client.getScope(0)!;
+      const scope = client.scopes.get(0)!;
       const held = Promise.resolve(1);
       // A write in the browser makes it a plain value, not one the page knows is loading.
       client.set(scope, 0, held);
@@ -978,14 +978,14 @@ describe('resume', () => {
       load: async () => ({ id: 'Test', props: {}, g: {} }),
       listen: () => {},
     });
-    expect(client.getScope(0)).toBeUndefined();
-    expect(() => client.get(client.getScope(5)!, 0)).toThrow('still loading');
+    expect(client.scopes.get(0)).toBeUndefined();
+    expect(() => client.get(client.scopes.get(5)!, 0)).toThrow('still loading');
 
     settle(42);
     await done;
     // Reading this record threw before, as an uncaught error that fails the run.
     appendChunk(moved(records[1]!));
-    await waitFor(() => expect(client.get(client.getScope(5)!, 0)).toBe(42));
+    await waitFor(() => expect(client.get(client.scopes.get(5)!, 0)).toBe(42));
     client.dispose();
   });
 
@@ -4171,7 +4171,7 @@ describe('a stopped loader', () => {
     // The core inserts markup with the hooks of the loader that started it. Started again, the
     // template would add the portal a second time.
     client.portalTo(
-      client.getScope(0)!,
+      client.scopes.get(0)!,
       'body',
       () => `<template b-b="${anchor}" b-client="load=PortalOwner_1w2qt1f#k3"></template>`,
     );
@@ -6321,7 +6321,7 @@ async function clientRecords(ids: string[], by = 0): Promise<Record<number, unkn
   const client = await import('../src/runtime/client.ts');
   return Object.fromEntries(
     ids.map((id) => {
-      const scope = client.getScope(shift(id, by))!;
+      const scope = client.scopes.get(shift(id, by))!;
       const back = (value: number | string | undefined): number | string | undefined =>
         value === undefined ? undefined : shift(value, -by);
       return [
@@ -6374,7 +6374,7 @@ describe('scopes in groups', () => {
     // The core starts on the first event, or when something asks for it.
     const client = await import('../src/runtime/client.ts');
     document.dispatchEvent(new Event('brumate:core'));
-    await waitFor(() => expect(client.getScope(0)).toBeDefined());
+    await waitFor(() => expect(client.scopes.get(0)).toBeDefined());
     expect(await clientRecords(Object.keys(expected))).toEqual(expected);
   });
 
@@ -6425,7 +6425,7 @@ describe('scopes in groups', () => {
       load: async (id) => ({ id, props: {}, g: {}, load: async () => ({}) }),
       listen: () => {},
     });
-    expect(client.getScope(1)).toBeUndefined();
+    expect(client.scopes.get(1)).toBeUndefined();
     expect(await clientRecords(Object.keys(expected), 5)).toEqual(expected);
     client.dispose();
   });
@@ -6458,14 +6458,14 @@ describe('scopes in groups', () => {
       load: async () => ({ id: 'Test', props: {}, g: {} }),
       listen: () => {},
     });
-    expect(client.getScope(2)!.i).toBe(7);
-    expect(client.getScope(3)!.x).toEqual({ theme: 0 });
-    expect(client.getScope(3)!.p).toBe(client.getScope(0));
-    expect(() => client.get(client.getScope(1)!, 0)).toThrow('still loading');
+    expect(client.scopes.get(2)!.i).toBe(7);
+    expect(client.scopes.get(3)!.x).toEqual({ theme: 0 });
+    expect(client.scopes.get(3)!.p).toBe(client.scopes.get(0));
+    expect(() => client.get(client.scopes.get(1)!, 0)).toThrow('still loading');
     settle(42);
     await done;
     appendChunk(records[1]!);
-    await waitFor(() => expect(client.get(client.getScope(1)!, 0)).toBe(42));
+    await waitFor(() => expect(client.get(client.scopes.get(1)!, 0)).toBe(42));
     client.dispose();
   });
 
@@ -6846,7 +6846,7 @@ describe('list items taken from their list', () => {
     await resume('sourced', { initial });
     const client = await import('../src/runtime/client.ts');
     document.dispatchEvent(new Event('brumate:core'));
-    await waitFor(() => expect(client.getScope(0)).toBeDefined());
+    await waitFor(() => expect(client.scopes.get(0)).toBeDefined());
     expect(await clientRecords(Object.keys(expected))).toEqual(expected);
   });
 
@@ -6864,7 +6864,7 @@ describe('list items taken from their list', () => {
       load: async (id) => ({ id, props: {}, g: {}, load: async () => ({}) }),
       listen: () => {},
     });
-    expect(client.getScope(1)).toBeUndefined();
+    expect(client.scopes.get(1)).toBeUndefined();
     expect(await clientRecords(Object.keys(expected), 5)).toEqual(expected);
     client.dispose();
   });
@@ -6956,7 +6956,7 @@ describe('list items taken from their list', () => {
     };
     const client = await import('../src/runtime/client.ts');
     document.dispatchEvent(new Event('brumate:core'));
-    await waitFor(() => expect(client.getScope(0)).toBeDefined());
+    await waitFor(() => expect(client.scopes.get(0)).toBeDefined());
     expect(await clientRecords(Object.keys(expected))).toEqual(expected);
 
     expect(texts('.word')).toEqual(['Ada', 'later']);

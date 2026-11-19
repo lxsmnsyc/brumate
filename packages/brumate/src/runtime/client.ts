@@ -96,7 +96,6 @@ export {
   descendants,
   makeId,
   removeScope,
-  getScope,
   setOwner,
   sink,
 } from './client/scopes.ts';
