@@ -1,7 +1,7 @@
 ---
 id: server-components-spike
 title: "Spike: server components"
-status: active
+status: done
 priority: must
 type: experiment
 story:
@@ -20,7 +20,7 @@ exclusive: [bench]
 fulfilled_by:
 gate: true
 added: 2026-11-12
-spent:
+spent: 400000
 owns:
   - docs/roadmaps/brumate/nodes/server-components-spike/**
   - packages/brumate/test/spike-server-components/**
