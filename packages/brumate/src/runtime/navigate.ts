@@ -5,6 +5,8 @@ import { loadOnce } from './skew.ts';
 import { HAS_SCRIPTS } from './features.ts';
 import { startTransition } from './view-transitions.ts';
 import { trustedHTML, trustedScript } from './trusted.ts';
+import { TRACE } from './trace-flag.ts';
+import type { RequestTrace } from './trace-browser.ts';
 export interface Visit {
   url: string;
   /** For a form that posts to a server function. */
@@ -35,6 +37,8 @@ export interface Visit {
    * full, because the layouts that stay are code of this one.
    */
   build?: string;
+  /** The span of the navigation, when the page has `onTrace`. */
+  trace?: RequestTrace;
 }
 
 /**
@@ -710,7 +714,23 @@ function report(
   });
 }
 
-export async function navigate(visit: Visit): Promise<void> {
+export function navigate(visit: Visit): Promise<void> {
+  return TRACE && visit.trace ? traced(visit, visit.trace) : load(visit);
+}
+
+/** Navigates inside a `brumate.navigation` span, when the page has `onTrace`. */
+function traced(visit: Visit, trace: RequestTrace): Promise<void> {
+  return load(visit, trace).then(
+    // A navigation that ended early, such as one that a later navigation replaced, ends here.
+    () => trace.span.end(),
+    (error: unknown) => {
+      trace.end(undefined, error);
+      throw error;
+    },
+  );
+}
+
+async function load(visit: Visit, trace?: RequestTrace): Promise<void> {
   const started = performance.now();
   // Read before the page changes, while the scripts of the loaded page are in it.
   pageNonce();
@@ -725,6 +745,9 @@ export async function navigate(visit: Visit): Promise<void> {
     const early = visit.init || visit.reload ? undefined : takePrefetched(visit.url, requested);
     const headers = new Headers(visit.init?.headers);
     headers.set('x-brumate-base', String(requested));
+    if (TRACE && trace?.header) {
+      headers.set('traceparent', trace.header);
+    }
     response = await (early ??
       fetch(visit.url, { ...visit.init, headers, signal: current.signal }));
     // Other pages loaded for this page, whose IDs no longer fit the next one.
@@ -890,6 +913,15 @@ export async function navigate(visit: Visit): Promise<void> {
       moveFocus(added);
     }
   });
+  if (TRACE && trace) {
+    // The page is in the document. Only a page with the state of a route has a pattern to show,
+    // with no ID in it. Any other answer, such as an error page, has no route.
+    trace.end(
+      response.status,
+      undefined,
+      state ? { 'http.route': trace.route(url.pathname, state.getAttribute('b-params')) } : {},
+    );
+  }
   if (current.signal.aborted) {
     stop();
     return;

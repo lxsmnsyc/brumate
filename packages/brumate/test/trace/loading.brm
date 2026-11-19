@@ -1,0 +1,12 @@
+<script>
+  import { $memo } from 'brumate/signals';
+
+  const greeting = $memo(`Hello ${await Promise.resolve('Ada')}`);
+</script>
+
+<p>Page</p>
+#loading {
+  <p class="greeting">{greeting}</p>
+} #else {
+  <p class="fallback">Loading</p>
+}

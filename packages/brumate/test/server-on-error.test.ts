@@ -316,7 +316,7 @@ describe('the route module', () => {
       '/src/middleware.ts',
     );
     expect(code).toContain('import * as entry from "/src/middleware.ts";');
-    expect(code).toContain('const { default: middleware, onError } = { ...entry };');
+    expect(code).toContain('const { default: middleware, onError, onTrace } = { ...entry };');
   });
 
   it('works with a file that only exports onError, or exports it under another name', async () => {

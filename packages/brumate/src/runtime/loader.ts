@@ -3,6 +3,8 @@ import { boot, importCore } from './boot.ts';
 import { NAVIGATION_KEY, ROUTE_KEY } from './context.ts';
 import { HAS_SEARCH_PARAMS } from './features.ts';
 import type { Core, LoaderOptions, Navigation } from './boot.ts';
+import { TRACE } from './trace-flag.ts';
+import { traceNavigation } from './trace-browser.ts';
 
 export type { LoaderOptions, NavigateOptions } from './boot.ts';
 export { startWithoutNavigation } from './static-loader.ts';
@@ -100,6 +102,8 @@ function navigation({
       document.documentElement.removeAttribute('data-navigating');
       state({ pending: false });
     }
+    // Made now, while a handler that starts the navigation runs, so it joins the trace of the handler.
+    const trace = TRACE ? traceNavigation(url, init) : undefined;
     return import('./navigate.ts')
       .then((module) =>
         module.navigate({
@@ -111,6 +115,7 @@ function navigation({
           build: options.build,
           focus: settings.focus !== false,
           transition: settings.transition === true,
+          trace,
           // The core forgets the old page, or only stops reading, when layouts stay.
           leave: async (partial) => {
             if (core()) {

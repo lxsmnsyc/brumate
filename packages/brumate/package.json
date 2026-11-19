@@ -89,6 +89,10 @@
       "types": "./dist/runtime/values.d.ts",
       "default": "./dist/runtime/values.js"
     },
+    "./otel": {
+      "types": "./dist/runtime/otel.d.ts",
+      "default": "./dist/runtime/otel.js"
+    },
     "./highlight": {
       "types": "./dist/highlight.d.ts",
       "default": "./dist/highlight.js"
@@ -150,6 +154,8 @@
     "seroval-plugins": "^1.8.0"
   },
   "devDependencies": {
+    "@opentelemetry/api": "^1.10.0",
+    "@opentelemetry/sdk-trace-base": "^2.12.0",
     "@oxc-project/types": "^0.154.0",
     "@types/node": "^24.0.0",
     "axe-core": "^4.14.0",
@@ -163,12 +169,16 @@
     "vitest": "^5.0.4"
   },
   "peerDependencies": {
+    "@opentelemetry/api": ">=1.9",
     "axe-core": ">=4.8",
     "less": ">=4",
     "sass": ">=1.70",
     "vite": "^8.0.0"
   },
   "peerDependenciesMeta": {
+    "@opentelemetry/api": {
+      "optional": true
+    },
     "axe-core": {
       "optional": true
     },
