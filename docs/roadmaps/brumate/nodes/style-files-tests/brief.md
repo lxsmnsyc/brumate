@@ -1,7 +1,7 @@
 ---
 id: style-files-tests
 title: "Build and docs for component stylesheets"
-status: active
+status: done
 priority: must
 type: chore
 story: style-files
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-18
-spent:
+spent: 120000
 owns: []
 shared:
   - packages/brumate/test/**
