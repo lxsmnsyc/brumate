@@ -2251,7 +2251,7 @@ describe('resume', () => {
     await waitFor(() => expect(text('.caught')).toBe('Error: Rejected 1'));
   });
 
-  it('stops updates that keep writing what they read, with one error, and the page goes on', async () => {
+  it('stops updates that keep writing what they read, with one error, and the page goes on: a ref in a list that renders from the ref', async () => {
     await resume('refLoop', {});
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
     onTestFinished(() => errors.mockRestore());

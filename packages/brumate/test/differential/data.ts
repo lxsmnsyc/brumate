@@ -165,9 +165,9 @@ export const CAUSES: Record<string, Cause> = {
       'A ref slot of a resumed page holds the scope and anchor of its element, and the core reads the element when it needs it. The browser render holds the element.',
   },
   'ref-loop': {
-    verdict: 'remove',
+    verdict: 'accepted',
     reason:
-      'A ref inside a list whose source reads the signal that the ref writes loops without end in the browser render; the resumed page settles.',
+      'A ref inside a list whose source reads the signal that the ref writes loops: each pass makes a new row and a new element, so the next write differs. The browser render loops at mount, the resumed page after one write, until the update guard stops it with BRM187. Svelte 5 (bind:this in an each) and Solid (ref in a For) loop on this program too.',
   },
   'pending-read': {
     verdict: 'remove',
