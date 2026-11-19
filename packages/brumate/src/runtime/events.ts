@@ -4,6 +4,8 @@
 // the handler that carries its modifiers, so a handler passed on as a prop
 // keeps them.
 
+import { startTransition } from './view-transitions.ts';
+
 /** The keys that `prevent` can name, by their `event.key`. `Space` is the space bar. */
 export const KEY_NAMES: readonly string[] = [
   'Enter',
@@ -161,13 +163,7 @@ export function transition<H extends Handler>(handler: H, ...types: string[]): H
       // The page shows the new state once the updates of the writes have run.
       return (globalThis as { [UPDATED]?: () => Promise<void> })[UPDATED]?.();
     }
-    // Browsers that have transitions without types take only a callback.
-    const started =
-      types.length > 0 &&
-      typeof ViewTransition !== 'undefined' &&
-      'types' in ViewTransition.prototype
-        ? document.startViewTransition({ update, types })
-        : document.startViewTransition(update);
+    const started = startTransition(update, types);
     return started.updateCallbackDone.then(() => result);
   }) as H & { [MODIFIERS]?: string[] };
   const modifiers = (handler as { [MODIFIERS]?: string[] })[MODIFIERS];

@@ -987,3 +987,33 @@ describe('vitest cache key', () => {
     expect(keys).toEqual([false, false]);
   });
 });
+
+describe('the warning of an effect that only copies a signal', () => {
+  it('shows its code in the dev server', async () => {
+    const directory = fileURLToPath(new URL('./.output/effect-copy/', import.meta.url));
+    rmSync(directory, { recursive: true, force: true });
+    mkdirSync(`${directory}src`, { recursive: true });
+    writeFileSync(
+      `${directory}src/Copy.brm`,
+      "<script>\n  import { $effect, $signal } from 'brumate/signals';\n\n  let count = $signal(0);\n  let message = $signal('');\n\n  $effect(() => {\n    message = `Clicked ${count} times`;\n  });\n</script>\n\n<button onClick=(() => count++)>{message}</button>\n",
+    );
+    const dev = await createServer({
+      ...config,
+      plugins: [brumate({ merge: 0 })],
+      root: directory,
+      appType: 'custom',
+      server: { middlewareMode: true },
+    });
+    // The plugin warns through the context of the build, so the test reads the logger.
+    const warnings: string[] = [];
+    dev.config.logger.warn = (message: string) => {
+      warnings.push(message);
+    };
+    try {
+      await dev.transformRequest('/src/Copy.brm?brumate-client');
+      expect(warnings.join('\n')).toMatch(/is written only by this effect.*\[BRM209\]/);
+    } finally {
+      await dev.close();
+    }
+  });
+});

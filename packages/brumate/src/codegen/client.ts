@@ -151,7 +151,16 @@ class ClientGenerator {
     this.shared = shared;
     this.rewriter = new Rewriter(file, plan, this.diagnostics, shared);
     this.valuePatch = new Patch(file.source);
-    addValueEdits(this.valuePatch, file, plan.graph.model.sites, 'client');
+    addValueEdits(
+      this.valuePatch,
+      file,
+      plan.graph.model.sites,
+      'client',
+      undefined,
+      undefined,
+      undefined,
+      !plan.hideNames,
+    );
     for (const node of plan.graph.nodes) {
       if (node.kind !== 'source' && plan.graph.live.has(node)) {
         this.live.set(node.site, node);

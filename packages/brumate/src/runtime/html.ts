@@ -1,5 +1,6 @@
 // HTML string helpers that the server and the client both use.
 
+import { HAS_VIEW_TRANSITIONS } from './features.ts';
 import type { ScopeId } from './shared.ts';
 
 const RAW: unique symbol = Symbol.for('brumate.raw');
@@ -394,16 +395,24 @@ export function onValue(on: string[], own: string): string {
   return parts.join(' ');
 }
 
+/** The attributes that mark an element for a view transition, as the compiler writes them. */
+const TRANSITION_NAMES: Record<string, string> = {
+  viewTransition: 'b-vt',
+  viewTransitionName: 'b-vtn',
+};
+
 /** Renders an object of attributes. */
 export function spread(attributes: Record<string, unknown>, names = false): string {
   let result = '';
   const written: string[] = [];
   for (const [name, value] of Object.entries(attributes)) {
     if (name !== 'children' && !/^on[A-Z]/.test(name)) {
-      const text = attribute(name, ownValue(name, value));
+      // A prop that `{...rest}` passes on marks the element as the attribute would.
+      const mapped = (HAS_VIEW_TRANSITIONS && TRANSITION_NAMES[name]) || name;
+      const text = attribute(mapped, ownValue(name, value));
       if (text) {
         result += text;
-        written.push(name);
+        written.push(mapped);
       }
     }
   }

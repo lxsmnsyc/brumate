@@ -195,6 +195,9 @@ export class Rewriter {
     } else {
       patch.replace(node.start, target.end, `(${target.name} = $$b.produce(${target.name}`);
     }
+    if (!this.plan.hideNames && node.arguments.length === 2) {
+      patch.appendArgument(node, JSON.stringify(target.name));
+    }
     patch.insert(node.end, ')');
     for (const argument of node.arguments.slice(1)) {
       visit(argument);

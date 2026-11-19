@@ -69,7 +69,16 @@ export function generateServer(file: SFCFile, plan: Plan): string {
   for (const declaration of bodyMemos(plan, blocking, inline)) {
     lazy.add(declaration);
   }
-  addValueEdits(patch, file, model.sites, 'server', inline, lazy, model.component.id);
+  addValueEdits(
+    patch,
+    file,
+    model.sites,
+    'server',
+    inline,
+    lazy,
+    model.component.id,
+    !plan.hideNames,
+  );
   addEventEdits(patch, model);
   function source(node: { start: number; end: number }): string {
     return patch.slice(node.start, node.end);

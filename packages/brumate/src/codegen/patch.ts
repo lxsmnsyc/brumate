@@ -24,6 +24,15 @@ export class Patch {
     this.edits.push({ start, end, text });
   }
 
+  /** Adds an argument after the last one of a call, before its closing parenthesis. */
+  appendArgument(call: { end: number; arguments: { end: number }[] }, text: string): void {
+    // Only the text after the last argument can hold a trailing comma.
+    const tail = this.source
+      .slice(call.arguments.at(-1)!.end, call.end - 1)
+      .replace(/\/\*[^]*?\*\/|\/\/[^\n]*/g, '');
+    this.insert(call.end - 1, /,\s*$/.test(tail) ? text : `, ${text}`);
+  }
+
   insert(offset: number, text: string): void {
     this.edits.push({ start: offset, end: offset, text });
   }
@@ -500,6 +509,7 @@ export function addValueEdits(
   inline: Set<Declaration> = new Set(),
   lazy: Set<Declaration> = new Set(),
   component?: number,
+  nameProduce = false,
 ): void {
   const sitesByNode = new Map<object, Site>();
   // The names that each `$props()` destructures, by the call.
@@ -743,6 +753,9 @@ export function addValueEdits(
       if (name === '$produce' && argument?.type === 'Identifier') {
         // `$produce(todos, recipe)` becomes `(todos = $$b.produce(todos, recipe))`.
         patch.replace(node.start, argument.start, `(${argument.name} = $$b.produce(`);
+        if (nameProduce && node.arguments.length === 2) {
+          patch.appendArgument(node, JSON.stringify(argument.name));
+        }
         patch.insert(node.end, ')');
         for (const rest of node.arguments.slice(1)) {
           visit(rest);

@@ -172,7 +172,8 @@ A signal changes when you assign a new value. To change one item of an array or 
 - The new value shares every object that the recipe did not change. With a keyed `#for`, only the changed item updates.
 - If the recipe changes nothing, the signal keeps its value and nothing updates.
 - The recipe can return a new value instead of changing the draft.
-- Only plain objects and arrays are drafted. A `Map`, a `Set` or a class instance inside the value is used as it is.
+- Plain objects, arrays, `Map`s and `Set`s are drafted, also inside the value. A map or set is copied on the first change, keeps the order of its entries, and the old one stays as it was. Keys of a map are never drafted: use the key of the base value, as `draft.set(id, value)` does.
+- An instance of another class is used as it is. If the recipe changes one and returns nothing, nothing updates, and the dev server warns: `$produce(tags) changed a Counter and returned nothing`. Return a new value instead.
 - `$produce` writes the signal, so it is allowed where writes are.
 
 Without `$produce`, write a new value yourself: `todos = todos.map((todo) => (todo.id === id ? { ...todo, done: !todo.done } : todo))`.

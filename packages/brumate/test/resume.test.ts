@@ -1105,6 +1105,15 @@ describe('resume', () => {
     expect(text('li:last-child')).toBe('New');
   });
 
+  it('changes a map and a set with $produce', async () => {
+    await resume('produceMap', {});
+    expect(text('.size')).toBe('1 tags');
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(text('.size')).toBe('2 tags'));
+    click(document.querySelector('.finish')!);
+    await waitFor(() => expect(text('.done')).toBe('1 done, 1 ids'));
+  });
+
   // A write runs the memos it reaches in the order they are declared, each once, then
   // the bindings, each once. A child gets every new prop before its memos compute.
   describe('updates of a signal and a memo of it', () => {

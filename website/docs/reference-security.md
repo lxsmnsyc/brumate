@@ -68,6 +68,10 @@ The arguments of a server function and the fields of a form come from the browse
 
 Regular expressions are not read or written, in the page or in server function calls. A call that sends one fails with status 500. A pattern from a client could take the server a long time to match.
 
+## Scripts of other sites
+
+A `<script src="https://…">` of a `.brm` file runs code that brumate does not check, with the nonce of your page. It can read the page, its cookies that are not `HttpOnly`, and every form. Give such a script the `integrity` attribute of a file that does not change, and `crossorigin="anonymous"`, so the browser refuses a file that is not the one you reviewed. brumate adds neither, since it cannot know the hash. The loader refuses a `src` that is not http or https, but a URL from user data can still name any site, so `src` must not come from user data. A script with `trigger` loads after the page, which keeps it from holding the first paint, and it does not make the script safer. See [Scripts of other sites](./navigation.md#scripts-of-other-sites).
+
 ## Markup
 
 - Inserted values and attribute values are escaped.

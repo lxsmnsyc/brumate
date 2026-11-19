@@ -1,0 +1,31 @@
+<script>
+  import { $produce, $signal } from 'brumate/signals';
+
+  interface Tag {
+    label: string;
+    done: boolean;
+  }
+
+  let tags = $signal(new Map<string, Tag>([['a', { label: 'Docs', done: false }]]));
+  let ids = $signal(new Set<string>());
+
+  function add() {
+    $produce(tags, (draft) => {
+      draft.set(String(draft.size + 1), { label: 'New', done: false });
+    });
+  }
+
+  function finish() {
+    $produce(tags, (draft) => {
+      draft.get('a')!.done = true;
+    });
+    $produce(ids, (draft) => {
+      draft.add('a');
+    });
+  }
+</script>
+
+<button class="add" onClick=add>Add</button>
+<button class="finish" onClick=finish>Finish</button>
+<p class="size">{tags.size} tags</p>
+<p class="done">{Array.from(tags.values()).filter((tag) => tag.done).length} done, {ids.size} ids</p>

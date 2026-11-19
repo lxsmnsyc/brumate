@@ -1,0 +1,33 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let first = $signal(false);
+  let second = $signal(false);
+</script>
+
+#head {
+  <script src="https://third-party.test/plain.js"></script>
+  <script src="https://third-party.test/idle.js" trigger="idle"></script>
+  <script src="https://third-party.test/interaction.js" trigger="interaction"></script>
+  <script inline trigger="idle" data-name="inline-idle">
+    window.loaded = (window.loaded || []).concat('inline-idle <b>' + (1 < 2) + '</b>');
+  </script>
+}
+
+<h1>Scripts of other sites</h1>
+
+<button class="first" onClick=(() => (first = true))>First block</button>
+<button class="second" onClick=(() => (second = true))>Second block</button>
+#if (first) {
+  <script src="https://third-party.test/block.js"></script>
+  <script inline trigger="idle">window.loaded = (window.loaded || []).concat('block-inline <i>' + (2 > 1) + '</i>');</script>
+  <p class="first-block">First</p>
+}
+#if (second) {
+  <script src="https://third-party.test/block.js"></script>
+  <p class="second-block">Second</p>
+}
+
+<div class="space" style="height: 3000px">Scroll down</div>
+<script src="https://third-party.test/visible.js" trigger="visible"></script>
+<footer class="end">End of the page</footer>
