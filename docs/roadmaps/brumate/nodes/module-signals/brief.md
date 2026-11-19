@@ -1,7 +1,7 @@
 ---
 id: module-signals
 title: $signal and $memo at the top level of a module
-status: active
+status: done
 priority: must
 type: feature
 story:
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-18
-spent:
+spent: 493000
 owns:
   - packages/brumate/src/module-signals.ts
   - packages/brumate/test/module-signals.test.ts
