@@ -78,6 +78,8 @@ The effect writes `message` after the page has updated for `count`, so one click
 <p>{message}</p>
 ```
 
+The compiler warns about this form with `BRM209`: an effect that only assigns signals that nothing else writes. The message names the signal, and gives the memo when the effect has one assignment and no `if`. The warning stays quiet when the body calls a function, awaits, returns a cleanup, or when a handler, a `$client` callback, another effect or a `$bind` also writes the signal, since that signal is state.
+
 ### Cleanup
 
 The callback can return a function. It runs before the next run of the effect, and when the component is removed from the page:

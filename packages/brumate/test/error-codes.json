@@ -204,5 +204,6 @@
   "BRM204": "Declare a gated value with \"const name = $gate(value, (prev, next) => boolean)\" at the top level of a script",
   "BRM207": "#reveal has no style of its own",
   "BRM208": "\"{name}\" is a signal of {module}, and a file of plain code gets its store, not its value. {fix}",
+  "BRM209": "\"{name}\" is written only by this effect. Use {form}",
   "BRM211": "{name} cannot be compiled in a module{reason}. {fix}"
 }

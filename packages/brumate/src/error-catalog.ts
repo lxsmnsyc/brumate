@@ -1243,6 +1243,12 @@ const MODULES: ErrorEntry[] = [
     'A `.ts` or `.js` file imports a signal or a memo that a module declares at its top level. TypeScript types it as its value, and it is a store.',
     "// cart.brm.ts\nexport let items = $signal<number[]>([]);\nexport function count(): number {\n  return items.length;\n}\n\n// plain.ts\nimport { count } from './cart.brm.ts';",
   ),
+  entry(
+    'BRM209',
+    '"{name}" is written only by this effect. Use {form}',
+    'A warning. An `$effect` only assigns signals that nothing else writes, so each signal is a memo written the long way, and the page updates twice for one change. With one assignment and no `if`, the message gives the memo. An effect with a call, an `await`, a cleanup or a signal that a handler, another effect or a `$bind` also writes stays quiet.',
+    'let count = $signal(0);\nconst message = $memo(`Clicked ${count} times`);',
+  ),
 ];
 
 export const ERRORS: readonly ErrorEntry[] = [...SYNTAX, ...SCRIPT, ...OUTPUT, ...MODULES];

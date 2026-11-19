@@ -2297,3 +2297,14 @@ export function count(): number {
 // plain.ts
 import { count } from './cart.brm.ts';
 ```
+
+## BRM209
+
+`"{name}" is written only by this effect. Use {form}`
+
+A warning. An `$effect` only assigns signals that nothing else writes, so each signal is a memo written the long way, and the page updates twice for one change. With one assignment and no `if`, the message gives the memo. An effect with a call, an `await`, a cleanup or a signal that a handler, another effect or a `$bind` also writes stays quiet.
+
+```ts
+let count = $signal(0);
+const message = $memo(`Clicked ${count} times`);
+```
