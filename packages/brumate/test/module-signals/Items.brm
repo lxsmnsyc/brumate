@@ -1,0 +1,6 @@
+<script>
+  import { add, items, total } from './cart.brm.ts';
+</script>
+
+<p class="count">{items.length} items, {total}</p>
+<button class="add" onClick=(() => add(5))>Add</button>

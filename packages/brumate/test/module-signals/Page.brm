@@ -1,0 +1,7 @@
+<script>
+  import Items from './Items.brm';
+  import Total from './Total.brm';
+</script>
+
+<Items />
+<Total />

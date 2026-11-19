@@ -781,8 +781,8 @@ const SCRIPT: ErrorEntry[] = [
   ),
   entry(
     'BRM117',
-    'Cannot assign to {kind} "{name}"',
-    'Code writes a memo, a const prop or another value that cannot change.',
+    'Cannot assign to {kind} "{name}"{hint}',
+    'Code writes a memo, a const prop, a module signal of an import or another value that cannot change.',
     'let count = $signal(0);\ncount = 5;',
   ),
   entry(
@@ -1230,6 +1230,18 @@ const MODULES: ErrorEntry[] = [
     '{name} reads {local}, which {specifier} does not export. Export it, so the component can import it',
     'A module function reads a value of its module that is not exported.',
     'export const STEP = 1;',
+  ),
+  entry(
+    'BRM211',
+    '{name} cannot be compiled in a module{reason}. {fix}',
+    'A module uses a form that its signals and memos cannot compile: a compile-time function such as `$effect` at the top level, a memo that awaits or calls a function it cannot follow, or a signal in a destructuring write.',
+    'export let count = $signal(0);\nexport const double = $memo(count * 2);',
+  ),
+  entry(
+    'BRM208',
+    '"{name}" is a signal of {module}, and a file of plain code gets its store, not its value. {fix}',
+    'A `.ts` or `.js` file imports a signal or a memo that a module declares at its top level. TypeScript types it as its value, and it is a store.',
+    "// cart.brm.ts\nexport let items = $signal<number[]>([]);\nexport function count(): number {\n  return items.length;\n}\n\n// plain.ts\nimport { count } from './cart.brm.ts';",
   ),
 ];
 

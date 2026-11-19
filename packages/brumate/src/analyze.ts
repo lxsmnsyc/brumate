@@ -23,6 +23,7 @@ import type {
   TemplateDecl,
 } from './ast.ts';
 import { isWithin, lookup, upstreamMemos } from './model.ts';
+import type { SignalName } from './module-signals.ts';
 import { KEY_NAMES } from './runtime/events.ts';
 import type {
   Declaration,
@@ -400,8 +401,11 @@ function readProvidedValues(value: oxc.Node): oxc.Node[] {
   return [value];
 }
 
-export function analyze(file: SFCFile): SemanticModel {
-  return new Analyzer(file).run();
+export function analyze(
+  file: SFCFile,
+  moduleSignals: ReadonlyMap<string, SignalName> = new Map(),
+): SemanticModel {
+  return new Analyzer(file, moduleSignals).run();
 }
 
 class Analyzer {
@@ -429,8 +433,12 @@ class Analyzer {
   private readonly module: Scope;
   private readonly component: Scope;
 
-  constructor(file: SFCFile) {
+  /** The names that read a module signal, with the module of the signal that an import gives. */
+  private readonly moduleSignals: ReadonlyMap<string, SignalName>;
+
+  constructor(file: SFCFile, moduleSignals: ReadonlyMap<string, SignalName>) {
     this.file = file;
+    this.moduleSignals = moduleSignals;
     this.module = this.createScope('module', undefined);
     this.component = this.createScope('component', this.module);
   }
@@ -2203,6 +2211,27 @@ class Analyzer {
     }
   }
 
+  /**
+   * The advice for a write of a name that reads a module signal, or undefined for any other name.
+   * A module cannot be written through an import, so the advice is a function that writes it.
+   */
+  private moduleSignalHint(declaration: Declaration): { kind: string; text: string } | undefined {
+    if (declaration.kind !== 'context' || !this.moduleSignals.has(declaration.name)) {
+      return undefined;
+    }
+    const { specifier, memo } = this.moduleSignals.get(declaration.name)!;
+    if (memo) {
+      return { kind: 'module memo', text: '. A memo is read-only' };
+    }
+    return {
+      kind: 'module signal',
+      text:
+        specifier === undefined
+          ? ''
+          : `. Export a function from ${specifier} that writes it, and call that function`,
+    };
+  }
+
   private check(): void {
     for (const declaration of this.declarations) {
       if (declaration.kind === 'action') {
@@ -2220,9 +2249,12 @@ class Analyzer {
       for (const write of site.writes) {
         const declaration = write.declaration;
         if (!WRITABLE.has(declaration.kind) && !declaration.writable && !declaration.store?.write) {
+          const signal = this.moduleSignalHint(declaration);
+          const kind = signal?.kind ?? declaration.kind;
+          const hint = signal?.text ?? '';
           this.report(
             'error',
-            `Cannot assign to ${declaration.kind} "${declaration.name}"`,
+            `Cannot assign to ${kind} "${declaration.name}"${hint}`,
             write.range,
           );
         } else if (

@@ -12,6 +12,8 @@ import {
   resolveFromDisk,
 } from './modules.ts';
 import type { ModuleCall, Origin, ReactiveModule, ResolveModule } from './modules.ts';
+import { expandSignals } from './module-signals.ts';
+import type { SignalName } from './module-signals.ts';
 import { SHARED_QUERY, sharedSites } from './shared-module.ts';
 import type { SharedContext } from './shared-module.ts';
 import type { SourceMap } from './sourcemap.ts';
@@ -200,12 +202,71 @@ function expand(
   origin: (offset: number) => Origin;
   modules: ReactiveModule[];
   calls: ModuleCall[];
+  /** The variables that read a module signal, with the module that holds it. */
+  signals: Map<string, SignalName>;
+  /** The modules that hold the signals that the component imports. */
+  signalModules: ReactiveModule[];
 } {
   let file = parse(source, { filename });
   let origin = identity;
   const modules = new Map<string, ReactiveModule>();
   // The calls that the component itself makes. Their offsets are offsets of `source`.
   let calls: ModuleCall[] = [];
+  /** Compiles the module signals of the component, which the last round left. */
+  function finishSignals() {
+    let expansion;
+    try {
+      expansion = expandSignals(
+        file,
+        path,
+        resolve,
+        (offset) => origin(offset).module !== undefined,
+      );
+    } catch (error) {
+      if (error instanceof ModuleError) {
+        const at = origin(error.offset);
+        throw new CompileError(source, filename, [
+          {
+            severity: 'error',
+            message: error.message,
+            range: at.call ?? { start: at.offset, end: at.offset + 1 },
+          },
+        ]);
+      }
+      throw error;
+    }
+    const done = {
+      file,
+      origin,
+      modules: [...modules.values()],
+      calls,
+      signals: new Map<string, SignalName>(),
+      signalModules: [] as ReactiveModule[],
+    };
+    if (!expansion) {
+      return done;
+    }
+    const previous = origin;
+    const next = expansion.origin;
+    try {
+      done.file = parse(expansion.source, { filename });
+    } catch (error) {
+      if (error instanceof BrumateError) {
+        const at = previous(next(error.offset));
+        throw new BrumateError(
+          error.message.replace(/ \([^()]*:\d+:\d+\)$/, '').replace(/ \[BRM\d+\]$/, ''),
+          source,
+          at.call?.start ?? at.offset,
+          filename,
+        );
+      }
+      throw error;
+    }
+    done.origin = (offset) => previous(next(offset));
+    done.signals = expansion.names;
+    done.signalModules = expansion.modules;
+    return done;
+  }
   for (let round = 0; ; round++) {
     let expansion;
     try {
@@ -224,7 +285,7 @@ function expand(
       throw error;
     }
     if (!expansion) {
-      return { file, origin, modules: [...modules.values()], calls };
+      return finishSignals();
     }
     if (round === 0) {
       calls = expansion.calls;
@@ -340,7 +401,7 @@ function sharedContext(
 
 export function compile(source: string, options: CompileOptions = {}): CompileResult {
   const filename = options.filename ?? 'Component.brm';
-  const { file, origin, modules, calls } = expand(
+  const { file, origin, modules, calls, signals, signalModules } = expand(
     source,
     filename,
     options.path ?? filename,
@@ -369,7 +430,7 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
     }
     throw new CompileError(source, filename, translated);
   }
-  const model = analyze(file);
+  const model = analyze(file, signals);
   for (const declaration of model.declarations) {
     if (declaration.imported && options.serverImport) {
       declaration.serverImport = options.serverImport(
@@ -486,7 +547,7 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
     warnings.push(translate(warning));
   }
   const modulePaths: string[] = [];
-  for (const module of modules) {
+  for (const module of [...modules, ...signalModules]) {
     modulePaths.push(module.path);
   }
   const render = done(generateRender(file, plan, client.fillOf));

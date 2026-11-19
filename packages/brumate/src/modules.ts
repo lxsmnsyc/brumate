@@ -667,7 +667,7 @@ function splitPath(value: string): string[] {
 }
 
 /** The scripts of a component: its instance script, and the scripts of its blocks. */
-function scripts(file: SFCFile): oxc.Program[] {
+export function scripts(file: SFCFile): oxc.Program[] {
   const result: oxc.Program[] = [];
   if (file.instanceScript) {
     result.push(file.instanceScript.program);
