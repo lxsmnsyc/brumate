@@ -2763,6 +2763,21 @@ describe('resume', () => {
     expect(text('.unread')).toBe('1');
   });
 
+  it('updates in place a template prop that only renders a component, which a child calls', async () => {
+    await resume('tplPropCellPage', {});
+    const inputs = [...document.querySelectorAll<HTMLInputElement>('.cell-row .in')];
+    expect(inputs).toHaveLength(2);
+    inputs[1]!.focus();
+    inputs[1]!.value = 'typed';
+    click(document.querySelector('.cell-tick')!);
+    await waitFor(() => expect(text('.cell-row.b')).toBe('1'));
+    expect(text('.cell-row.a')).toBe('1');
+    // The template's scope has no anchor of its own, yet its component keeps its nodes.
+    expect([...document.querySelectorAll('.cell-row .in')]).toEqual(inputs);
+    expect(document.activeElement).toBe(inputs[1]);
+    expect(inputs[1]!.value).toBe('typed');
+  });
+
   it('keeps the input of a template with a parameter that nothing reads', async () => {
     await resume('tplInPlaceMulti', {});
     const input = document.querySelector<HTMLInputElement>('.unread .in')!;

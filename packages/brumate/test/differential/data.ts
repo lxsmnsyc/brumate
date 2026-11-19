@@ -33,6 +33,7 @@ skip('The server render throws without the props of a parent: a function, a list
   'TemplateSwitch',
   'TemplateToggle',
   'TplContextList',
+  'TplPropCellList',
   'TryTemplateList',
   'TryTemplateToggle',
   'packed',
@@ -186,11 +187,6 @@ export const CAUSES: Record<string, Cause> = {
     reason:
       'A component with an await in its script or markup in a child that the browser renders: the browser reports that only the server can render it.',
   },
-  'template-context': {
-    verdict: 'remove',
-    reason:
-      'A #template that a child calls reads the context at the place of its definition (the default) in the browser render, and the value that the child provides in the server render.',
-  },
   'defer-template': {
     verdict: 'accepted',
     reason:
@@ -243,7 +239,6 @@ diverge('lazy-ref', [
 ]);
 diverge('ref-loop', ['refLoop']);
 diverge('await-in-script', ['PromiseLateChild', 'promiseLate']);
-diverge('template-context', ['tplContextListPage']);
 diverge('defer-template', ['deferredLater']);
 diverge('try-rollback', ['tryRollback']);
 diverge('awaited-slot', ['awaitedStream']);

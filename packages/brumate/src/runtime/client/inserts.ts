@@ -3,9 +3,9 @@
 
 import { HAS_BINDINGS, HAS_CHILDREN, HAS_DYNAMIC, HAS_TEMPLATES } from '../features.ts';
 import { attributeText, onValue, textValue } from '../html.ts';
-import { isBinding, isSlotReference } from '../shared.ts';
+import { isBinding, isSlotReference, parseId } from '../shared.ts';
 import type { ScopeId } from '../shared.ts';
-import { findComment, findElement, nameComment, rangeEnd } from './blocks.ts';
+import { MARKER, findComment, findElement, nameComment, rangeEnd } from './blocks.ts';
 import type { Render } from './branches.ts';
 import { Children, RenderedChildren, TemplateCall, insert, linkCalls } from './children.ts';
 import { loadedFunction } from './code.ts';
@@ -240,7 +240,8 @@ function renderedTemplate(
       call.owner &&
       scope.p === call.owner &&
       scope.k === k &&
-      (scope.t === at || (scope.l === at && inRange(scope, first, end)))
+      (scope.t === at || scope.l === at) &&
+      inRange(scope, first, end)
     ) {
       // Two templates of the same component at one insert cannot be told apart.
       if (found) {
@@ -252,29 +253,61 @@ function renderedTemplate(
   return found && { ref: call.ref, scope: found };
 }
 
-/** True if an anchor of the scope, a comment, an element or a kept node, is in the range. */
+/**
+ * True if the range holds markup of the scope or of a scope inside it: an anchor, a comment or an
+ * element, or a kept node. A template that only renders a component has no anchor of its own, so
+ * the anchors of the scopes it made count too.
+ */
 function inRange(scope: Scope, first: ChildNode | null, end: Node | null): boolean {
-  const comment = `t${scope.id}:`;
-  const element = `${scope.id}:`;
+  const kept = keptNodes(scope, []);
   for (let node = first; node && node !== end; node = node.nextSibling) {
     // The node and what it holds, elements and comments.
     const walker = document.createTreeWalker(node, 129);
     for (let item: Node | null = node; item; item = walker.nextNode()) {
-      const text =
-        item.nodeType === 8
-          ? (item as Comment).data.startsWith(comment)
-          : item.nodeType === 1 && (item as Element).getAttribute('b-b')?.startsWith(element);
-      if (text) {
+      let id: string | undefined;
+      if (item.nodeType === 8) {
+        const data = (item as Comment).data;
+        id = MARKER.test(data) ? data.slice(1).split(':')[0] : undefined;
+      } else if (item.nodeType === 1) {
+        id = (item as Element).getAttribute('b-b')?.split(':')[0];
+      }
+      if (id !== undefined && isInside(scopes.get(parseId(id)), scope)) {
         return true;
       }
     }
-    for (const kept of scope.n ?? []) {
-      if (kept && (kept === node || node.contains(kept))) {
+    for (const item of kept) {
+      if (item === node || node.contains(item)) {
         return true;
       }
     }
   }
   return false;
+}
+
+/** True if `found` is `scope` or a scope that it made, by its parents and owners. */
+function isInside(found: Scope | undefined, scope: Scope): boolean {
+  for (let current = found; current; current = current.p ?? current.o) {
+    if (current === scope) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Adds the nodes that the scope and the scopes inside it keep, of markup the browser cloned. */
+function keptNodes(scope: Scope, nodes: Node[]): Node[] {
+  for (const node of scope.n ?? []) {
+    if (node) {
+      nodes.push(node);
+    }
+  }
+  for (const child of scope.children ?? []) {
+    keptNodes(child, nodes);
+  }
+  for (const child of scope.owned ?? []) {
+    keptNodes(child, nodes);
+  }
+  return nodes;
 }
 
 /** The `value` and `checked` that updates last wrote to each field. */
