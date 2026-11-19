@@ -12,10 +12,17 @@ import {
   normalizePath,
   searchForWorkspaceRoot,
   isFileLoadingAllowed,
+  preprocessCSS,
   transformWithOxc,
   version as viteVersion,
 } from 'vite';
-import type { EnvironmentModuleNode, Plugin, UserConfig, ViteDevServer } from 'vite';
+import type {
+  EnvironmentModuleNode,
+  Plugin,
+  ResolvedConfig,
+  UserConfig,
+  ViteDevServer,
+} from 'vite';
 import type { createRecorder } from './runtime/devtools-calls.ts';
 import { entryClasses } from './captures.ts';
 import { refreshedNames } from './refreshes.ts';
@@ -249,6 +256,8 @@ const MARK_RULE = /\.(b-mark-[\w-]+)\s*\{\s*--b-mark:\s*\1\s*;?\s*\}\s*/g;
 const CSS_FILE = /\.(?:css|less|sass|scss|styl|stylus|pcss|postcss|sss)(?:$|\?)/;
 /** The parameter of `STYLE_QUERY` that marks a style module. */
 const STYLE_PARAM = 'brumate-style';
+/** A `url()` in CSS, with its quote and its value. */
+const CSS_URL = /url\(\s*(['"]?)([^'")]+)\1\s*\)/g;
 /** Exports `mount` from `brumate/testing`, with the loader of this project's client modules. */
 const TESTING = 'virtual:brumate/testing';
 /** The ID of the module of Vite's preload helper, which a client build gets from `preloadHelper`. */
@@ -578,6 +587,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   let relativeBase = false;
   let isSsrBuild = false;
   let isServe = false;
+  /** The resolved config, for the CSS pipeline of the inline styles. */
+  let resolvedConfig: ResolvedConfig | undefined;
   /** Component IDs to absolute file paths. */
   const files = new Map<string, string>();
   const compiled = new Map<string, { source: string; result: CompileResult }>();
@@ -899,12 +910,77 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     };
   }
 
+  /** The files that the CSS of each component imports, from the CSS pipeline. */
+  const cssImports = new Map<string, Set<string>>();
+  /** Adds a file to the watcher of the dev server, once the server exists. */
+  let watchFile: ((file: string) => void) | undefined;
+  const unwatched = new Set<string>();
+
+  /** A file that a component's CSS imports changes the component, as a style import does. */
+  function watchDependency(dependency: string, importer: string): void {
+    if (!dependents.has(dependency)) {
+      dependents.set(dependency, new Set());
+    }
+    dependents.get(dependency)!.add(importer);
+    if (!isServe) {
+      return;
+    }
+    if (watchFile) {
+      watchFile(dependency);
+    } else {
+      unwatched.add(dependency);
+    }
+  }
+
+  /**
+   * The dev server serves files by path, so a relative `url()` in the CSS of a component, which
+   * the page would resolve against its own URL, names the file in the root or in `/@fs/`.
+   */
+  function devUrls(css: string, file: string): string {
+    const prefix = resolvedConfig?.base.startsWith('/') ? resolvedConfig.base : '/';
+    return css.replace(CSS_URL, (match, quote: string, value: string) => {
+      if (/^(?:[a-z][a-z\d+.-]*:|\/|#)/i.test(value) || value.includes('${')) {
+        return match;
+      }
+      const [location = ''] = value.split(/[?#]/, 1);
+      const absolute = normalizePath(path.resolve(path.dirname(file), location));
+      if (!existsSync(absolute)) {
+        return match;
+      }
+      const inside = absolute.startsWith(`${normalizePath(root)}/`);
+      const url = inside
+        ? `${prefix}${path.posix.relative(normalizePath(root), absolute)}`
+        : `/@fs${absolute}`;
+      return `url(${quote}${url}${value.slice(location.length)}${quote})`;
+    });
+  }
+
   // The entry, the parts and the render module of a file come from one compile.
   async function compileFile(file: string): Promise<{ source: string; result: CompileResult }> {
     const source = await readFile(file, 'utf8');
     let cached = compiled.get(file);
     if (cached?.source !== source) {
-      cached = { source, result: compile(source, compileOptions(file)) };
+      let result = compile(source, compileOptions(file));
+      // The CSS stays inline in the dev server and with a relative base, so it takes Vite's CSS
+      // pipeline here. A build with style modules gets it from Vite's CSS plugin.
+      if (result.css && !styleFiles() && resolvedConfig) {
+        const input = isServe ? devUrls(result.css, file) : result.css;
+        const piped = await preprocessCSS(input, `${file}?brumate-inline&lang.css`, resolvedConfig);
+        // A change to a file that the CSS imports compiles the component again.
+        const imports = new Set<string>();
+        for (const dependency of piped.deps ?? []) {
+          const normalized = normalizePath(dependency);
+          if (normalized !== normalizePath(file)) {
+            imports.add(normalized);
+            watchDependency(normalized, file);
+          }
+        }
+        cssImports.set(file, imports);
+        if (piped.code !== result.css) {
+          result = compile(source, { ...compileOptions(file), css: piped.code });
+        }
+      }
+      cached = { source, result };
       compiled.set(file, cached);
       shapes.set(file, getShape(cached.result));
     }
@@ -1145,6 +1221,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       if (!rule.selector.includes('[b-c-')) {
         found.value = true;
       }
+    });
+    // The rules of an `@import` are inlined after the scoping, so they apply to every page.
+    parseCSS((await compileFile(file)).result.css).walkAtRules('import', () => {
+      found.value = true;
     });
     return found.value;
   }
@@ -1961,6 +2041,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     if (targets.length === 0) {
       return undefined;
     }
+    // A file that a component imports compiles into it, so the cached compile is stale.
+    if (!file.endsWith('.brm')) {
+      for (const target of targets) {
+        compiled.delete(target);
+      }
+    }
     // A resumed page cannot run a component again. When an edit keeps the markup, the slots
     // and the update table of each changed component, the page keeps its state: new styles
     // replace the old ones, and the next event loads the new code. When the markup changes,
@@ -2208,6 +2294,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
 
     configResolved(config) {
+      resolvedConfig = config;
       root = config.root;
       isServe = config.command === 'serve';
       outDir = path.resolve(config.root, config.build.outDir);
@@ -2890,6 +2977,11 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         manifests.push(normalizePath(`${item.root}/package.json`));
       }
       server.watcher.add(manifests);
+      watchFile = (file) => server.watcher.add(file);
+      if (unwatched.size > 0) {
+        server.watcher.add([...unwatched]);
+        unwatched.clear();
+      }
       server.watcher.on('change', (file) => {
         if (
           manifests.includes(normalizePath(file)) &&

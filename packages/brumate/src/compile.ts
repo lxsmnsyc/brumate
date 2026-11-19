@@ -87,6 +87,12 @@ export interface CompileOptions {
    */
   styleFiles?: boolean;
   /**
+   * The CSS of the component after a CSS pipeline, which replaces the scoped CSS that the compiler
+   * wrote. The Vite plugin runs the project's PostCSS or Lightning CSS on the CSS of a first
+   * compile, and compiles again with the result, where the CSS stays inline (the dev server).
+   */
+  css?: string;
+  /**
    * Reads a module of reactive logic, such as `./counter.brm.ts`, that the
    * component imports. Defaults to reading it from disk next to `path`.
    */
@@ -446,6 +452,9 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
     fail(errors);
   }
   const plan = createPlan(file, graph, options.path, options.hideNames, options.styleFiles);
+  if (options.css !== undefined) {
+    plan.styles = { ...plan.styles, css: options.css };
+  }
   const styleErrors = filterBySeverity([...plan.styles.diagnostics, ...plan.diagnostics], 'error');
   if (styleErrors.length > 0) {
     fail(styleErrors);
