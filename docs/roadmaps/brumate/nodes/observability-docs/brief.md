@@ -1,7 +1,7 @@
 ---
 id: observability-docs
 title: Docs for observability
-status: active
+status: done
 priority:
 type: feature
 story: observability
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-18
-spent:
+spent: 95000
 owns:
   - website/docs/observability.md
 shared:
