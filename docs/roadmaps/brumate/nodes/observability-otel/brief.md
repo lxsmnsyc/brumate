@@ -1,7 +1,7 @@
 ---
 id: observability-otel
 title: brumate/otel: onTrace as OpenTelemetry spans
-status: active
+status: done
 priority:
 type: feature
 story: observability
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-18
-spent:
+spent: 241000
 owns:
   - packages/brumate/src/runtime/otel.ts
   - packages/brumate/test/trace-otel/**
