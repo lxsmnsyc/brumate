@@ -8,6 +8,7 @@ import {
   type Context,
   type PageCache,
   type ResolvedView,
+  type RenderResult,
   type RouteOptions,
   NOTHING_PENDING,
   clientBundles,
@@ -163,19 +164,25 @@ export async function renderPage(
   for (const url of hints) {
     preload += `<link rel="modulepreload"${nonce} href="${escapeAttribute(url)}">`;
   }
-  const parts = await render(
-    viewComponent(view, props),
-    {},
-    {
-      ...options,
-      request,
-      actions: extra.actions,
-      route: view.key,
-      params: props.params as Record<string, string> | undefined,
-      linked: styles,
-      base: Number.isSafeInteger(base) && base > 0 ? base : undefined,
-    },
-  );
+  let parts: RenderResult;
+  try {
+    parts = await render(
+      viewComponent(view, props),
+      {},
+      {
+        ...options,
+        request,
+        actions: extra.actions,
+        route: view.key,
+        params: props.params as Record<string, string> | undefined,
+        linked: styles,
+        base: Number.isSafeInteger(base) && base > 0 ? base : undefined,
+      },
+    );
+  } catch (error) {
+    endRender(true, error);
+    throw error;
+  }
   endRender();
   // The stylesheets of the bundles. A sheet that holds the CSS of components only, whose global
   // rules are in the page already, loads after the first paint (the client applies it at `load`,
@@ -202,15 +209,17 @@ export async function renderPage(
     headers.append('link', link);
   }
   let html = streamParts(parts, { ...options, head: preload + (options.head ?? '') });
-  if (event?.trace) {
+  if (event?.trace || event?.tracer) {
     // The trace goes last, once every body has streamed, as JSON that the devtools read.
     const trace = event.trace;
     html = html.pipeThrough(
       new TransformStream<string, string>({
         flush(controller) {
           endStream();
-          const json = JSON.stringify({ route: path, entries: trace }).replace(/</g, '\\u003c');
-          controller.enqueue(`<script type="application/json" b-trace>${json}</script>`);
+          if (trace) {
+            const json = JSON.stringify({ route: path, entries: trace }).replace(/</g, '\\u003c');
+            controller.enqueue(`<script type="application/json" b-trace>${json}</script>`);
+          }
         },
       }),
     );

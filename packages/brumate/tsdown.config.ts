@@ -18,6 +18,7 @@ export default defineConfig({
     'src/runtime/events.ts',
     'src/runtime/values.ts',
     'src/runtime/gather.ts',
+    'src/runtime/otel.ts',
     'src/highlight.ts',
     'src/runtime/forms.ts',
     'src/runtime/devtools.ts',

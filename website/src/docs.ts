@@ -39,7 +39,10 @@ const groups = [
   },
   { title: 'Pages', pages: ['routing', 'navigation', 'page-metadata'] },
   { title: 'Data', pages: ['server-functions', 'async-data', 'forms'] },
-  { title: 'Production', pages: ['security', 'environment', 'deploying', 'packages'] },
+  {
+    title: 'Production',
+    pages: ['security', 'environment', 'observability', 'deploying', 'packages'],
+  },
   {
     title: 'Tools',
     pages: ['testing', 'testing-server', 'typescript', 'editor', 'inspect', 'errors'],

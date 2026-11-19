@@ -2,6 +2,8 @@ import { toJSON } from 'seroval/write';
 import { deleteCookie, getCookies, setCookie } from './cookies.ts';
 import type { CookieOptions } from './cookies.ts';
 import { serialOptions, syncPlugins } from './serial.ts';
+import { answerErrors, noSpan, startSpan, Tracer } from './trace.ts';
+import type { EndSpan, TraceHandler } from './trace.ts';
 
 /**
  * What a request is for. A form post to a server function is a call, and a
@@ -48,6 +50,8 @@ export interface RequestEventOptions {
   prerender?: boolean;
   /** The `onError` of the app, which gets the errors of this request. */
   onError?: ServerErrorHandler;
+  /** The `onTrace` of the app, which gets the spans of this request. */
+  onTrace?: TraceHandler;
 }
 
 /** Where the server takes the error of a `waitUntil` promise that no host keeps, in place of the log. */
@@ -92,15 +96,15 @@ export interface TraceEntry {
   failed?: boolean;
 }
 
-function noTrace(): void {}
+const noTrace = noSpan;
 
 /** Ends an entry of the trace when a value settles, if it is a promise, or at once. */
-export function traceValue<T>(value: T, end: (failed?: boolean) => void): T {
+export function traceValue<T>(value: T, end: EndSpan): T {
   const thenable = value as unknown as PromiseLike<unknown> | null | undefined;
   if (thenable && typeof thenable.then === 'function') {
     thenable.then(
       () => end(),
-      () => end(true),
+      (error: unknown) => end(true, error),
     );
   } else {
     end();
@@ -189,19 +193,27 @@ export class RequestEvent {
   /** When the trace started, by `performance.now()`. */
   traceStart = 0;
 
-  /** Starts an entry of the trace, when there is one, and returns what ends it. */
-  traced(kind: TraceEntry['kind'], label: string): (failed?: boolean) => void {
+  /** Makes the spans for `onTrace`, when the app has one. */
+  readonly tracer: Tracer | undefined;
+
+  /**
+   * Starts an entry of the trace, for the devtools in development and for
+   * `onTrace`, and returns what ends it. Without either it makes nothing.
+   */
+  traced(kind: TraceEntry['kind'], label: string): EndSpan {
     const trace = this.trace;
+    const end = this.tracer ? startSpan(this, `brumate.${kind}`, label) : noTrace;
     if (!trace) {
-      return noTrace;
+      return end;
     }
     const entry: TraceEntry = { kind, label, start: performance.now() - this.traceStart };
     trace.push(entry);
-    return (failed) => {
+    return (failed, error) => {
       entry.end = performance.now() - this.traceStart;
       if (failed) {
         entry.failed = true;
       }
+      end(failed, error);
     };
   }
 
@@ -229,6 +241,9 @@ export class RequestEvent {
     this.address = options.address;
     this.prerender = options.prerender ?? false;
     this.errors = errorSink(options.onError);
+    if (options.onTrace) {
+      this.tracer = new Tracer(options.onTrace, request.headers.get('traceparent'));
+    }
     watchPersonal(request.headers, () => {
       this.personal = true;
     });
@@ -519,3 +534,6 @@ export function redirect(location: string, status = 303): never {
 export function isRedirect(error: unknown): error is Redirect {
   return error instanceof Redirect;
 }
+
+// A `ServerError` and a redirect are answers, so they do not make a span fail.
+answerErrors.push(ServerError, Redirect);

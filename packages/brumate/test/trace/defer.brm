@@ -1,0 +1,6 @@
+<p>Page</p>
+#defer ('idle') {
+  <p>Later</p>
+} #else {
+  <p>Loading</p>
+}

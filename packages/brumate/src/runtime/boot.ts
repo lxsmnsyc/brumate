@@ -17,6 +17,9 @@ import { trustedScript } from './trusted.ts';
 import type * as Client from './client.ts';
 import type { ClientModule, DevtoolsHooks } from './client.ts';
 import type { SerialEntry } from './values.ts';
+import { TRACE } from './trace-flag.ts';
+import { setTraceHandler, traceEvent } from './trace-browser.ts';
+import type { TraceHandler } from './trace.ts';
 
 /** True on the dev server. A Vite build replaces it with `false`, so the devtools calls go. */
 const DEV = (import.meta as { env?: { DEV?: boolean } }).env?.DEV;
@@ -56,6 +59,23 @@ export interface LoaderOptions {
    * gets a `brumate:error` event on `window` and the error is logged.
    */
   onError?: (error: unknown, info: { scope?: number | string }) => void;
+  /**
+   * Receives a span for each event with the load and the run of its handler, for each server
+   * function that the page calls and for each navigation. See `TraceSpan`.
+   *
+   * - A server function call and a navigation send `traceparent` to the same origin, so the spans
+   *   of the server join the trace. A request to another origin sends none, and neither does a
+   *   page that a link loaded early (before the click, so it cannot join a trace). A request that
+   *   the server redirects to another origin keeps the header.
+   * - A call or a navigation joins the trace of a handler only when the handler makes it before
+   *   its first `await`. Handlers overlap, so a later call could belong to another handler. A
+   *   call after an `await`, from a memo or from a form, is the root of a trace of its own.
+   * - A span has no argument, result, query string or form value. A navigation has the route
+   *   pattern, such as `/items/[id]`, once the page arrives, and none when it fails.
+   * - The Vite plugin leaves the code out of a build whose entry does not pass `onTrace` to the
+   *   loader. See the `trace` option of the plugin when the entry is elsewhere.
+   */
+  onTrace?: TraceHandler;
 }
 
 export interface NavigateOptions {
@@ -183,6 +203,15 @@ export function boot(
   // hooks that this loader gave it. A new loader can reuse the IDs of client scopes, so a stale
   // start would run in a scope of the new page.
   let stopped = false;
+  // True once the core started, so an event after it has no code of the core to wait for.
+  let coreReady = false;
+  if (TRACE) {
+    setTraceHandler(options.onTrace);
+  } else if (DEV && options.onTrace) {
+    console.warn(
+      'onTrace is set, but the build leaves the spans of the browser out. Set `trace: true` in the options of the brumate plugin.',
+    );
+  }
   /** The event types that the document listens to, and whether each listener is passive. */
   const types = new Map<string, boolean>();
   const removers: (() => void)[] = [];
@@ -222,6 +251,7 @@ export function boot(
   const loadCore = (): Promise<Core> =>
     (core ??= Promise.all([load(), loadSerial()]).then(([client, serial]) => {
       client.init({ ...options, load: loadModule, listen: scanInsert, inserted, serial });
+      coreReady = true;
       return client;
     }));
 
@@ -232,7 +262,18 @@ export function boot(
     if (stopped) {
       return;
     }
-    void loadCore().then((client) => client.handle(element, ref, event));
+    const trace = TRACE ? traceEvent(event, ref, !coreReady) : undefined;
+    const started = loadCore().then((client) =>
+      client.handle(element, ref, event, undefined, trace),
+    );
+    if (TRACE && trace) {
+      started.catch((error: unknown) => {
+        trace.fail(error);
+        throw error;
+      });
+    } else {
+      void started;
+    }
   };
 
   /**
@@ -654,6 +695,9 @@ export function boot(
   void loadCore().catch(() => {});
   return () => {
     stopped = true;
+    if (TRACE) {
+      setTraceHandler(undefined);
+    }
     observer?.disconnect();
     for (const remove of removers.splice(0)) {
       remove();

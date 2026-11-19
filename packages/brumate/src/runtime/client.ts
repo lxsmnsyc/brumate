@@ -165,3 +165,4 @@ export const loader: {
 };
 
 function noop(): void {}
+export type { TraceHandler, TraceName, TraceSpan } from './trace.ts';
