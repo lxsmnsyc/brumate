@@ -507,6 +507,14 @@ function append(nodes: Node[], shift: Shift | undefined): void {
 }
 
 /**
+ * The HTML of a head element, which says whether the new page has the same one. The nonce is left
+ * out: each response has its own, and the browser hides the one of the loaded page.
+ */
+function headHTML(element: Element): string {
+  return element.outerHTML.replace(/^(<[^>]*?) nonce="[^"]*"/, '$1');
+}
+
+/**
  * Makes the head of the page match the new one, keeping elements that are in both.
  * Returns the scripts that ask to run again, which the caller adds once the body is in place.
  */
@@ -514,12 +522,12 @@ function updateHead(next: Document): HTMLScriptElement[] {
   const rerun: HTMLScriptElement[] = [];
   const keep = new Map<string, Element>();
   for (const element of document.head.children) {
-    keep.set(element.outerHTML, element);
+    keep.set(headHTML(element), element);
   }
   // A copy, because adopting an element removes it from the live list.
   // oxlint-disable-next-line unicorn/no-useless-spread
   for (const element of [...next.head.children]) {
-    const html = element.outerHTML;
+    const html = headHTML(element);
     if (element.matches('script[data-rerun]')) {
       // Never kept: the old copy leaves and a new one runs after the body.
       rerun.push(element as HTMLScriptElement);
