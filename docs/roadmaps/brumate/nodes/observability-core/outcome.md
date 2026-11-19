@@ -45,3 +45,5 @@
 ## Size
 
 - Estimated M, actual M.
+
+Merged into feat/observability in #524 (dc74e619).

@@ -14,7 +14,7 @@ import { afterInsert, destroy, removeBlock, resolveScope } from './scopes.ts';
 import { appendText, keepText, setAttr, setSpread } from './templates.ts';
 import { loadingValues, scopes, updating, waiters } from './state.ts';
 import type { Scope } from './state.ts';
-import { isThenable, noop, pending, updated, writes } from './updates.ts';
+import { isThenable, noop, pend, pending, updated, writes } from './updates.ts';
 
 /** What a render function of the browser returns. */
 export type Out = string | DocumentFragment;
@@ -237,6 +237,20 @@ export function fillSettled(
     },
     (error: unknown) => failOnce(scope, own, error),
   );
+}
+
+/**
+ * A write of cloned markup whose values come from code that can read a memo that is still
+ * loading, such as a block header or a prop that calls a function. The write waits for the memo,
+ * and runs again with its value. It counts in the boundary of the render, as `fillSettled` does.
+ */
+export function fillPend(id: ScopeId | Scope, write: () => void): void {
+  const waiting = pend(() => {
+    write();
+  }, id);
+  if (isThenable(waiting)) {
+    fillSettled(id, [waiting], noop);
+  }
 }
 
 /**

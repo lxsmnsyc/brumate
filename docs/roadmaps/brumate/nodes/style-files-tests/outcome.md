@@ -56,3 +56,5 @@ Final bytes, static count on the website build of this branch (gzip -9; HTML plu
 Cold cache; the sheets are cached after view 1 and shared across pages. Against the byte gate (+862 B on two views, warm cache), the final HTML is back near the base size because inline CSS returned. The maintainer chose this for the first paint (`reviews/style-files-fcp.md`).
 
 - Estimated S, actual S.
+
+Landed on feat/style-files as ab985e2f.

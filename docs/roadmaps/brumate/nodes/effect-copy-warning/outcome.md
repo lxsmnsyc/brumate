@@ -45,3 +45,7 @@ Not a fix node.
 ## Size
 
 - Estimated S, actual S.
+
+Landed on batch/brumate-release-0.9 as 3d2e0680.
+
+Cut into release/0.9 on 2026-11-19 (6246e057).

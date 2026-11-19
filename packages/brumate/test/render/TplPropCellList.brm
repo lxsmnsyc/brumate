@@ -1,0 +1,12 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  // Calls a template of its caller that only renders a component, with a value that changes.
+  const { cell } = $props<{ cell: (n: number) => unknown }>();
+  let tick = $signal(0);
+</script>
+
+<button class="cell-tick" onClick=(() => tick++)>Tick</button>
+#for (name of ['a', 'b'] by name) {
+  <p class=(`cell-row ${name}`)>{cell(tick)}</p>
+}

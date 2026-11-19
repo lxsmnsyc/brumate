@@ -1,7 +1,7 @@
 ---
 id: release-0.8.1
 title: Release brumate 0.8.1
-status: todo
+status: active
 priority: must
 type: release
 story:
@@ -29,6 +29,12 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: resolve-gone-child
+    kind: hard
+    why: a 0.8.1 fix found on 2026-11-19
+  - on: head-nonce-keep
+    kind: hard
+    why: a 0.8.1 fix found on 2026-11-19
   - on: children-rerender
     kind: hard
     why: a 0.8.1 fix, moved back from 0.8.0 when release-0.8 started (2026-11-15)

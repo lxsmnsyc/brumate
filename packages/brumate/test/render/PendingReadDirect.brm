@@ -1,0 +1,13 @@
+<script>
+  import { $memo } from 'brumate/signals';
+  import { loadUser } from './waitData.ts';
+  import PendingReadLive from './PendingReadLive.brm';
+
+  const user = $memo(loadUser(1));
+
+  function nameOf() {
+    return user.name;
+  }
+</script>
+
+<PendingReadLive label=nameOf />

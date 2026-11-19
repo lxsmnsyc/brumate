@@ -47,3 +47,5 @@
 
 - Two new e2e steps were shown to fail on the pre-fix runtime (stylesheet that never answers; `#defer` body before its stylesheet). The overtaken-visit and head-prune steps were skipped in that run and are not proven to discriminate.
 - `pruneSheets` reads each sheet's `cssText` once (memoised); its cost on large pages is unmeasured. A cheaper form: the server tags each link with its component IDs.
+
+Landed on feat/style-files as c401cfb7.

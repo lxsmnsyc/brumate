@@ -228,7 +228,10 @@ function clearRuns(): void {
  * loader with handler parts that fail to load. Returns the calls to
  * `location.reload` and the `brumate:skew` events.
  */
-async function failingHandlers(server: string): Promise<{
+async function failingHandlers(
+  server: string,
+  missingBundle = false,
+): Promise<{
   reload: Mock<() => void>;
   skews: string[];
   reported: unknown[];
@@ -252,15 +255,31 @@ async function failingHandlers(server: string): Promise<{
   document.addEventListener('brumate:skew', onSkew);
   const restart = async (): Promise<void> => {
     stop?.();
-    const { html, state } = await runtime.render(component.default, {}, { build: 'b1' });
+    let bundles: Parameters<typeof runtime.render>[2] = { build: 'b1' };
+    if (missingBundle) {
+      // The server names the bundle of the page, which is gone from the build.
+      const { state } = await runtime.render(component.default, {}, { build: 'b1' });
+      const root = /\bm:\s*['"]([^'"]+)['"]/.exec(state)![1]!;
+      bundles = {
+        build: 'b1',
+        bundles: {
+          chunks: { [root]: file('gone-bundle.js') },
+          members: { [root]: [root] },
+        },
+      };
+    }
+    const { html, state } = await runtime.render(component.default, {}, bundles);
     show(html + state);
     vi.resetModules();
     const { start } = await import('../src/runtime/loader.ts');
+    // The code of the page fails to load, as a module that throws or a file that is gone does.
+    const load = missingBundle
+      ? (await import('../src/runtime/bundles.ts')).load
+      : () => Promise.reject(new Error('Top level'));
     stop = start({
       build: 'b1',
       onError: (error) => reported.push(String(error)),
-      // The code of the page fails to load, as a module that throws or a file that is gone does.
-      load: () => Promise.reject(new Error('Top level')),
+      load,
     });
   };
   await restart();
@@ -2249,7 +2268,7 @@ describe('resume', () => {
     await waitFor(() => expect(text('.caught')).toBe('Error: Rejected 1'));
   });
 
-  it('stops updates that keep writing what they read, with one error, and the page goes on', async () => {
+  it('stops updates that keep writing what they read, with one error, and the page goes on: a ref in a list that renders from the ref', async () => {
     await resume('refLoop', {});
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
     onTestFinished(() => errors.mockRestore());
@@ -2483,6 +2502,28 @@ describe('resume', () => {
     click(document.querySelector('.throw')!);
     await waitFor(() => expect(reported).toContain('Error: Top level'));
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('loads the page again when the bundle that the server names is gone', async () => {
+    sessionStorage.clear();
+    const { reload, skews, reported, restart } = await failingHandlers('b2', true);
+    click(document.querySelector('.throw')!);
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+    expect(skews).toEqual(['code']);
+    // The same build again does not load the page again.
+    await restart();
+    click(document.querySelector('.throw')!);
+    await waitFor(() => expect(reported.length).toBeGreaterThan(0));
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports a bundle that is gone when the build is the same', async () => {
+    sessionStorage.clear();
+    const { reload, skews, reported } = await failingHandlers('b1', true);
+    click(document.querySelector('.throw')!);
+    await waitFor(() => expect(reported).toContainEqual(expect.stringContaining('gone-bundle')));
+    expect(reload).not.toHaveBeenCalled();
+    expect(skews).toEqual([]);
   });
 
   it('loads async memos again when their inputs change', async () => {
@@ -2737,6 +2778,21 @@ describe('resume', () => {
     expect([first.value, name!.value, email!.value]).toEqual(['one', 'two', 'three']);
     // A parameter that nothing reads, with an arrow in its type, does not stop it.
     expect(text('.unread')).toBe('1');
+  });
+
+  it('updates in place a template prop that only renders a component, which a child calls', async () => {
+    await resume('tplPropCellPage', {});
+    const inputs = [...document.querySelectorAll<HTMLInputElement>('.cell-row .in')];
+    expect(inputs).toHaveLength(2);
+    inputs[1]!.focus();
+    inputs[1]!.value = 'typed';
+    click(document.querySelector('.cell-tick')!);
+    await waitFor(() => expect(text('.cell-row.b')).toBe('1'));
+    expect(text('.cell-row.a')).toBe('1');
+    // The template's scope has no anchor of its own, yet its component keeps its nodes.
+    expect([...document.querySelectorAll('.cell-row .in')]).toEqual(inputs);
+    expect(document.activeElement).toBe(inputs[1]);
+    expect(inputs[1]!.value).toBe('typed');
   });
 
   it('keeps the input of a template with a parameter that nothing reads', async () => {
@@ -10056,6 +10112,11 @@ describe('#loading (memo)', () => {
 
   const settled = new Set<UserLoad>();
 
+  // The loads of a test are of no use to the next one.
+  afterEach(() => {
+    delete (globalThis as { userLoads?: UserLoad[] }).userLoads;
+  });
+
   /** Settles the first load of each user that has not settled yet. */
   async function settleUser(...ids: number[]): Promise<void> {
     for (const id of ids) {
@@ -10197,6 +10258,126 @@ describe('#loading (memo)', () => {
     await waitFor(() => expect(shown('.user')).toEqual(['ADA2']));
     expect(shown('.fallback')).toEqual([]);
     expect(document.querySelector('.user')).toBe(name);
+  });
+
+  it('holds a #loading body whose memo reads a property of a pending memo, in the browser', async () => {
+    const errors: unknown[] = [];
+    const onError = (event: Event): void => {
+      errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    };
+    window.addEventListener('brumate:error', onError);
+    onTestFinished(() => window.removeEventListener('brumate:error', onError));
+    await resume('pendingReadChainHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(shown('.fallback')).toEqual(['Loading']));
+    expect(shown('.label')).toEqual([]);
+    await settleUser(1);
+    await waitFor(() => expect(shown('.label')).toEqual(['ADA1']));
+    expect(shown('.fallback')).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+
+  it('reads a property of a pending memo in a function prop that the browser renders', async () => {
+    const errors: unknown[] = [];
+    const onError = (event: Event): void => {
+      errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    };
+    window.addEventListener('brumate:error', onError);
+    onTestFinished(() => window.removeEventListener('brumate:error', onError));
+    await resume('pendingReadFnHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(text('.title')).toBe('USER1'));
+    await waitFor(() => expect(text('.live')).toBe('user1'));
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(text('.live')).toBe('user2'));
+    await waitFor(() => expect(text('.title')).toBe('USER2'));
+    expect(errors).toEqual([]);
+  });
+
+  it('reads a property of a pending memo in a function prop of a page without signals', async () => {
+    const errors: unknown[] = [];
+    const onError = (event: Event): void => {
+      errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    };
+    window.addEventListener('brumate:error', onError);
+    onTestFinished(() => window.removeEventListener('brumate:error', onError));
+    await resume('pendingReadStaticHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(userLoads()).toHaveLength(1));
+    await settleUser(1);
+    await waitFor(() => expect(text('.live')).toBe('ada1'));
+    await waitFor(() => expect(text('.title')).toBe('ADA1'));
+    expect(errors).toEqual([]);
+  });
+
+  it('writes a markup read of a pending memo through a function prop once the memo settles', async () => {
+    await resume('pendingReadDirectHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(userLoads()).toHaveLength(1));
+    expect(document.querySelector('.live')?.textContent ?? '').toBe('');
+    await settleUser(1);
+    await waitFor(() => expect(text('.live')).toBe('ada1'));
+  });
+
+  describe.each([
+    ['#if header', () => text('.if'), 'yes'],
+    [
+      '#for list',
+      () => [...document.querySelectorAll('.for')].map((item) => item.textContent),
+      ['ada1', 'b'],
+    ],
+    ['#key value', () => document.querySelector('.key')?.getAttribute('data-name'), 'ada1'],
+    ['component prop', () => text('.prop'), 'ada1'],
+    ['class value', () => document.querySelector('.cls-ada1') !== null, true],
+    ['style value', () => document.querySelector<HTMLElement>('.cls-ada1')?.style.color, 'red'],
+    ['value attribute', () => document.querySelector('.bound')?.getAttribute('value'), 'ada1'],
+  ])('a function that reads a pending memo in a %s', (_name, read, expected) => {
+    it('waits for the memo and shows its value', async () => {
+      const errors: unknown[] = [];
+      const onError = (event: Event): void => {
+        errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+      };
+      window.addEventListener('brumate:error', onError);
+      onTestFinished(() => window.removeEventListener('brumate:error', onError));
+      await resume('pendingReadFormsHost', {});
+      click(document.querySelector('.toggle')!);
+      await waitFor(() => expect(userLoads()).toHaveLength(1));
+      await settleUser(1);
+      await waitFor(() => expect(read()).toEqual(expected));
+      expect(errors).toEqual([]);
+    });
+  });
+
+  it('reports the rejection of a pending memo that a memo reads once, to the #try', async () => {
+    const errors: unknown[] = [];
+    const onError = (event: Event): void => {
+      errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    };
+    window.addEventListener('brumate:error', onError);
+    onTestFinished(() => window.removeEventListener('brumate:error', onError));
+    await resume('pendingReadFailHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(userLoads()).toHaveLength(1));
+    userLoads()[0]!.fail(new Error('no user'));
+    await waitFor(() => expect(text('.caught')).toContain('no user'));
+    expect(document.querySelectorAll('.caught')).toHaveLength(1);
+    await new Promise((done) => setTimeout(done, 20));
+    expect(errors).toEqual([]);
+  });
+
+  it('computes nothing for a block that closed before the pending memo settled', async () => {
+    onTestFinished(() => {
+      delete (globalThis as { computes?: number }).computes;
+    });
+    await resume('pendingReadFailHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(userLoads()).toHaveLength(1));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('.fallback')).toBe(null));
+    await settleUser(1);
+    await new Promise((done) => setTimeout(done, 20));
+    expect((globalThis as { computes?: number }).computes).toBeUndefined();
+    expect(document.querySelector('.label')).toBe(null);
   });
 
   it('holds a body that the browser rendered', async () => {

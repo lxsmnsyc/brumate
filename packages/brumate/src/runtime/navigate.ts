@@ -604,9 +604,7 @@ function append(nodes: Node[], shift: Shift | undefined): void {
  * out: each response has its own, and the browser hides the one of the loaded page.
  */
 function headHTML(element: Element): string {
-  return HAS_SCRIPTS
-    ? element.outerHTML.replace(/^(<[^>]*?) nonce="[^"]*"/, '$1')
-    : element.outerHTML;
+  return element.outerHTML.replace(/^(<[^>]*?) nonce="[^"]*"/, '$1');
 }
 
 /**

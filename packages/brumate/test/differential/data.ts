@@ -33,6 +33,7 @@ skip('The server render throws without the props of a parent: a function, a list
   'TemplateSwitch',
   'TemplateToggle',
   'TplContextList',
+  'TplPropCellList',
   'TryTemplateList',
   'TryTemplateToggle',
   'packed',
@@ -44,6 +45,18 @@ skip('The server render throws without the props of a parent: a function, a list
   'spreadChildrenTwice',
   'todos',
 ]);
+
+skip(
+  'The server render waits for a memo that only the test settles, or needs the props of a parent.',
+  [
+    'PendingReadDirect',
+    'PendingReadFail',
+    'PendingReadForms',
+    'PendingReadFormsKid',
+    'PendingReadFn',
+    'PendingReadLive',
+  ],
+);
 
 skip(
   'The server render throws without the context that a parent provides, since a context has no default.',
@@ -165,24 +178,14 @@ export const CAUSES: Record<string, Cause> = {
       'A ref slot of a resumed page holds the scope and anchor of its element, and the core reads the element when it needs it. The browser render holds the element.',
   },
   'ref-loop': {
-    verdict: 'remove',
+    verdict: 'accepted',
     reason:
-      'A ref inside a list whose source reads the signal that the ref writes loops without end in the browser render; the resumed page settles.',
-  },
-  'pending-read': {
-    verdict: 'remove',
-    reason:
-      'A memo or a function prop that reads a property of a memo that is still pending: the server holds back the markup, and the first browser render reads undefined and throws.',
+      'A ref inside a list whose source reads the signal that the ref writes loops: each pass makes a new row and a new element, so the next write differs. The browser render loops at mount, the resumed page after one write, until the update guard stops it with BRM187. Svelte 5 (bind:this in an each) and Solid (ref in a For) loop on this program too.',
   },
   'await-in-script': {
     verdict: 'accepted',
     reason:
       'A component with an await in its script or markup in a child that the browser renders: the browser reports that only the server can render it.',
-  },
-  'template-context': {
-    verdict: 'remove',
-    reason:
-      'A #template that a child calls reads the context at the place of its definition (the default) in the browser render, and the value that the child provides in the server render.',
   },
   'defer-template': {
     verdict: 'accepted',
@@ -235,9 +238,7 @@ diverge('lazy-ref', [
   'restRefTagPageSwap',
 ]);
 diverge('ref-loop', ['refLoop']);
-diverge('pending-read', ['fnReadAsync', 'loadingChain', 'loadingOnChain']);
 diverge('await-in-script', ['PromiseLateChild', 'promiseLate']);
-diverge('template-context', ['tplContextListPage']);
 diverge('defer-template', ['deferredLater']);
 diverge('try-rollback', ['tryRollback']);
 diverge('awaited-slot', ['awaitedStream']);

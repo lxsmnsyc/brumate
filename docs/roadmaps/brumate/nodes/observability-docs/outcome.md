@@ -35,3 +35,5 @@
 ## Size
 
 - Estimated S, actual S.
+
+Landed on feat/observability as 38bba17c. The orchestrator also clarified the `trace` option text in vite.ts and reference-plugin.md (`true` and `false` apply to the dev server too).

@@ -1,0 +1,10 @@
+<script>
+  import TplPropCellList from './TplPropCellList.brm';
+  import TplPropCell from './TplPropCell.brm';
+</script>
+
+<TplPropCellList cell=cell />
+
+#template cell(n: number) {
+  <TplPropCell n=n />
+}

@@ -1,12 +1,12 @@
 ---
 id: style-files
 title: Component CSS as Vite stylesheets in builds
-status: todo
-priority: should
+status: done
+priority: must
 type: story
 story:
 early: false
-outline: true
+outline: false
 milestone: 0.9.0
 target:
 ship: auto
@@ -25,8 +25,17 @@ owns: []
 shared: []
 reserves: []
 provides: []
-depends_on: []
+depends_on:
+  - on: style-files-spike
+    kind: hard
+    why: the story is built only after the spike's go and its design
 ---
+
+> 2026-11-18: style-files-modules missed the byte gate by +862 B gzip (+0.46%) over two views (CSS gzips better inline; bundle CSS includes components a page does not render). The maintainer chose to continue: size is recorded, not a gate. style-files-links must also fix the e2e regression on /ui/selection-indicator (demo CSS linked after the script) before the story lands.
+
+> 2026-11-18: the maintainer gave the spike's partial go: one stylesheet per route bundle plus a shared chunk, not one per component. Children: style-files-modules (L, carries the byte gate on a real build; a miss stops the story), style-files-links (M), style-files-navigation (M), style-files-postcss (M), style-files-tests (S). Design in `../style-files-spike/outcome.md`.
+
+> 2026-11-18: made a must of 0.9.0 by the maintainer, after mcp-server was deferred (docs/debates/0.9.0-cut/debate.md, amendment 2026-11-18).
 
 > 2026-11-12: should in 0.9.0 (docs/debates/0.9.0-cut/debate.md), the reserve if a must feature slips. The gated spike comes first. Size is recorded, not a gate (GOAL.md, Constraints).
 

@@ -1,0 +1,7 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { n } = $props<{ n: number }>();
+</script>
+
+<span class="cell"><input class="in" />{n}</span>

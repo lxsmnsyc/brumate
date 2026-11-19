@@ -1,0 +1,13 @@
+<script>
+  import { $memo } from 'brumate/signals';
+  import { loadUser } from './waitData.ts';
+
+  const user = $memo(loadUser(1));
+  const label = $memo(user.name.toUpperCase());
+</script>
+
+#loading {
+  <p class="label">{label}</p>
+} #else {
+  <p class="fallback">Loading</p>
+}

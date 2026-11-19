@@ -56,3 +56,5 @@ None.
 ## Size
 
 - Estimated M, actual M. The transform was small. The importer side and the shared module needed the most care.
+
+Landed on batch/brumate-release-0.9 as 8cebc3ae.

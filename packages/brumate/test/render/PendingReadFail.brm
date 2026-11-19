@@ -1,0 +1,23 @@
+<script>
+  import { $memo } from 'brumate/signals';
+  import { loadUser } from './waitData.ts';
+
+  const user = $memo(loadUser(1));
+  const label = $memo(tally(user.name.toUpperCase()));
+
+  function tally(value: string): string {
+    const counts = globalThis as { computes?: number };
+    counts.computes = (counts.computes ?? 0) + 1;
+    return value;
+  }
+</script>
+
+#try {
+  #loading {
+    <p class="label">{label}</p>
+  } #else {
+    <p class="fallback">Loading</p>
+  }
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

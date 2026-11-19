@@ -29,9 +29,18 @@ shared:
 reserves: []
 provides: []
 depends_on:
-  - on: partial-route-responses
+  - on: view-transitions
     kind: hard
-    why: a must feature of the 0.9.0 cut
+    why: a must feature of the 0.9.0 cut (added 2026-11-18)
+  - on: style-files
+    kind: hard
+    why: a must feature of the 0.9.0 cut (added 2026-11-18)
+  - on: module-signals
+    kind: hard
+    why: a must feature of the 0.9.0 cut (added 2026-11-18)
+  - on: server-components-spike
+    kind: hard
+    why: a must of 0.9.0, not counted as a feature (added 2026-11-18)
   - on: external-scripts
     kind: hard
     why: a must feature of the 0.9.0 cut
@@ -45,9 +54,6 @@ depends_on:
     kind: hard
     why: a must feature of the 0.9.0 cut
   - on: style-scope-where
-    kind: hard
-    why: a must feature of the 0.9.0 cut
-  - on: mcp-server
     kind: hard
     why: a must feature of the 0.9.0 cut
   - on: observability

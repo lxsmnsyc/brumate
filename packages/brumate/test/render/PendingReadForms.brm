@@ -1,0 +1,34 @@
+<script>
+  import { $memo } from 'brumate/signals';
+  import { loadUser } from './waitData.ts';
+  import PendingReadFormsKid from './PendingReadFormsKid.brm';
+
+  const user = $memo(loadUser(1));
+
+  function nameOf() {
+    return user.name;
+  }
+
+  function items() {
+    return [user.name, 'b'];
+  }
+
+  function look() {
+    return { color: user.name === 'ada1' ? 'red' : 'blue' };
+  }
+</script>
+
+#if (nameOf() === 'ada1') {
+  <p class="if">yes</p>
+} #else {
+  <p class="if">no</p>
+}
+#for (item of items()) {
+  <i class="for">{item}</i>
+}
+#key (nameOf()) {
+  <b class="key" data-name=(nameOf())>key</b>
+}
+<PendingReadFormsKid title=nameOf() />
+<p class=(`cls-${nameOf()}`) style=look()>Styled</p>
+<input class="bound" value=(nameOf())>

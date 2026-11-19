@@ -49,3 +49,5 @@ Not a fix node.
 ## Size
 
 - Estimated M, actual M. The flag, the chunk residue and the e2e example took the time.
+
+Landed on feat/observability as 4fe89c2c.

@@ -1,13 +1,13 @@
 ---
 id: module-signals
 title: $signal and $memo at the top level of a module
-status: todo
-priority: could
+status: done
+priority: must
 type: feature
 story:
 early: false
 outline: false
-milestone: backlog
+milestone: 0.9.0
 target:
 ship: auto
 land: auto
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-18
-spent:
+spent: 493000
 owns:
   - packages/brumate/src/module-signals.ts
   - packages/brumate/test/module-signals.test.ts
@@ -39,13 +39,15 @@ shared:
   - website/docs/state.md
   - docs/decisions.md
   - .changeset/*.md
-reserves: [code BRM207, code BRM208]
+reserves: [code BRM211, code BRM208]
 provides: []
 depends_on:
   - on: derived-stores
     kind: hard
     why: a module memo compiles to derived() of brumate/store
 ---
+
+> 2026-11-18: made a must of 0.9.0 by the maintainer, after mcp-server was deferred (docs/debates/0.9.0-cut/debate.md, amendment 2026-11-18).
 
 # $signal and $memo at the top level of a module
 
@@ -95,7 +97,7 @@ Today both forms fail. In `<script module>`, `$signal(0)` stays a call of the ru
 - [ ] Probe on the 0.x target branch: a `<script module>` with `export const count = store(0)` read with `$store(count)` in two components on one page; one button calls an exported `increment`; both update. This is the runtime the sugar compiles to.
 - [ ] Transform for the top level of `.brm.ts` and `<script module>` in `src/module-signals.ts`: `$signal` to `store`, `$memo` to `derived` with the module signals it reads as sources, reads and writes in module code to `get` and `set`.
 - [ ] Importer side: the analyzer marks a name imported from a `.brm.ts` module (or declared in `<script module>`) that is a module signal or memo, and compiles reads like `$store` of it (one-way).
-- [ ] Errors: BRM207 for `$signal`/`$memo` forms the top level cannot take (`$memo(await …)`, `$effect`, `$client` and the other compile-time functions at the top level of a module), each message naming the fix. BRM208 for a module signal imported into a plain `.ts` file. BRM117's message for a write through an import names the exported-function fix.
+- [ ] Errors: BRM211 (BRM207 was taken by block-styles) for `$signal`/`$memo` forms the top level cannot take (`$memo(await …)`, `$effect`, `$client` and the other compile-time functions at the top level of a module), each message naming the fix. BRM208 for a module signal imported into a plain `.ts` file. BRM117's message for a write through an import names the exported-function fix.
 - [ ] Docs, decisions.md entry, changeset.
 
 ## Acceptance

@@ -38,3 +38,5 @@
 Static count on the website build (gzip -9; HTML plus the linked CSS and JS named in it, not a Chrome run): `/` HTML 15,991, CSS 5,275; `/docs/components/` HTML 30,588, CSS 2,883. Against style-files-modules (HTML 15,989 and 30,583, CSS 5,275 and 2,883): +2 B and +5 B of HTML, CSS equal, so the two views stay at about 189,495 + 7 B, +869 B over release/0.9 (188,633). No Chrome byte run was made.
 
 - Estimated M, actual M.
+
+Landed on feat/style-files as 067e3094.

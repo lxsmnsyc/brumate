@@ -9,6 +9,8 @@ import { HAS_BRIDGES } from './features.ts';
 const loaded = new Map<string, ClientModule>();
 /** The bundles that load or loaded, by URL. */
 const pending = new Map<string, Promise<void>>();
+/** Why the bundles that failed to load failed, by URL, until a load of them lands. */
+const failed = new Map<string, unknown>();
 /** The state records whose `b-load` was read. */
 const read = new WeakSet<Element>();
 
@@ -48,14 +50,18 @@ function loadBundle(url: string, nonce: string | null): Promise<void> | undefine
   if (!promise) {
     promise = import(/* @vite-ignore */ href).then(
       (bundle: { modules: Record<string, ClientModule> }) => {
+        failed.delete(url);
         for (const [id, module] of Object.entries(bundle.modules)) {
           loaded.set(id, module);
         }
       },
     );
     pending.set(url, promise);
-    // A load that fails can start again, such as after the network comes back.
-    promise.catch(() => pending.delete(url));
+    // A load that fails starts again only when a new record names the URL.
+    promise.catch((error: unknown) => {
+      pending.delete(url);
+      failed.set(url, error);
+    });
   }
   return promise;
 }
@@ -83,7 +89,8 @@ if (document.readyState === 'loading') {
 
 /**
  * The client module of a component, from the bundles that the state records of the page name.
- * Undefined for a component with no client code.
+ * Undefined for a component with no client code. Rejects when a bundle failed to load and the
+ * component is not in the others.
  */
 export function load(id: string): Promise<ClientModule> | undefined {
   // A bridge of `<script module>` is named by its component, which holds its code.
@@ -96,5 +103,17 @@ export function load(id: string): Promise<ClientModule> | undefined {
   // The records that the page added since, such as those of a navigation or a `#defer` body.
   readRecords();
   const waiting = [...pending.values()];
-  return waiting.length > 0 ? Promise.allSettled(waiting).then(() => loaded.get(id)!) : undefined;
+  if (waiting.length === 0 && failed.size === 0) {
+    return undefined;
+  }
+  return Promise.allSettled(waiting).then(() => {
+    if (!loaded.has(id)) {
+      // A bundle that failed may hold the code, so the caller gets the error, as it does for a
+      // module that throws. After a deploy, a gone bundle takes the page to the skew reload.
+      for (const error of failed.values()) {
+        throw error;
+      }
+    }
+    return loaded.get(id)!;
+  });
 }

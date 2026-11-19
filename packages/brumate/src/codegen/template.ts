@@ -807,16 +807,20 @@ export function cloneLines(
   // The writes that read memos which never change, by the scope that reports their rejection
   // and the memos they read. They wait for those memos to settle, so one that loads longer
   // holds back only the writes that read it.
-  const settled = new Map<string, { scope: string; names: string[]; writes: string[] }>();
+  const settled = new Map<
+    string,
+    { scope: string; names: string[]; writes: string[]; pend?: true }
+  >();
   function addLine(line: string, memos: Settled | undefined): void {
     if (!memos) {
       lines.push(`${indent}${line}`);
       return;
     }
-    const key = `${memos.scope} ${memos.names.join(' ')}`;
+    // A write of code that can wait on its own waits apart, so a stop does not repeat the others.
+    const key = `${memos.scope} ${memos.names.join(' ')}${memos.pend ? ` ${settled.size}` : ''}`;
     let group = settled.get(key);
     if (!group) {
-      group = { scope: memos.scope, names: memos.names, writes: [] };
+      group = { scope: memos.scope, names: memos.names, writes: [], pend: memos.pend };
       settled.set(key, group);
     }
     group.writes.push(line);
@@ -929,8 +933,12 @@ export function cloneLines(
   // The values of the memos shadow the memos, so the writes read the values.
   for (const group of settled.values()) {
     const names = group.names.join(', ');
+    const writes = group.writes.join(' ');
+    const body = group.pend ? `$$b.fillPend(${group.scope}, () => { ${writes} });` : writes;
     lines.push(
-      `${indent}$$b.fillSettled(${group.scope}, [${names}], (${names}) => { ${group.writes.join(' ')} });`,
+      group.pend && names === ''
+        ? `${indent}${body}`
+        : `${indent}$$b.fillSettled(${group.scope}, [${names}], (${names}) => { ${body} });`,
     );
   }
   if (missing) {
