@@ -228,7 +228,10 @@ function clearRuns(): void {
  * loader with handler parts that fail to load. Returns the calls to
  * `location.reload` and the `brumate:skew` events.
  */
-async function failingHandlers(server: string): Promise<{
+async function failingHandlers(
+  server: string,
+  missingBundle = false,
+): Promise<{
   reload: Mock<() => void>;
   skews: string[];
   reported: unknown[];
@@ -252,15 +255,31 @@ async function failingHandlers(server: string): Promise<{
   document.addEventListener('brumate:skew', onSkew);
   const restart = async (): Promise<void> => {
     stop?.();
-    const { html, state } = await runtime.render(component.default, {}, { build: 'b1' });
+    let bundles: Parameters<typeof runtime.render>[2] = { build: 'b1' };
+    if (missingBundle) {
+      // The server names the bundle of the page, which is gone from the build.
+      const { state } = await runtime.render(component.default, {}, { build: 'b1' });
+      const root = /\bm:\s*['"]([^'"]+)['"]/.exec(state)![1]!;
+      bundles = {
+        build: 'b1',
+        bundles: {
+          chunks: { [root]: file('gone-bundle.js') },
+          members: { [root]: [root] },
+        },
+      };
+    }
+    const { html, state } = await runtime.render(component.default, {}, bundles);
     show(html + state);
     vi.resetModules();
     const { start } = await import('../src/runtime/loader.ts');
+    // The code of the page fails to load, as a module that throws or a file that is gone does.
+    const load = missingBundle
+      ? (await import('../src/runtime/bundles.ts')).load
+      : () => Promise.reject(new Error('Top level'));
     stop = start({
       build: 'b1',
       onError: (error) => reported.push(String(error)),
-      // The code of the page fails to load, as a module that throws or a file that is gone does.
-      load: () => Promise.reject(new Error('Top level')),
+      load,
     });
   };
   await restart();
@@ -2466,6 +2485,28 @@ describe('resume', () => {
     click(document.querySelector('.throw')!);
     await waitFor(() => expect(reported).toContain('Error: Top level'));
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('loads the page again when the bundle that the server names is gone', async () => {
+    sessionStorage.clear();
+    const { reload, skews, reported, restart } = await failingHandlers('b2', true);
+    click(document.querySelector('.throw')!);
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+    expect(skews).toEqual(['code']);
+    // The same build again does not load the page again.
+    await restart();
+    click(document.querySelector('.throw')!);
+    await waitFor(() => expect(reported.length).toBeGreaterThan(0));
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports a bundle that is gone when the build is the same', async () => {
+    sessionStorage.clear();
+    const { reload, skews, reported } = await failingHandlers('b1', true);
+    click(document.querySelector('.throw')!);
+    await waitFor(() => expect(reported).toContainEqual(expect.stringContaining('gone-bundle')));
+    expect(reload).not.toHaveBeenCalled();
+    expect(skews).toEqual([]);
   });
 
   it('loads async memos again when their inputs change', async () => {
