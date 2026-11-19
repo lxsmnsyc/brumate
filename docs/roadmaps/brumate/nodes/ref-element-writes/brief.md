@@ -38,7 +38,7 @@ depends_on:
     why: it branches from `main` after the 0.8.0 promotion
 ---
 
-> 2026-11-19 (refine): the outline's fix (compare references by element) cannot settle this page. Each pass makes a new row with a new element, so the next write is a different element too. The probe below decides between a fix and an accepted cause; `gate: false` so the maintainer picks before code changes.
+> 2026-11-19 (refine): the outline's fix (compare references by element) cannot settle this page. Each pass makes a new row with a new element, so the next write is a different element too. The probe below decides between a fix and an accepted cause. The maintainer's rule decides it: option A below.
 
 # A ref in a list whose source reads it settles in a browser render
 
