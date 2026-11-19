@@ -1,0 +1,12 @@
+<script>
+  import { $memo } from 'brumate/signals';
+
+  async function getUser(id: number) {
+    'use server';
+    return { name: 'user ' + id };
+  }
+
+  const user = $memo(getUser(1));
+</script>
+
+<p>{user.name}</p>

@@ -62,6 +62,7 @@ import {
   failures,
   idempotentIds,
   isRedirect,
+  traceValue,
   runEntry,
   unwrap,
   withEvent,
@@ -74,6 +75,8 @@ import type {
   ServerErrorKind,
   TraceEntry,
 } from './request.ts';
+import { Tracer, startSpan, traceRequest } from './trace.ts';
+import type { EndSpan, TraceHandler } from './trace.ts';
 import type { Context as ContextValue } from './context.ts';
 // oxlint-disable-next-line import/no-cycle -- Route rendering and the render core call each other, and every call runs after both modules load.
 import { renderPage, renderRoute } from './route-render.ts';
@@ -151,6 +154,7 @@ export type {
   ServerErrorInfo,
   ServerErrorKind,
 } from './request.ts';
+export type { TraceHandler, TraceName, TraceSpan } from './trace.ts';
 export { ValidationError, fieldErrors, parse, parseForm, safeParse } from './validate.ts';
 export { parseSubmission } from './submission.ts';
 export type {
@@ -504,6 +508,8 @@ export class Context {
   event: RequestEvent | undefined;
   /** The sink of the event, or of the `onError` option of a render without a request. */
   errors: ErrorSink | undefined;
+  /** The spans of a render without a request, when the app has an `onTrace`. */
+  tracer: Tracer | undefined;
   /** Results of server function calls in this render, so the same call runs once. */
   readonly calls: Map<string, unknown> = new Map();
 
@@ -527,8 +533,12 @@ export class Context {
   }
 
   /** Starts an entry of the trace of the request, in development. */
-  traced(kind: TraceEntry['kind'], label: string): ((failed?: boolean) => void) | undefined {
-    return this.root.event?.traced(kind, label);
+  traced(kind: TraceEntry['kind'], label: string): EndSpan | undefined {
+    const { event, tracer } = this.root;
+    if (event) {
+      return event.traced(kind, label);
+    }
+    return tracer && startSpan(this.root, `brumate.${kind}`, label);
   }
 
   /** Marks the request of the page as one that depends on the user, so the page is not cached for everyone. */
@@ -1372,7 +1382,7 @@ export class Context {
     const target = this.root.target;
     // A reader that runs no scripts never fires the trigger, so the body renders with the page.
     if (!target && this.root.inOrder) {
-      this.register(id, renderBody, false);
+      this.register(id, renderBody, false, false, '#defer');
       return;
     }
     if (!target || this.inTarget) {
@@ -1390,7 +1400,7 @@ export class Context {
       return;
     }
     target.status = 'found';
-    this.register(id, renderBody, true);
+    this.register(id, renderBody, true, false, '#defer');
   }
 
   private register(
@@ -1398,6 +1408,7 @@ export class Context {
     renderBody: (ctx: Context) => Promise<string>,
     inTarget: boolean,
     around = false,
+    block = '#loading',
   ): void {
     const child = new Context(this.root, undefined, 0, `${id}.`);
     child.inTarget = inTarget;
@@ -1405,7 +1416,7 @@ export class Context {
     child.outer = catchers;
     const group = this.reveal;
     group?.add(id);
-    const end = around ? undefined : this.traced('body', `#loading ${id}`);
+    const end = around ? undefined : this.traced('body', `${block} ${id}`);
     const boundary: Boundary = {
       id,
       render: renderBody(child).then(
@@ -1414,7 +1425,7 @@ export class Context {
           return { html, ctx: child };
         },
         (error: unknown) => {
-          end?.(true);
+          end?.(true, error);
           throw error;
         },
       ),
@@ -1519,13 +1530,14 @@ export function read(node: Memo): any {
     const end = node.ctx?.traced('memo', node.name ?? 'memo');
     node.load = Promise.resolve(value)
       .then(firstValue)
-      .finally(() => end?.())
       .then(
         (result) => {
+          end?.();
           node.state = 'done';
           node.value = result;
         },
         (error: unknown) => {
+          end?.(true, error);
           node.state = 'failed';
           node.error = error;
         },
@@ -2680,6 +2692,8 @@ function createQueue<T>(): Queue<T> {
 export interface RenderOptions {
   /** The `onError` of the app, which gets the errors of a render without a request event. */
   onError?: ServerErrorHandler;
+  /** The `onTrace` of the app, which gets the spans of a render. */
+  onTrace?: TraceHandler;
   /** The URL prefix of server function calls, for forms that post to one. Defaults to `/_brumate`. */
   rpc?: string;
   /** In development: the swaps of `#loading` bodies keep their fallbacks, for the devtools. */
@@ -2862,6 +2876,7 @@ export async function render<P>(
           address: options.address,
           prerender: options.prerender,
           onError: options.onError,
+          onTrace: options.onTrace,
         })
       : undefined);
   // Components read the nonce of the render from the event, for the inline scripts they write.
@@ -2870,8 +2885,23 @@ export async function render<P>(
   }
   ctx.event = event;
   ctx.errors = event ? event.errors : errorSink(options.onError);
+  if (!event && options.onTrace) {
+    ctx.tracer = new Tracer(options.onTrace);
+  }
+  // `renderPage` starts the span of a render that has an event. Without one, the render does.
+  const tracing = options.event ? undefined : (event ?? ctx);
+  const endRender = tracing?.tracer
+    ? startSpan(tracing, 'brumate.render', options.route ?? 'render')
+    : undefined;
   // The first part of each component runs with the event, and so do memos, which the compiler gives `$$ctx`.
-  const rendered = (await ctx.run(() => Root(props, ctx))) as string;
+  let rendered: string;
+  try {
+    rendered = (await ctx.run(() => Root(props, ctx))) as string;
+  } catch (error) {
+    endRender?.(true, error);
+    throw error;
+  }
+  endRender?.();
   ctx.send();
   const html = beforeBodyEnd(rendered, ctx.portals.join(''));
   // The queue of `pending` is made only when something is pending, because it costs a lot for a small page.
@@ -3671,6 +3701,17 @@ async function callWithForm(
   }
 }
 
+/** Runs a server function that the browser called, as a `brumate.call` span. */
+function tracedCall(event: RequestEvent, id: string, run: () => unknown): unknown {
+  const end = event.traced('call', id);
+  try {
+    return traceValue(run(), end);
+  } catch (error) {
+    end(true, error);
+    throw error;
+  }
+}
+
 /** The answer to a form post whose server function threw, or whose data could not be read. */
 function formFailure(
   error: unknown,
@@ -3754,6 +3795,11 @@ export interface RequestOptions {
    * a `ServerError`, in place of `console.error`. The Vite plugin passes it.
    */
   onError?: ServerErrorHandler;
+  /**
+   * The `onTrace` export of `src/middleware.ts`, which gets each span of the work of the server:
+   * requests, renders, memos, calls and `#loading` and `#defer` bodies. The Vite plugin passes it.
+   */
+  onTrace?: TraceHandler;
   /**
    * The middleware of each `'use server'` file, by the ID of each of its
    * functions. It runs before the function, after the middleware of the
@@ -3856,6 +3902,7 @@ export async function handleRequest(
     address: options.address,
     prerender: options.prerender,
     onError: options.onError,
+    onTrace: options.onTrace,
   });
   // The arguments are read before the middleware runs, so a check can depend on them. Arguments
   // that fail to read, such as a regular expression, answer as an error of the call.
@@ -3870,13 +3917,19 @@ export async function handleRequest(
   event.call = { id, args };
   // The function runs with its event, so `getEvent()` before its first await returns it.
   function invoke(): unknown {
-    return withEvent(event, () => fn(...args));
+    return tracedCall(event, id, () => withEvent(event, () => fn(...args)));
   }
-  return runEntry(options.middleware, event, () =>
-    runEntry(options.fileMiddleware?.[id], event, () =>
-      posted ? handleForm(invoke, event) : answerCall(functions, event, async () => invoke()),
-    ),
-  );
+  return traceRequest(
+    event,
+    `${prefix}/${id}`,
+    () => (posted ? 'form' : 'call'),
+    () =>
+      runEntry(options.middleware, event, () =>
+        runEntry(options.fileMiddleware?.[id], event, () =>
+          posted ? handleForm(invoke, event) : answerCall(functions, event, async () => invoke()),
+        ),
+      ),
+  ) as Promise<Response>;
 }
 
 /**
@@ -4123,7 +4176,7 @@ export async function runAction(
   const { request } = event;
   const args = event.call!.args;
   const outcome = await callWithForm(
-    () => withEvent(event, () => fn(...args)),
+    () => tracedCall(event, event.call!.id, () => withEvent(event, () => fn(...args))),
     new Headers(),
     event,
     request.url,
@@ -4255,13 +4308,19 @@ export async function handleRoute(
       address: options.address,
       prerender: options.prerender,
       onError: options.onError,
+      onTrace: options.onTrace,
     });
   if (options.nonce !== undefined) {
     event.nonce = options.nonce;
   }
   // Rate limits count by the pattern of the route, so `/api/1` and `/api/2` share a count.
   event.route = match?.route;
-  const answer = await routeAnswer(tree, match, url, { ...options, event });
+  const answer = await traceRequest(
+    event,
+    match?.route ?? 'unmatched',
+    () => (event.call ? 'form' : event.kind),
+    () => routeAnswer(tree, match, url, { ...options, event }),
+  );
   return answer && withHeaders(answer, event.headers);
 }
 
