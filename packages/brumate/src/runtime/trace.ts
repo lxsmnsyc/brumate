@@ -85,6 +85,12 @@ export class Tracer {
   /** The attributes of the span of the request, which the server fills in as it learns them. */
   readonly attributes: TraceSpan['attributes'] = {};
   readonly handler: TraceHandler;
+  /** The spans that began and have not ended, except the request, so an aborted request can end them. */
+  readonly open: Set<EndSpan> = new Set();
+  /** The first error that failed a span, which a 5xx answer of the request is the sign of. */
+  fault: unknown;
+  /** True once a span ended with an answer error such as a `ServerError`, which can have a 5xx status. */
+  answered = false;
 
   constructor(handler: TraceHandler, traceparent?: string | null) {
     const parent = readTraceparent(traceparent);
@@ -148,14 +154,18 @@ export function startSpan(source: Traceable, name: TraceName, label: string): En
     parentId = tracer.render ?? tracer.root ?? tracer.incoming;
   }
   let done = false;
-  return (failed, error) => {
+  const end: EndSpan = (failed, error) => {
     if (done) {
       return;
     }
     done = true;
+    tracer.open.delete(end);
     let status: TraceSpan['status'] = 'ok';
-    if (failed && !isAnswer(error)) {
+    if (failed && isAnswer(error)) {
+      tracer.answered = true;
+    } else if (failed) {
       status = 'error';
+      tracer.fault ??= error ?? new Error('failed');
     }
     const span: TraceSpan = {
       name,
@@ -175,11 +185,20 @@ export function startSpan(source: Traceable, name: TraceName, label: string): En
     }
     emit(tracer.handler, span);
   };
+  if (name !== 'brumate.request') {
+    tracer.open.add(end);
+  }
+  return end;
 }
 
 /**
  * Ends the span of a request when its response has been read to the end, or
- * its reader left. Returns the response to send, which has the same body.
+ * its reader left or failed, or the request aborted. Spans of the request
+ * that are still open, such as a `#loading` body, end as failed then.
+ * Returns the response to send, which has the same body.
+ *
+ * Rebuilding the response is deliberate. It happens only when `onTrace` is
+ * set, because the body must pass through a stream that sees its end.
  */
 export function traceResponse(
   source: Traceable,
@@ -187,18 +206,30 @@ export function traceResponse(
   response: Response,
   signal?: AbortSignal,
 ): Response {
-  const { attributes } = source.tracer!;
-  attributes['http.status_code'] = response.status;
-  const failed = response.status >= 500;
-  const finish = () => end(failed, failed ? new Error(`HTTP ${response.status}`) : undefined);
+  const tracer = source.tracer!;
+  tracer.attributes['http.status_code'] = response.status;
+  function finish(reason?: unknown): void {
+    if (reason !== undefined) {
+      const aborted = reason instanceof Error ? reason : new Error('The request was aborted');
+      // Deleting from a set while iterating it is safe.
+      for (const open of tracer.open) {
+        open(true, aborted);
+      }
+      end(true, aborted);
+      return;
+    }
+    // A 5xx answer fails the span unless an answer error, such as a `ServerError`, made it.
+    const failed = tracer.fault !== undefined || (response.status >= 500 && !tracer.answered);
+    end(failed, failed ? (tracer.fault ?? new Error(`HTTP ${response.status}`)) : undefined);
+  }
   if (!response.body) {
     finish();
     return response;
   }
-  signal?.addEventListener('abort', finish, { once: true });
-  const body = response.body.pipeThrough(
-    new TransformStream<Uint8Array, Uint8Array>({ flush: finish }),
-  );
+  signal?.addEventListener('abort', () => finish(signal.reason ?? true), { once: true });
+  // `cancel` runs when the reader cancels or the source fails. The TypeScript library does not know it yet.
+  const watcher = { flush: () => finish(), cancel: (reason: unknown) => finish(reason ?? true) };
+  const body = response.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>(watcher));
   const headers = new Headers(response.headers);
   const result = new Response(body, {
     status: response.status,
@@ -244,6 +275,7 @@ export async function traceRequest(
     response = await run();
   } catch (error) {
     tracer.attributes['brumate.kind'] = kind();
+    tracer.attributes['http.status_code'] = 500;
     end(true, error);
     throw error;
   }

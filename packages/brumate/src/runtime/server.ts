@@ -3702,10 +3702,23 @@ async function callWithForm(
 }
 
 /** Runs a server function that the browser called, as a `brumate.call` span. */
-function tracedCall(event: RequestEvent, id: string, run: () => unknown): unknown {
+function tracedCall(
+  event: RequestEvent,
+  id: string,
+  // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
+  fn: (...args: any[]) => unknown,
+  args: unknown[],
+): unknown {
+  // Without `onTrace` or the dev trace, there is nothing to time.
+  if (!event.tracer && !event.trace) {
+    return withEvent(event, () => fn(...args));
+  }
   const end = event.traced('call', id);
   try {
-    return traceValue(run(), end);
+    return traceValue(
+      withEvent(event, () => fn(...args)),
+      end,
+    );
   } catch (error) {
     end(true, error);
     throw error;
@@ -3917,18 +3930,24 @@ export async function handleRequest(
   event.call = { id, args };
   // The function runs with its event, so `getEvent()` before its first await returns it.
   function invoke(): unknown {
-    return tracedCall(event, id, () => withEvent(event, () => fn(...args)));
+    return tracedCall(event, id, fn, args);
+  }
+  function answer(): Promise<Response> {
+    return runEntry(options.middleware, event, () =>
+      runEntry(options.fileMiddleware?.[id], event, () =>
+        posted ? handleForm(invoke, event) : answerCall(functions, event, async () => invoke()),
+      ),
+    );
+  }
+  // Without `onTrace`, the request runs as before.
+  if (!event.tracer) {
+    return answer();
   }
   return traceRequest(
     event,
     `${prefix}/${id}`,
     () => (posted ? 'form' : 'call'),
-    () =>
-      runEntry(options.middleware, event, () =>
-        runEntry(options.fileMiddleware?.[id], event, () =>
-          posted ? handleForm(invoke, event) : answerCall(functions, event, async () => invoke()),
-        ),
-      ),
+    answer,
   ) as Promise<Response>;
 }
 
@@ -4176,7 +4195,7 @@ export async function runAction(
   const { request } = event;
   const args = event.call!.args;
   const outcome = await callWithForm(
-    () => tracedCall(event, event.call!.id, () => withEvent(event, () => fn(...args))),
+    () => tracedCall(event, event.call!.id, fn, args),
     new Headers(),
     event,
     request.url,
@@ -4315,12 +4334,14 @@ export async function handleRoute(
   }
   // Rate limits count by the pattern of the route, so `/api/1` and `/api/2` share a count.
   event.route = match?.route;
-  const answer = await traceRequest(
-    event,
-    match?.route ?? 'unmatched',
-    () => (event.call ? 'form' : event.kind),
-    () => routeAnswer(tree, match, url, { ...options, event }),
-  );
+  const answer = event.tracer
+    ? await traceRequest(
+        event,
+        match?.route ?? 'unmatched',
+        () => (event.call ? 'form' : event.kind),
+        () => routeAnswer(tree, match, url, { ...options, event }),
+      )
+    : await routeAnswer(tree, match, url, { ...options, event });
   return answer && withHeaders(answer, event.headers);
 }
 

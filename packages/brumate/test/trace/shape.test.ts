@@ -12,7 +12,7 @@ const output = new URL('../.output/trace/', import.meta.url);
 
 beforeAll(() => {
   mkdirSync(output, { recursive: true });
-  for (const name of ['page', 'loading', 'defer']) {
+  for (const name of ['page', 'loading', 'defer', 'hang']) {
     const { server } = compile(readFileSync(new URL(`${name}.brm`, input), 'utf8'), {
       filename: `${name}.brm`,
     });
@@ -40,8 +40,15 @@ function only(spans: TraceSpan[]): TraceSpan {
 }
 
 /** Plain components are functions with an ID, as the compiler writes them. */
-function component(render: () => string | Promise<string>, id: string) {
-  return Object.assign(async () => render(), { brumateId: id });
+function component(draw: () => string | Promise<string>, id: string) {
+  return Object.assign(async () => draw(), { brumateId: id });
+}
+
+const traceId = '4bf92f3577b34da6a3ce929d0e0e4736';
+const parentId = '00f067aa0ba902b7';
+
+function withTraceparent(traceparent: string): Request {
+  return new Request('http://localhost/', { headers: { traceparent } });
 }
 
 describe('the spans of the server', () => {
@@ -195,10 +202,7 @@ describe('the spans of the server', () => {
 });
 
 describe('traceparent', () => {
-  const traceId = '4bf92f3577b34da6a3ce929d0e0e4736';
-  const parentId = '00f067aa0ba902b7';
-  const request = (traceparent: string) =>
-    new Request('http://localhost/', { headers: { traceparent } });
+  const request = withTraceparent;
   const tree = { page: async () => ({ default: component(() => '<p>Hi</p>', 'Page_1') }) };
 
   it('sets the trace and the parent of the root from a valid header', async () => {
@@ -223,6 +227,8 @@ describe('traceparent', () => {
       `00-${traceId}-${'0'.repeat(16)}-01`,
       `00-${traceId}-${parentId}`,
       `01-${traceId}-${parentId}-01`,
+      `ff-${traceId}-${parentId}-01`,
+      `00-${'0'.repeat(32)}-${'0'.repeat(16)}-00`,
     ]) {
       const stub = stubSpans();
       // oxlint-disable-next-line no-await-in-loop -- Each header runs on its own.
@@ -301,6 +307,52 @@ describe('errors', () => {
     expect(only(stub.named('brumate.request')).status).toBe('ok');
   });
 
+  it('gives status ok for a ServerError with a 5xx status', async () => {
+    const stub = stubSpans();
+    const response = await handleRequest(
+      {
+        save() {
+          throw new ServerError('Busy', { status: 503 });
+        },
+      },
+      new Request('http://localhost/_brumate/save', {
+        method: 'POST',
+        body: JSON.stringify(toJSON([])),
+      }),
+      '/_brumate',
+      { onTrace: stub.onTrace },
+    );
+    await response?.text();
+    expect(response?.status).toBe(503);
+    expect(only(stub.named('brumate.call')).status).toBe('ok');
+    expect(only(stub.named('brumate.request'))).toMatchObject({
+      status: 'ok',
+      attributes: { 'http.status_code': 503 },
+    });
+  });
+
+  it('gives status 500 on the request when its work throws', async () => {
+    const stub = stubSpans();
+    const boom = new Error('middleware broke');
+    await expect(
+      handleRoute(
+        { page: async () => ({ default: component(() => '', 'P_1') }) } as never,
+        new Request('http://localhost/'),
+        {
+          onTrace: stub.onTrace,
+          middleware() {
+            throw boom;
+          },
+        },
+      ),
+    ).rejects.toBe(boom);
+    expect(only(stub.named('brumate.request'))).toMatchObject({
+      status: 'error',
+      error: { message: 'middleware broke' },
+      attributes: { 'http.status_code': 500 },
+    });
+  });
+
   it('gives status error for a call that throws', async () => {
     const stub = stubSpans();
     const response = await handleRequest(
@@ -348,6 +400,42 @@ describe('errors', () => {
       expect(logged).toHaveBeenCalled();
     }
   });
+});
+
+/** Reads the first chunk of a page that never finishes, then stops it. */
+async function stop(how: 'cancel' | 'abort'): Promise<ReturnType<typeof stubSpans>> {
+  const module = await load('hang');
+  const stub = stubSpans();
+  const controller = new AbortController();
+  const response = await handleRoute(
+    { page: async () => module } as never,
+    new Request('http://localhost/', { signal: controller.signal }),
+    { onTrace: stub.onTrace },
+  );
+  const reader = response!.body!.getReader();
+  await reader.read();
+  if (how === 'cancel') {
+    await reader.cancel(new Error('reader left'));
+  } else {
+    controller.abort(new Error('client left'));
+  }
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  return stub;
+}
+
+describe('streams that stop early', () => {
+  for (const how of ['cancel', 'abort'] as const) {
+    it(`ends the request, the stream and the open body when the reader ${how === 'cancel' ? 'cancels' : 'aborts'}`, async () => {
+      const stub = await stop(how);
+      const request = only(stub.named('brumate.request'));
+      expect(request.status).toBe('error');
+      expect(request.error?.message).toMatch(/left/);
+      expect(only(stub.named('brumate.body')).status).toBe('error');
+      expect(only(stub.named('brumate.stream')).status).toBe('error');
+      // The children end before the request.
+      expect(stub.spans.at(-1)).toBe(request);
+    });
+  }
 });
 
 describe('privacy', () => {

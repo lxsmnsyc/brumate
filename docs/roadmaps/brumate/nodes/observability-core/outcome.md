@@ -27,7 +27,8 @@
 - `trace.ts` must not import `request.ts` (oxlint `import/no-cycle`). `request.ts` pushes its error classes into `answerErrors`.
 - A `#defer` request renders its body through `Context.register`, which now takes the label `#defer`. Do not add a second span in `renderDeferred`.
 - `onTrace` is not given to `waitUntil`; on a host that stops work when the response ends, an async handler can be cut off.
-- A stream that errors after the first bytes leaves the `brumate.stream` span unended, so it is not emitted; the request span still ends when its signal aborts.
+- When the reader cancels, the response stream errors or the request signal aborts, the request span and every span still open (`brumate.stream`, `#loading` and `#defer` bodies) end as `error` with the reason, children first. `Tracer.open` holds them.
+- A 5xx answer fails the request span only when a non-answer error failed a span, or when nothing in the request was a `ServerError`. A `ServerError` with 503 is `ok`.
 - A response that no route gives (`handleRoute` returns undefined) makes no span.
 
 ## Proposed learnings
@@ -37,7 +38,7 @@
 ## Verification
 
 - `pnpm lint && pnpm format:check && pnpm typecheck`: pass (lint has existing warnings only).
-- `pnpm --filter brumate exec vitest run test/trace`: 16 of 16 pass. `test/devtools*`: pass.
+- `pnpm --filter brumate exec vitest run test/trace`: 20 of 20 pass (after review round 1). `test/devtools*`: pass.
 - `pnpm build && pnpm test && node e2e/run.mjs`: exit 0 on the last run. An earlier run had a timeout in `resume.test.ts` and one failure in `testing.test.ts`, both under load; they pass alone (670 tests across the three files). One real failure, a string in `server-on-error.test.ts`, was fixed.
 - `pnpm bench --only brumate --scenario todos`: JS before load 5 files, 33.2 kB raw / 13.8 kB gzip; client JS in dist 8 files, 84.9 kB / 29.9 kB gzip. No base run for comparison; the code is server only (`brumate.request` appears only in the server chunk of `dist`), so the client change is 0 bytes.
 
