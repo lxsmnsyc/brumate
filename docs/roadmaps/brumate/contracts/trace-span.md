@@ -1,7 +1,7 @@
 ---
 name: trace-span
 version: 1
-status: draft
+status: frozen
 defined_by: observability-core
 ---
 
