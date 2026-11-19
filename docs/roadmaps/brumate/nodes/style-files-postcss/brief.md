@@ -33,6 +33,9 @@ depends_on:
   - on: style-files-modules
     kind: hard
     why: the pipeline runs on the style modules that node adds
+  - on: style-files-inline
+    kind: hard
+    why: the inline copy must take the same transforms as the sheet
 ---
 
 > 2026-11-18: refined from the design in `../style-files-spike/outcome.md` after the maintainer's go on per-bundle CSS with a shared chunk. Read that outcome first; the prototype is the local branch `spike/style-files` (078616fe).
@@ -44,6 +47,8 @@ depends_on:
 With real CSS modules, the project's PostCSS config, Lightning CSS `targets` and the minifier run on scoped CSS in a build. The spike saw PostCSS plugins not run under `css.transformer: 'lightningcss'`; check the order on a real build and document what runs.
 
 ## Acceptance
+
+- [ ] Since style-files-inline, each component's CSS ships twice: inline in the server render and in the bundle sheet. Both copies take the same transforms (PostCSS, Lightning CSS targets, `url()` rewriting); a build test compares them for a component that uses a transform.
 
 - [ ] A build test with a PostCSS plugin and a `targets` value shows both applied to component CSS.
 - [ ] `website/docs/styles.md` names what runs in dev and in a build, including the Lightning CSS case.
