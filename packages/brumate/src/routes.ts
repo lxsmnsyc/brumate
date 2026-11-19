@@ -164,13 +164,13 @@ export function routeModule(
       ? [
           `import * as entry from ${JSON.stringify(middleware)};`,
           // A copy, so a file without a default export or `onError` does not make a bundler warn.
-          'const { default: middleware, onError } = { ...entry };',
+          'const { default: middleware, onError, onTrace } = { ...entry };',
         ]
       : []),
     ...imports,
     `export const routes = ${routes};`,
     'export function handle(request, options) {',
-    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions, fileMiddleware${middleware ? ', middleware, onError' : ''}${dev ? ', dev: true' : ''}${build === undefined ? '' : `, build: ${JSON.stringify(build)}`}${hints.length > 0 ? `, hints: ${JSON.stringify(hints)}` : ''}${Object.keys(bundleHints).length > 0 ? `, bundleHints: ${JSON.stringify(bundleHints)}` : ''}, ...options });`,
+    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions, fileMiddleware${middleware ? ', middleware, onError, onTrace' : ''}${dev ? ', dev: true' : ''}${build === undefined ? '' : `, build: ${JSON.stringify(build)}`}${hints.length > 0 ? `, hints: ${JSON.stringify(hints)}` : ''}${Object.keys(bundleHints).length > 0 ? `, bundleHints: ${JSON.stringify(bundleHints)}` : ''}, ...options });`,
     '}',
   ].join('\n');
 }

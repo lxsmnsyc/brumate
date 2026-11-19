@@ -1232,7 +1232,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         ? [
             `import * as entry from ${JSON.stringify(entry)};`,
             // A copy, so a file without a default export or `onError` does not make a bundler warn.
-            'const { default: middleware, onError } = { ...entry };',
+            'const { default: middleware, onError, onTrace } = { ...entry };',
           ]
         : []),
       ...imports,
@@ -1245,7 +1245,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       ...guards,
       '};',
       'export function handle(request, options) {',
-      `  return handleRequest(functions, request, ${JSON.stringify(rpc)}, { origins: ${JSON.stringify(options.origins ?? [])}, ${entry ? 'middleware, onError, ' : ''}fileMiddleware${buildId === undefined ? '' : `, build: ${JSON.stringify(buildId)}`}, ...options });`,
+      `  return handleRequest(functions, request, ${JSON.stringify(rpc)}, { origins: ${JSON.stringify(options.origins ?? [])}, ${entry ? 'middleware, onError, onTrace, ' : ''}fileMiddleware${buildId === undefined ? '' : `, build: ${JSON.stringify(buildId)}`}, ...options });`,
       '}',
     ].join('\n');
   }
@@ -2472,7 +2472,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
             ? [
                 `import * as entry from ${JSON.stringify(entry)};`,
                 // A copy, so a file without a default export or `onError` does not make a bundler warn.
-                'const { default: middleware, onError } = { ...entry };',
+                'const { default: middleware, onError, onTrace } = { ...entry };',
               ]
             : []),
           `export const mount = createMount({ load, rpc: ${JSON.stringify(rpc)} });`,
@@ -2486,7 +2486,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           // The server code of the app loads on the first call, so a test that makes none skips it.
           'export function answerCalls(options) {',
           `  const server = import(${JSON.stringify(SERVER)});`,
-          `  return answer(async () => (await server).functions, { rpc: ${JSON.stringify(rpc)}, ${entry ? 'middleware, onError, ' : ''}fileMiddleware: async () => (await server).fileMiddleware, ...options });`,
+          `  return answer(async () => (await server).functions, { rpc: ${JSON.stringify(rpc)}, ${entry ? 'middleware, onError, onTrace, ' : ''}fileMiddleware: async () => (await server).fileMiddleware, ...options });`,
           '}',
         ].join('\n');
       }
