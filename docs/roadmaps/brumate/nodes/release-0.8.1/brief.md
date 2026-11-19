@@ -1,7 +1,7 @@
 ---
 id: release-0.8.1
 title: Release brumate 0.8.1
-status: todo
+status: active
 priority: must
 type: release
 story:
