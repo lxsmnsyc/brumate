@@ -42,6 +42,8 @@ export interface Features {
   stores: boolean;
   /** Stores of `bridge()`, which the page state holds and the browser makes again. */
   bridges: boolean;
+  /** `<script>` elements in markup, which the loader starts on their trigger. */
+  scripts: boolean;
 }
 
 /** No feature at all, which a build that has no component uses. */
@@ -66,6 +68,7 @@ export function noFeatures(): Features {
     searchParams: false,
     stores: false,
     bridges: false,
+    scripts: false,
   };
 }
 
@@ -114,6 +117,8 @@ export function getFeatures(result: CompileResult): Features {
     // A bridge of `<script module>` is named in the compiled component. A bridge in a script
     // file is found by the Vite plugin.
     bridges: /\$\$nameBridge\(/.test(all),
+    // Set where the emit finds a `<script src>` or `<script inline>` in markup.
+    scripts: result.plan.scripts,
   };
 }
 
@@ -140,6 +145,7 @@ export function joinFeatures(all: Features[]): Features {
     joined.searchParams ||= features.searchParams;
     joined.stores ||= features.stores;
     joined.bridges ||= features.bridges;
+    joined.scripts ||= features.scripts;
   }
   return joined;
 }
@@ -165,6 +171,7 @@ const GLOBALS: Record<keyof Features, string> = {
   searchParams: '__BRUMATE_HAS_SEARCH_PARAMS__',
   stores: '__BRUMATE_HAS_STORES__',
   bridges: '__BRUMATE_HAS_BRIDGES__',
+  scripts: '__BRUMATE_HAS_SCRIPTS__',
 };
 
 /** True for code that reads a feature, such as the core. */

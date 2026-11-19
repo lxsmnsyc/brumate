@@ -8,7 +8,7 @@ pnpm e2e
 
 ## Options
 
-- `--only website,todos,tracker,nitro,kit,ui,browser-async` runs only these suites.
+- `--only website,todos,tracker,nitro,kit,ui,browser-async,scripts` runs only these suites.
 - `--no-build` uses the builds that are there. By default it runs `pnpm build`, then the build of each suite.
 - `--headed` shows the browser.
 - `--install-browser` downloads Playwright's Chromium when no Chrome is found.
@@ -99,3 +99,11 @@ When a step fails, the later steps of the same flow are skipped, because each ne
   - `build` lists the commands that build it, as `[command, args, options]`.
   - `start()` serves the build and returns `{ url, stop }`. `startProcess` in `lib.mjs` runs a server and waits until it answers.
   - `run({ browser, url, runner })` runs the steps.
+
+`scripts` serves the production build of `examples/external-scripts` under the same policy, and answers the files of `https://third-party.test` itself.
+
+- A script of `#head` without a trigger is a `<script>` with the nonce, and the others are `<template b-script>`.
+- `idle` asks for its file after `DOMContentLoaded`. `interaction` waits for a key. `visible` waits until the element after it is in view.
+- An inline script runs once, under the nonce and Trusted Types, with its code as written, also in a block that the browser opens.
+- Two blocks with the same `src` request it once.
+- A client navigation keeps the scripts, requests only the new files, and runs a `data-rerun` script again.

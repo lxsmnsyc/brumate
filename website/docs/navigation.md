@@ -82,20 +82,52 @@ To turn client navigation off for the whole site, set `navigate: false` in the p
 
 ## Scripts in the head
 
-A script in the head runs when the page loads. A client navigation keeps the scripts that the next page has too, with the same HTML, and does not run them again. Add `data-rerun` to a script that must run after every navigation to a page that has it, such as one that reads state of the page:
+A script in the head runs when the page loads. A client navigation keeps the scripts that the next page has too, with the same HTML, and does not run them again. The nonce of the response is not part of that HTML. Add `data-rerun` to a script that must run after every navigation to a page that has it, such as one that reads state of the page:
 
 ```brm
-<head>
-  {raw(`<script data-rerun>document.documentElement.dataset.visits = String(Number(localStorage.visits || 0) + 1)</script>`)}
-</head>
+#head {
+  <script inline data-rerun>
+    document.documentElement.dataset.visits = String(Number(localStorage.visits || 0) + 1);
+  </script>
+}
 ```
 
-- The script is written inside an HTML string, since `<script>` is not markup in a `.brm` file. `raw()` sends it as it is.
+- `inline` marks code that is written in the file. The compiler does not read it, so `<`, `{` and `}` stay as written. It ends at `</script>`.
 - It runs once per navigation, after the new body is in the page, so it reads the new body and the new URL. It is added at the end of the head.
 - A page without the script removes it, as for any other head element.
 - A script with `src` is requested again from the cache, and runs when it loads. Two such scripts run in no fixed order. A module script does not run again, because the browser keeps modules by URL.
 - The first load of the site runs head scripts as the browser does, with or without the attribute.
 - Scripts without the attribute keep their behavior.
+
+## Scripts of other sites
+
+A script of another site, such as analytics, a chat widget or the loader of a tag manager, is often the heaviest code of a page. `trigger` says when it loads, so it does not undo what resume saves:
+
+```brm
+#head {
+  <script src="https://cdn.example.com/chat.js" trigger="idle"></script>
+}
+
+<script inline trigger="interaction">
+  window.dataLayer = window.dataLayer || [];
+</script>
+```
+
+| `trigger`     | The script loads                                                                     |
+| ------------- | ------------------------------------------------------------------------------------ |
+| `idle`        | when the browser is idle, as `requestIdleCallback` says                              |
+| `visible`     | when the element after it comes into view. Not in `#head`, where no element follows. |
+| `interaction` | at the first `pointerdown`, `keydown`, `touchstart` or `scroll`                      |
+| `load`        | at once, when the page or the block that holds it is in place                        |
+
+- `<script src="…">` loads a file. `<script inline>` holds code of the file, as written. A script with both, or a `src` script with code inside, is an error.
+- Without `trigger`, a script in `#head` is a `<script>` element and runs as HTML does, also with JS off. Every other script, with a trigger or without, is written as `<template b-script="…">` (`load` when there is no trigger, so it also works in a block that the browser opens) and the loader makes the script. Without the loader, such a script does not run, so with JS off only the scripts of `#head` without a trigger run.
+- `visible` watches the element after the script. When none follows it, or the browser has no `IntersectionObserver`, the script loads at once.
+- A page runs a script once, by its resolved `src`, or by the text of an inline script. A second one in another block, or on another page after a client navigation, does nothing. A page that a navigation brings and that has a new script starts it at its trigger.
+- Other attributes pass on as written: `async`, `defer`, `type="module"`, `integrity`, `crossorigin`, `referrerpolicy` and `data-*`. They can be expressions, as on any element. `trigger` is a plain string. `trigger` and `data-rerun` do not go together.
+- The script gets the nonce of the page. Under `require-trusted-types-for 'script'`, the loader passes the `src` and the code through the `brumate` policy, so `trusted-types brumate` is enough.
+- A script of another site is outside what brumate checks. Add `integrity` and `crossorigin` to a file that you can pin. See [Security](./reference-security.md).
+- A build whose pages have no script in markup has none of the code for it.
 
 ## Navigating from code
 

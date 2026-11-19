@@ -77,6 +77,8 @@ export interface Plan {
    * component inserts them: the export of their render, such as `n0`, and their scope.
    */
   childrenRenders: Map<ComponentNode | DynamicTagNode, { symbol: string; scope: Scope }>;
+  /** True when the markup holds a `<script src>` or `<script inline>`, which the emit sets. */
+  scripts: boolean;
   /**
    * The component whose children hold a block, for the blocks in children. The browser renders
    * the new bodies of such a block with the contexts of that component, as the server does.
@@ -835,6 +837,7 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     elementItems,
     symbols,
     childrenRenders,
+    scripts: false,
     blockHolders,
     clientSites,
     diagnostics,

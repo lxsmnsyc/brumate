@@ -6,7 +6,14 @@
 // This file keeps its arrow functions and its Array methods, for size: the loader ships to every
 // page, and the function declarations and loops measured 20 to 50 bytes of gzip larger.
 
-import { HAS_ACTIONS, HAS_BLOCKS, HAS_LATE_MARKUP, HAS_LISTENERS } from './features.ts';
+import {
+  HAS_ACTIONS,
+  HAS_BLOCKS,
+  HAS_LATE_MARKUP,
+  HAS_LISTENERS,
+  HAS_SCRIPTS,
+} from './features.ts';
+import { trustedScript } from './trusted.ts';
 import type * as Client from './client.ts';
 import type { ClientModule, DevtoolsHooks } from './client.ts';
 import type { SerialEntry } from './values.ts';
@@ -410,6 +417,50 @@ export function boot(
       );
     }
   };
+  const waiting: (() => void)[] = [];
+  const inputs = ['pointerdown', 'keydown', 'touchstart', 'scroll'];
+  // Runs `go` when the trigger fires. `visible` watches `next`, the element after the markers.
+  const when = (trigger: string, next: Element | null, go: () => void): void => {
+    if (trigger === 'idle') {
+      idle(go);
+    } else if (trigger === 'visible' && next && typeof IntersectionObserver !== 'undefined') {
+      const observer = new IntersectionObserver((records) => {
+        if (records.some((record) => record.isIntersecting)) {
+          observer.disconnect();
+          go();
+        }
+      });
+      observer.observe(next);
+    } else if (HAS_SCRIPTS && trigger === 'interaction') {
+      // One set of listeners serves every script that waits, so a block that closes first leaves
+      // only its entry in the list, which `go` drops once it sees the template is gone.
+      waiting.push(go);
+      if (waiting.length === 1) {
+        const fire = (): void => {
+          for (const type of inputs) {
+            removeEventListener(type, fire, true);
+          }
+          for (const run of waiting.splice(0)) {
+            run();
+          }
+        };
+        for (const type of inputs) {
+          listen(window, type, fire, { capture: true, passive: true });
+        }
+      }
+    } else {
+      go();
+    }
+  };
+  // The element after a marker that a trigger watches. Other markers can follow it, and a
+  // template has no box, so it is never in view.
+  const after = (template: Element): Element | null => {
+    let next = template.nextElementSibling;
+    while (next?.tagName === 'TEMPLATE') {
+      next = next.nextElementSibling;
+    }
+    return next;
+  };
   // A `#defer` block whose body the server sends in the same response, with `b-hole`, waits for it.
   const onBlock = (root: ParentNode, template: Element): void => {
     const client = template.getAttribute('b-client');
@@ -429,30 +480,64 @@ export function boot(
     };
     // The element that a `$client` callback reads through `ref` (`b-b`), or that a component
     // forwards to its signal (`b-r`), or the one after the marker.
-    // Other markers can follow it, and a template has no box, so it is never in view.
     const near = template.getAttribute('b-near');
-    let after = template.nextElementSibling;
-    while (after?.tagName === 'TEMPLATE') {
-      after = after.nextElementSibling;
-    }
     const selector = `[b-b="${near}"],[b-r="${near}"]`;
     const next =
-      (near && (root.querySelector(selector) ?? document.querySelector(selector))) || after;
-    if (trigger === 'idle') {
-      idle(go);
-    } else if (trigger === 'visible' && next && typeof IntersectionObserver !== 'undefined') {
-      const observer = new IntersectionObserver((records) => {
-        if (records.some((record) => record.isIntersecting)) {
-          observer.disconnect();
-          go();
-        }
-      });
-      observer.observe(next);
-    } else {
-      go();
-    }
+      (near && (root.querySelector(selector) ?? document.querySelector(selector))) ||
+      after(template);
+    when(trigger, next, go);
   };
-  const SCANNED = '[b-on],template[b-listen],template[b-client],template[b-defer]';
+  // A page runs a script once, by its `src` or by its code.
+  const loaded = new Set<string>();
+  // The nonce that the policy of the loaded page knows. A page that navigation brought has the
+  // nonce of its own response, which the policy does not.
+  const pageNonce = (template: Element): string | undefined => {
+    for (const script of document.scripts) {
+      if (script.nonce) {
+        return script.nonce;
+      }
+    }
+    return (template as HTMLElement).nonce || template.getAttribute('nonce') || undefined;
+  };
+  // A `<script>` of markup, as a template with the attributes of the script, and its code in an
+  // inert script. The browser runs a script that it inserts, once the trigger fires.
+  const onScript = (template: Element): void => {
+    const code = (template as HTMLTemplateElement).content?.firstElementChild?.textContent ?? '';
+    const src = template.getAttribute('src');
+    const url = src === null ? undefined : new URL(src, document.baseURI);
+    const key = url ? url.href : code;
+    const trigger = template.getAttribute('b-script')!;
+    const run = (): void => {
+      // Markup that is gone, such as a page that navigation replaced, starts no script.
+      if (loaded.has(key) || !template.isConnected) {
+        return;
+      }
+      loaded.add(key);
+      const script = document.createElement('script');
+      for (const { name, value } of template.attributes) {
+        if (name === 'src') {
+          script.setAttribute(name, trustedScript(value, true));
+        } else if (!name.startsWith('b-') && name !== 'nonce') {
+          script.setAttribute(name, value);
+        }
+      }
+      const nonce = pageNonce(template);
+      if (nonce) {
+        script.nonce = nonce;
+        // A DOM without the property, such as in tests, reads the attribute.
+        script.setAttribute('nonce', nonce);
+      }
+      if (src === null) {
+        script.textContent = trustedScript(code);
+      }
+      document.head.append(script);
+    };
+    // The core scans markup before it is in the page, so `load` waits a moment for the insert.
+    when(trigger, after(template), () => (trigger === 'load' ? queueMicrotask(run) : run()));
+  };
+  const SCANNED =
+    '[b-on],template[b-listen],template[b-client],template[b-defer]' +
+    (HAS_SCRIPTS ? ',template[b-script]' : '');
   // One query of the markup for everything that the loader starts. The blocks start after the
   // rest, as they did when each kind had its own query.
   const scan = (root: ParentNode): void => {
@@ -462,7 +547,9 @@ export function boot(
     const blocks: Element[] = [];
     for (const element of select(root, SCANNED)) {
       if (element.tagName === 'TEMPLATE') {
-        if (HAS_LISTENERS && element.hasAttribute('b-listen')) {
+        if (HAS_SCRIPTS && element.hasAttribute('b-script')) {
+          onScript(element);
+        } else if (HAS_LISTENERS && element.hasAttribute('b-listen')) {
           onListener(element);
         } else if (
           HAS_BLOCKS &&

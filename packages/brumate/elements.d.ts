@@ -1222,6 +1222,10 @@ export interface Elements {
       referrerpolicy?: Attr<Referrer>;
       fetchpriority?: Attr<Keyword<'high' | 'low' | 'auto'>>;
       blocking?: Attr<'render' | (string & {})>;
+      /** Marks code that is written in the file, between the tags. The compiler does not read it. */
+      inline?: Attr<boolean>;
+      /** When the script of a `src` or `inline` runs. Without it, a script outside `#head` runs at `load`. */
+      trigger?: Attr<'idle' | 'visible' | 'interaction' | 'load'>;
     }
   >;
   search: Html<'search'>;

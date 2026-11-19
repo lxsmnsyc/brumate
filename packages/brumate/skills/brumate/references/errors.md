@@ -2308,3 +2308,57 @@ https://brumate-docs.vercel.app/docs/errors#brm209
 let count = $signal(0);
 const message = $memo(`Clicked ${count} times`);
 ```
+
+## BRM212: A <script> with src is not inline. Give it src or inline, not both
+
+A `<script>` in markup has both `src` and `inline`. `src` loads a file, and `inline` marks code that is written in the file.
+
+https://brumate-docs.vercel.app/docs/errors#brm212
+
+```brm fragment
+<script src="https://example.com/chat.js" trigger="idle"></script>
+```
+
+## BRM213: A <script> with src has no code inside. Write the code in <script inline>
+
+A `<script src>` in markup has text inside. The browser ignores it.
+
+https://brumate-docs.vercel.app/docs/errors#brm213
+
+```brm fragment
+<script inline trigger="idle">
+  window.dataLayer = [];
+</script>
+```
+
+## BRM214: The trigger of a <script> is a plain string: idle, visible, interaction or load
+
+The `trigger` of a `<script>` in markup is code in braces, has no value, or names another trigger.
+
+https://brumate-docs.vercel.app/docs/errors#brm214
+
+```brm fragment
+<script src="https://example.com/chat.js" trigger="interaction"></script>
+```
+
+## BRM215: A script in #head cannot wait to be visible, since no element follows it. Use idle or interaction
+
+A `<script trigger="visible">` is in `#head`. `visible` waits for the element after the script to come into view.
+
+https://brumate-docs.vercel.app/docs/errors#brm215
+
+```brm fragment
+#head {
+  <script src="https://example.com/chat.js" trigger="idle"></script>
+}
+```
+
+## BRM216: A script with a trigger runs once per page, so data-rerun does not apply. Remove one of them
+
+A `<script>` in markup has `trigger` and `data-rerun`. A script with a trigger never runs again after a navigation.
+
+https://brumate-docs.vercel.app/docs/errors#brm216
+
+```brm fragment
+<script src="https://example.com/chat.js" trigger="idle"></script>
+```

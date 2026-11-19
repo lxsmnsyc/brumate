@@ -2293,6 +2293,26 @@ export class Emitter {
   }
 
   private emitElement(node: ElementNode, scope: Scope): void {
+    // A script of markup is a `<script>` only where HTML runs it as it is, in the `#head` of
+    // the server without a trigger. Elsewhere it is a `<template b-script>` that the loader
+    // starts, with the attributes of the script on the template, and its code in an inert script.
+    const script = node.script;
+    if (script) {
+      this.plan.scripts = true;
+    }
+    const plain =
+      script !== undefined &&
+      script.head &&
+      script.trigger === undefined &&
+      this.options.mode === 'server';
+    const tag = script && !plain ? 'template' : node.tag;
+    const attributes = script
+      ? node.attributes.filter(
+          (attribute) =>
+            attribute.kind !== 'static' ||
+            (attribute.name !== 'trigger' && attribute.name !== 'inline'),
+        )
+      : node.attributes;
     // A `<title>` in `#head` sets the title of the page. The core sets it from the last one in
     // the page, so a block that renders one decides the title. The plan reports the others.
     const pageTitle = node.tag === 'title' && this.headBlocks > 0;
@@ -2302,12 +2322,14 @@ export class Emitter {
     // A spread can pass on handlers, such as the `onClick` of `...rest`, on the server and in
     // markup that the browser renders.
     let spreadHandlers: string | undefined;
-    if (hasSpread(node.attributes)) {
+    if (hasSpread(attributes)) {
       spreadHandlers = this.unique('on');
       this.line(`const ${spreadHandlers}: string[] = [];`);
     }
-    this.html(`<${node.tag}`);
-    for (const name of this.scopeAttributes(scope, node.tag, staticClasses(node.attributes))) {
+    this.html(`<${tag}`);
+    for (const name of script
+      ? []
+      : this.scopeAttributes(scope, node.tag, staticClasses(attributes))) {
       this.html(` ${name}`);
     }
     const anchor = this.anchor(scope, node);
@@ -2323,11 +2345,11 @@ export class Emitter {
     const events: string[] = [];
     // With spreads, the attributes are one object in their order, so a name is written once:
     // a later value wins, and classes add up.
-    const merged = hasSpread(node.attributes) ? ([] as string[]) : undefined;
+    const merged = hasSpread(attributes) ? ([] as string[]) : undefined;
     // A spread that changes in the browser names the attributes that it wrote, so its first
     // update there removes only those, and keeps attributes that other code set.
     let liveSpread = false;
-    for (const attribute of node.attributes) {
+    for (const attribute of attributes) {
       const site =
         attribute.kind === 'spread' ? this.sitesByNode.get(attribute.value.ast) : undefined;
       if (site !== undefined && this.plan.clientSites.has(site)) {
@@ -2341,7 +2363,7 @@ export class Emitter {
       }
       return handlers ? `, ${handlers}` : '';
     }
-    for (const attribute of node.attributes) {
+    for (const attribute of attributes) {
       if (
         variables &&
         !merged &&
@@ -2419,18 +2441,18 @@ export class Emitter {
     }
     if (merged) {
       // A `ref` that a rest prop holds is a binding of the parent's signal. The element goes to it.
-      const forwards = anchor !== undefined && this.spreadsRest(node.attributes);
-      const attributes = `$$b.mergeAttributes([${merged.join(', ')}]${variables ? `, ${variables}` : ''})`;
+      const forwards = anchor !== undefined && this.spreadsRest(attributes);
+      const mergedCall = `$$b.mergeAttributes([${merged.join(', ')}]${variables ? `, ${variables}` : ''})`;
       // A promise among the values is written once it settles.
       let promise: string | undefined;
-      for (const attribute of node.attributes) {
+      for (const attribute of attributes) {
         if (attribute.kind === 'value' || attribute.kind === 'spread') {
           promise ??= this.promiseScope(attribute.value, scope);
         }
       }
       this.code(
         this.ready(
-          `$$b.spread(${forwards ? `${this.helper('restRef')}(${attributes}, ${anchor.scope}, ${anchor.index})` : attributes}${spreadArguments(spreadHandlers)})`,
+          `$$b.spread(${forwards ? `${this.helper('restRef')}(${mergedCall}, ${anchor.scope}, ${anchor.index})` : mergedCall}${spreadArguments(spreadHandlers)})`,
         ),
         undefined,
         promise,
@@ -2456,6 +2478,23 @@ export class Emitter {
       this.code(`$$b.onAttribute(${spreadHandlers}, ${JSON.stringify(events.join(' '))})`);
     } else if (events.length > 0) {
       this.html(` b-on="${events.join(' ')}"`);
+    }
+    if (script) {
+      if (!plain) {
+        this.html(` b-script="${script.trigger ?? 'load'}"`);
+      }
+      // The browser runs the script under the nonce of the page, so the server writes it.
+      if (this.options.mode === 'server') {
+        this.code(`$$b.attribute('nonce', $$ctx.nonce)`);
+      }
+      this.html('>');
+      if (script.inline) {
+        const [text] = node.children;
+        const code = text?.kind === 'text' ? text.value : '';
+        this.html(plain ? code : `<script>${code}</script>`);
+      }
+      this.html(`</${tag}>`);
+      return;
     }
     this.html('>');
     if (VOID_ELEMENTS.has(node.tag)) {
