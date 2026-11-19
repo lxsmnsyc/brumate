@@ -97,6 +97,22 @@
 <p>{count}</p>
 ```
 
+A signal has the type of its start value. `brumate check` and `brumate-tsc` report a write of another type:
+
+```brm type-error: TS2322
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let count = $signal(0);
+
+  function reset() {
+    count = 'zero';
+  }
+</script>
+
+<button onClick=reset>{count}</button>
+```
+
 ## Other derived values
 
 - `const query = $gate(input, (_, next) => next.length >= 2)` takes a new value only when the guard returns true, and the readers do not run otherwise. The first value passes.
@@ -241,7 +257,13 @@ A memo can hold a promise, such as the result of a server function. Markup and o
 
 ### Async effects
 
-```brm
+```ts module="chat.ts"
+export async function connect(room: string): Promise<{ room: string; close(): Promise<void> }> {
+  return { room, close: async () => {} };
+}
+```
+
+```brm uses
 <script>
   import { $effect, $signal } from 'brumate/signals';
   import { connect } from './chat.ts';
@@ -266,7 +288,14 @@ A memo can hold a promise, such as the result of a server function. Markup and o
 
 ## Context
 
-```brm
+```ts module="theme.ts"
+import { createContext } from 'brumate/context';
+
+export const Theme: ReturnType<typeof createContext<'light' | 'dark'>> =
+  createContext<'light' | 'dark'>('theme');
+```
+
+```brm uses
 <script>
   import { $getContext, $setContext, $signal } from 'brumate/signals';
   import { Theme } from './theme.ts';
@@ -279,7 +308,7 @@ A memo can hold a promise, such as the result of a server function. Markup and o
 <p>{parent}</p>
 ```
 
-`createContext` comes from `brumate/context`: `export const Theme = createContext<'light' | 'dark'>('theme');` in a `.ts` file. It takes only a key and has no default. A component reads the context of the nearest component above it, children included, and `$getContext` throws when none provides it. Give a fallback for a read that may have no provider: `$getContext(Theme, 'light')`.
+`createContext` comes from `brumate/context` and is called in a `.ts` file, as `theme.ts` above shows. It takes only a key and has no default. A component reads the context of the nearest component above it, children included, and `$getContext` throws when none provides it. Give a fallback for a read that may have no provider: `$getContext(Theme, 'light')`.
 
 ## Derived stores
 

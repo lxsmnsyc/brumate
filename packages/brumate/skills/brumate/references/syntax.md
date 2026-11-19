@@ -166,6 +166,7 @@ A file uses another component by importing it, and renders it with a capitalized
   <p>{people[0].name}</p>
 } #catch (error, reset) {
   <p>{String(error)}</p>
+  <button onClick=reset>Retry</button>
 }
 
 #portal {

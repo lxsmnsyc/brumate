@@ -125,7 +125,7 @@ A function in a script is a handler only when markup uses it, so a spread leaves
   }
 
   const remove = (index: number) => ({
-    type: 'button',
+    type: 'button' as const,
     'aria-label': `Remove ${items[index]}`,
     onClick: $handler(prevent(removeAt), index),
   });
