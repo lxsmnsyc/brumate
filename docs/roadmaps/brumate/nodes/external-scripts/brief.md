@@ -1,7 +1,7 @@
 ---
 id: external-scripts
 title: External scripts
-status: active
+status: done
 priority: must
 type: feature
 story:
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-12
-spent:
+spent: 390000
 owns:
   - packages/brumate/test/external-scripts/**
   - e2e/suites/scripts.mjs
