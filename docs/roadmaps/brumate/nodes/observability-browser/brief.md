@@ -1,7 +1,7 @@
 ---
 id: observability-browser
 title: onTrace in the browser: events, loads, runs, navigations, calls
-status: active
+status: done
 priority:
 type: feature
 story: observability
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-18
-spent:
+spent: 330000
 owns:
   - packages/brumate/src/runtime/trace-browser.ts
   - packages/brumate/test/trace-browser/**
