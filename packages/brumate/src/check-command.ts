@@ -1,7 +1,7 @@
-import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { parseSync } from 'oxc-parser';
 import { CompileError, compile } from './compile.ts';
 import type { Diagnostic } from './model.ts';
@@ -44,8 +44,8 @@ export interface CheckOptions {
   paths?: string[];
   /** Runs the type checker too. Defaults to true. */
   types?: boolean;
-  /** The `brumate-tsc` script to run. Defaults to the one of the installed @brumate/tsc. */
-  tscBin?: string;
+  /** The module that exports `checkProject`. Defaults to the @brumate/tsc of the project. */
+  tscModule?: string;
 }
 
 export interface CheckResult {
@@ -144,109 +144,72 @@ function checkFile(
   }
 }
 
-const TS_LINE = /^(.+?)\((\d+),(\d+)\): (error|warning) (TS\d+|BRM\d*): (.*)$/;
-const TS_GLOBAL = /^(error|warning) (TS\d+): (.*)$/;
-
-/** Reads the lines that `tsc` prints without colors. */
-export function parseTypeOutput(output: string, root: string): CheckRecord[] {
-  const records: CheckRecord[] = [];
-  let last: CheckRecord | undefined;
-  for (const line of output.split('\n')) {
-    const match = TS_LINE.exec(line);
-    if (match) {
-      last = undefined;
-      // Syntax errors of `.brm` files are reported by the compiler, with their codes.
-      if (match[5]!.startsWith('BRM')) {
-        continue;
-      }
-      const position = { line: Number(match[2]), column: Number(match[3]) };
-      last = {
-        file: toPosix(path.relative(root, path.resolve(root, match[1]!))),
-        range: { start: position, end: position },
-        severity: match[4] === 'warning' ? 'warning' : 'error',
-        message: match[6]!,
-        code: match[5]!,
-        link: null,
-        source: 'typescript',
-      };
-      records.push(last);
-      continue;
-    }
-    const global = TS_GLOBAL.exec(line);
-    if (global) {
-      last = {
-        file: null,
-        range: null,
-        severity: global[1] === 'warning' ? 'warning' : 'error',
-        message: global[3]!,
-        code: global[2]!,
-        link: null,
-        source: 'typescript',
-      };
-      records.push(last);
-      continue;
-    }
-    // The lines under a message, indented, belong to it.
-    if (last && /^\s+\S/.test(line)) {
-      last.message += `\n${line}`;
-    }
-  }
-  return records;
+/** The part of `@brumate/tsc` that `check` uses. */
+interface TscModule {
+  checkProject(root: string): Array<{
+    file: string | null;
+    range: { start: CheckPosition; end: CheckPosition } | null;
+    severity: 'error' | 'warning';
+    message: string;
+    code: string;
+  }>;
 }
 
 /**
- * Runs `brumate-tsc`, the type checker of `.brm` files. It has no API that
- * gives its errors, so its output is read. Without the package, it gives a
- * note and no records.
+ * Type-checks the project with `@brumate/tsc`, which the project installs. Without the package
+ * or a tsconfig.json, it gives a note and no records.
  */
-function typeCheck(root: string, tscBin?: string): { records: CheckRecord[]; note?: string } {
+async function typeCheck(
+  root: string,
+  tscModule?: string,
+): Promise<{ records: CheckRecord[]; note?: string }> {
   if (!existsSync(path.join(root, 'tsconfig.json'))) {
     return {
       records: [],
       note: 'The type check was skipped: there is no tsconfig.json in the current directory.',
     };
   }
-  let bin: string;
+
+  // Find the package from the project, since brumate does not depend on it.
+  let file: string;
   try {
     const require = createRequire(path.join(root, 'noop.js'));
-    bin =
-      tscBin ??
-      path.join(path.dirname(require.resolve('@brumate/tsc/package.json')), 'bin/brumate-tsc.js');
+    file = tscModule ?? require.resolve('@brumate/tsc');
   } catch {
     return {
       records: [],
       note: 'The type check was skipped: install @brumate/tsc to run it, or pass --no-types.',
     };
   }
-  const result = spawnSync(process.execPath, [bin, '--noEmit', '--pretty', 'false'], {
-    cwd: root,
-    encoding: 'utf8',
-    maxBuffer: 64 * 1024 * 1024,
-  });
-  const records = parseTypeOutput(`${result.stdout}\n${result.stderr}`, root);
-  function fail(message: string): void {
+
+  // Run it. A failure to load or run is an error of the check, not a crash.
+  const records: CheckRecord[] = [];
+  try {
+    const tsc = (await import(pathToFileURL(file).href)) as Partial<TscModule>;
+    // A @brumate/tsc from before checkProject cannot run the check.
+    if (typeof tsc.checkProject !== 'function') {
+      return {
+        records: [],
+        note: 'The type check was skipped: update @brumate/tsc to a version with checkProject, or pass --no-types.',
+      };
+    }
+    for (const item of tsc.checkProject(root)) {
+      // Syntax errors of `.brm` files are reported by the compiler, with their codes.
+      if (item.code.startsWith('BRM')) {
+        continue;
+      }
+      records.push({ ...item, link: null, source: 'typescript' });
+    }
+  } catch (error) {
     records.push({
       file: null,
       range: null,
       severity: 'error',
-      message,
+      message: `The type check did not finish: ${error instanceof Error ? error.message : String(error)}`,
       code: null,
       link: null,
       source: 'typescript',
     });
-  }
-  if (result.error) {
-    // The process did not start, ran too long for a timeout, or printed more than maxBuffer.
-    fail(`The type check did not finish: ${result.error.message}`);
-  } else if (result.signal) {
-    fail(`The type check was stopped by ${result.signal}`);
-  } else if (result.status !== 0 && errorCount(records) === 0) {
-    // A failure that has no error line of TypeScript, such as an unreadable tsconfig.json. A
-    // failure of syntax errors only is reported by the compiler.
-    const text = `${result.stdout}${result.stderr}`.trim();
-    if (!/error BRM\d*:/.test(text)) {
-      fail(text || `The type check ended with status ${result.status}`);
-    }
   }
   return { records };
 }
@@ -391,7 +354,7 @@ export async function check(root: string, options: CheckOptions = {}): Promise<C
 
   const notes: string[] = [];
   if (options.types !== false) {
-    const types = typeCheck(root, options.tscBin);
+    const types = await typeCheck(root, options.tscModule);
     records.push(...types.records);
     if (types.note) {
       notes.push(types.note);

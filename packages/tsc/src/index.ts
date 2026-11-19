@@ -40,3 +40,6 @@ export function run(): void {
     }),
   ]);
 }
+
+export { checkProject } from './check.ts';
+export type { CheckProjectOptions, TscDiagnostic, TscPosition } from './check.ts';
