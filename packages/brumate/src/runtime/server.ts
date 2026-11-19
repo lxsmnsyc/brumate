@@ -465,6 +465,12 @@ export class Context {
   private inTarget = false;
   private readonly boundaries: Boundary[] = [];
   private readonly styles = new Set<string>();
+  /** The `<link>` elements of the stylesheets that components asked for, in render order. */
+  private readonly sheets: string[] = [];
+  /** The URLs of the stylesheets that the page links already. */
+  linked: Set<string> = new Set();
+  /** The bundles of the client build, for the stylesheet of each component. */
+  bundles: ClientBundles | undefined;
   /** Markup of `#portal` blocks, written at the end of the page. */
   readonly portals: string[] = [];
   /** Markup of `#head` blocks. */
@@ -1210,15 +1216,55 @@ export class Context {
     return bound;
   }
 
-  /** Returns a component's stylesheet the first time the page renders the component. */
-  style(id: string, css: string): string {
-    const styles = this.root.styles;
+  /**
+   * Returns a component's stylesheet the first time the page renders the component. A build
+   * passes no `css`: the component's stylesheet is an asset, so the page links to it in its
+   * head, or in place when the head has gone out.
+   */
+  style(id: string, css?: string): string {
+    const root = this.root;
+    const styles = root.styles;
     if (styles.has(id)) {
       return '';
     }
     styles.add(id);
     this.undo.push(() => styles.delete(id));
-    return styleElement(id, css, this.root.nonce);
+    if (css !== undefined) {
+      return styleElement(id, css, root.nonce);
+    }
+    const nonce = root.nonce === undefined ? '' : ` nonce="${escapeAttribute(root.nonce)}"`;
+    // The body of a `#defer` block arrives after the head, and the request for it does not know
+    // what the page linked, so its links go in its markup, whether or not the page has them.
+    const inPlace = root.sent || this.inTarget;
+    let html = '';
+    const added: string[] = [];
+    for (const url of root.bundles?.components?.[id] ?? []) {
+      if (this.inTarget || !root.linked.has(url)) {
+        if (!this.inTarget) {
+          root.linked.add(url);
+          added.push(url);
+        }
+        html += `<link rel="stylesheet"${nonce} href="${escapeAttribute(url)}">`;
+      }
+    }
+    this.undo.push(() => {
+      for (const url of added) {
+        root.linked.delete(url);
+      }
+    });
+    if (inPlace) {
+      return html;
+    }
+    if (html) {
+      root.sheets.push(html);
+      this.undo.push(() => removeLast(root.sheets, html));
+    }
+    return '';
+  }
+
+  /** The `<link>` elements of the stylesheets that the components of the page asked for. */
+  sheetHTML(): string {
+    return this.root.sheets.join('');
   }
 
   /** Adds the markup of a `#head` block. */
@@ -2606,6 +2652,8 @@ export interface RenderResult {
   next: () => number;
   /** Markup for the document's head: the `$title` and the `#head` blocks. */
   head: string;
+  /** The `<link>` elements of the stylesheets of the components, which a build links. */
+  sheets: string;
   /**
    * The event of the request. Its `signal` aborts when the reader of the
    * response goes away, which `streamParts` and `renderToStream` report.
@@ -2751,6 +2799,8 @@ export interface RenderOptions {
    * `setClientBundles`), so only a render that wants others passes them.
    */
   bundles?: ClientBundles;
+  /** The URLs of the stylesheets that the page links already, so a component does not link them again. */
+  linked?: Iterable<string>;
 }
 
 /** The bundles of the client build, for a render whose options name none. */
@@ -2771,6 +2821,8 @@ export interface ClientBundles {
   chunks: Record<string, string>;
   /** The URLs of the stylesheets that the modules of each bundle import. */
   styles?: Record<string, string[]>;
+  /** The URLs of the stylesheet that holds the CSS of each component, by component ID. */
+  components?: Record<string, string[]>;
   /** The IDs of the components whose code each bundle holds. */
   members: Record<string, string[]>;
   /** The roots whose bundles the browser has, such as those of a page that asks for a `#defer` body. */
@@ -2846,6 +2898,8 @@ export async function render<P>(
   }
   ctx.build = options.build;
   ctx.nonce = options.nonce;
+  ctx.bundles = options.bundles ?? clientBundles;
+  ctx.linked = new Set(options.linked);
   ctx.development = options.dev === true;
   if (options.defer) {
     ctx.target = { ...options.defer };
@@ -3082,6 +3136,7 @@ export async function render<P>(
       status: event?.status ?? 200,
       next: () => ctx.next(),
       head: '',
+      sheets: '',
       defer: ctx.target!.status ?? 'missing',
     };
   }
@@ -3185,6 +3240,7 @@ export async function render<P>(
     status: event?.status ?? 200,
     next: () => ctx.next(),
     head: ctx.headHTML(),
+    sheets: ctx.sheetHTML(),
     event,
   };
 }
@@ -3362,16 +3418,19 @@ function beforeBodyEnd(
 function firstRender(
   html: string,
   componentHead: string,
+  sheets: string,
   state: string,
   options: DocumentOptions,
 ): string {
-  const head = (options.head ?? '') + componentHead;
+  const head = (options.head ?? '') + sheets + componentHead;
   const tail = state + (options.scripts ?? '');
   const match = HTML.exec(html);
   if (!match) {
     const before =
       typeof options.start === 'function' ? options.start(head) : (options.start ?? '');
-    return before + html + tail + (options.end ?? '');
+    // The head has no place without `<html>`, so the stylesheets of the components come first.
+    const linked = typeof options.start === 'function' ? '' : sheets;
+    return before + linked + html + tail + (options.end ?? '');
   }
   // Markup before <html>, such as the stylesheet of the root component, belongs in the head.
   const headContent = html.slice(0, match.index) + head;
@@ -3459,7 +3518,7 @@ async function writeParts(
   controller: ReadableStreamDefaultController<string>,
   cancelled: () => boolean = () => false,
 ): Promise<void> {
-  controller.enqueue(firstRender(parts.html, parts.head, parts.state, options));
+  controller.enqueue(firstRender(parts.html, parts.head, parts.sheets, parts.state, options));
   if (parts.pending !== NOTHING_PENDING) {
     for await (const chunk of parts.pending) {
       if (cancelled()) {

@@ -94,6 +94,23 @@ function writeApp(): void {
     '<p class="plain">Plain</p>\n\n<style>\n  .plain { color: green; }\n</style>\n',
   );
   writeFileSync(
+    `${app}src/routes/later.brm`,
+    [
+      "<script>\n  import Late from '../Late.brm';\n</script>",
+      '',
+      "#defer ('idle') {",
+      '  <Late />',
+      '} #else {',
+      '  <p class="fallback">Loading</p>',
+      '}',
+      '',
+    ].join('\n'),
+  );
+  writeFileSync(
+    `${app}src/Late.brm`,
+    '<p class="late">Late</p>\n\n<style>\n  .late { color: purple; }\n</style>\n',
+  );
+  writeFileSync(
     `${app}src/Card.brm`,
     [
       '<script>',
@@ -241,15 +258,46 @@ describe('component CSS in a build', () => {
     expect(html).toMatch(/style="--s-[\w-]+: ?teal"/);
   });
 
+  it('links every stylesheet in the head, in the same order on every request', async () => {
+    const first = await page('/');
+    const second = await page('/');
+    const body = first.indexOf('<body');
+    const links = [...first.matchAll(/<link rel="stylesheet" href="[^"]+">/g)];
+    expect(links.length).toBeGreaterThan(0);
+    for (const link of links) {
+      expect(link.index).toBeLessThan(body);
+    }
+    expect(second).toBe(first);
+    // A stylesheet is linked once.
+    expect(new Set(links.map((link) => link[0])).size).toBe(links.length);
+  });
+
   it('links the stylesheet of a page with no client code', async () => {
     const html = await page('/plain');
     expect(html).not.toContain('<style');
     expect(linkedCss(html)).toMatch(/\.plain\[b-c-\w+\]\{color:green\}/);
   });
 
-  // A render outside the routes links no stylesheet yet: only `renderPage` links those of the
-  // bundles. style-files-links writes the link of each component as it renders.
-  it.fails('reaches a render outside the routes', async () => {
+  it('links the stylesheet of a component that only a `#defer` body renders, in that body', async () => {
+    const html = await page('/later');
+    const [, at, boundary, base] = /b-b="([^"]+)" b-defer="[^":]+:([^":]+):([^"]+)"/.exec(html)!;
+    const response = await handle(
+      new Request('http://localhost/later', {
+        headers: { 'x-brumate-defer': `${boundary} ${at}`, 'x-brumate-base': base! },
+      }),
+    );
+    const body = await response!.text();
+    expect(body).toContain('class="late"');
+    const links = [...body.matchAll(/<link rel="stylesheet" href="([^"]+)">/g)];
+    let css = '';
+    for (const [, href] of links) {
+      css += readFileSync(`${app}dist/client${href}`, 'utf8');
+    }
+    expect(css).toMatch(/\.late\[b-c-\w+\]\{color:purple\}/);
+  });
+
+  // A render outside the routes links the stylesheet of each component at its first instance.
+  it('reaches a render outside the routes', async () => {
     const html = await custom();
     expect(html).toContain('class="card"');
     expect(html.includes('.card[') || linkedCss(html).includes('.card[')).toBe(true);

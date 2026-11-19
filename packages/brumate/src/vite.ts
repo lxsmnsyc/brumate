@@ -304,6 +304,8 @@ interface ClientHints {
   styles?: Record<string, string[]>;
   /** The components of each bundle. */
   members?: Record<string, string[]>;
+  /** The stylesheets that hold the CSS of each component with CSS, for the links the server writes. */
+  components?: Record<string, string[]>;
 }
 /** The dev server answers the devtools panel about a component at this path. */
 const INSPECT = '/__brumate/inspect';
@@ -2288,6 +2290,25 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           }
           members[id] = bundleMembers.get(id) ?? [];
         }
+        // The stylesheet of each chunk holds the CSS of the style modules in it, so a component
+        // gets the stylesheets of the chunks that hold its style module.
+        const components: Record<string, string[]> = {};
+        for (const chunk of chunks.values()) {
+          const sheets = chunk.viteMetadata?.importedCss;
+          if (!sheets || sheets.size === 0) {
+            continue;
+          }
+          for (const moduleId of chunk.moduleIds) {
+            if (moduleId.endsWith(STYLE_QUERY)) {
+              const file = moduleId.slice(0, -STYLE_QUERY.length);
+              const urls: string[] = [];
+              for (const name of sheets) {
+                urls.push(`${base}${name}`);
+              }
+              components[componentId(file)] = urls;
+            }
+          }
+        }
         // A bundle without a chunk would leave its pages without client code. Only the output
         // with the manifest has them: a framework such as Nitro writes other outputs too.
         let hasManifest = false;
@@ -2310,6 +2331,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           chunks: chunkUrls,
           styles: styleUrls,
           members,
+          components,
         };
         // A build of several environments in one process, such as with Nitro, builds the
         // server after the client, with the hints of that client.
@@ -2523,7 +2545,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         const hints = clientHints();
         const bundles =
           hints.chunks && hints.members
-            ? { chunks: hints.chunks, styles: hints.styles, members: hints.members }
+            ? {
+                chunks: hints.chunks,
+                styles: hints.styles,
+                members: hints.members,
+                components: hints.components,
+              }
             : undefined;
         return [
           "import { setClientBundles } from 'brumate/server';",

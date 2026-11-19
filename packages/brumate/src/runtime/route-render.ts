@@ -175,6 +175,7 @@ export async function renderPage(
       actions: extra.actions,
       route: view.key,
       params: props.params as Record<string, string> | undefined,
+      linked: styles,
       base: Number.isSafeInteger(base) && base > 0 ? base : undefined,
     },
   );

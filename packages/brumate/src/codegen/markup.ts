@@ -1744,14 +1744,20 @@ export class Emitter {
   /** Emits the content of the component, without creating its scope. */
   emitComponentContent(setup: oxc.Node[]): void {
     const component = this.plan.graph.model.component;
-    // With `styleFiles`, the page links to the stylesheet of the bundle instead.
-    if (this.plan.styles.css && !this.plan.styleFiles) {
-      // The stylesheet is written once per page, before the first instance. The browser adds it
-      // to the head, so it is not in the markup.
-      if (this.options.mode === 'client') {
-        this.line(`${this.helper('style')}(${JSON.stringify(this.plan.id)}, $$css);`);
+    if (this.plan.styles.css) {
+      const id = JSON.stringify(this.plan.id);
+      if (this.plan.styleFiles) {
+        // The stylesheet is an asset of the build. The server links it in the head at the first
+        // instance; the browser has it from the page or the bundle.
+        if (this.options.mode !== 'client') {
+          this.code(`${this.helper('style')}(${id})`);
+        }
+      } else if (this.options.mode === 'client') {
+        // The stylesheet is written once per page, before the first instance. The browser adds
+        // it to the head, so it is not in the markup.
+        this.line(`${this.helper('style')}(${id}, $$css);`);
       } else {
-        this.code(`${this.helper('style')}(${JSON.stringify(this.plan.id)}, $$css)`);
+        this.code(`${this.helper('style')}(${id}, $$css)`);
       }
     }
     this.emitStatements(setup, component);

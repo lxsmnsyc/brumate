@@ -165,8 +165,10 @@ describe('minified styles', () => {
     });
     for (const code of [result.server, result.render]) {
       expect(code).not.toContain('$$css');
-      expect(code).not.toMatch(/\bstyle\(/);
     }
+    // The server links to the stylesheet at the first instance; the browser has it from the page.
+    expect(result.server).toMatch(/\$\$ctx\.style\("Card_\w+"\)/);
+    expect(result.render).not.toMatch(/\bstyle\(/);
     // The Vite plugin serves `css` as the style module, and Vite's CSS pipeline minifies it.
     expect(result.css).toMatch(/\.card\[b-c-\w+\],\s*p\[b-c-\w+\]/);
   });
