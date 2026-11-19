@@ -1,7 +1,7 @@
 ---
 id: observability
 title: Observability
-status: todo
+status: done
 priority: must
 type: story
 story:
