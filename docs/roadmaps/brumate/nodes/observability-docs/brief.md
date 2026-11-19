@@ -1,7 +1,7 @@
 ---
 id: observability-docs
 title: Docs for observability
-status: todo
+status: active
 priority:
 type: feature
 story: observability
