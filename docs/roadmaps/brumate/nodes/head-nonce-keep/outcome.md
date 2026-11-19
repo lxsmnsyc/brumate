@@ -36,3 +36,5 @@
 ## Size
 
 - Estimated S, actual S.
+
+Landed on batch/brumate-main as f5f1ccfd.

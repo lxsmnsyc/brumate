@@ -29,6 +29,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: resolve-gone-child
+    kind: hard
+    why: a 0.8.1 fix found on 2026-11-19
   - on: head-nonce-keep
     kind: hard
     why: a 0.8.1 fix found on 2026-11-19

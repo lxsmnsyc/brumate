@@ -1,7 +1,7 @@
 ---
 id: head-nonce-keep
 title: Client navigation keeps head elements that carry a CSP nonce
-status: active
+status: done
 priority: must
 type: fix
 story:
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-19
-spent:
+spent: 115000
 owns: []
 shared:
   - packages/brumate/src/runtime/navigate.ts

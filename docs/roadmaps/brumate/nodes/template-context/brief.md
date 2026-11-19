@@ -1,7 +1,7 @@
 ---
 id: template-context
 title: "A #template that a child calls reads the context of its caller in the browser"
-status: active
+status: done
 priority: must
 type: fix
 story:
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-12
-spent:
+spent: 160000
 owns: []
 shared:
   - packages/brumate/src/runtime/client/handlers.ts

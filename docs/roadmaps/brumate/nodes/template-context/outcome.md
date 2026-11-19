@@ -37,3 +37,5 @@
 ## Size
 
 - Estimated M, actual S: two small edits; the in-place lookup needed one more condition.
+
+Landed on batch/brumate-main as 1c96dc1f.

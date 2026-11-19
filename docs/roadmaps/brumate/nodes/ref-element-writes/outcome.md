@@ -34,3 +34,5 @@
 ## Size
 
 - Estimated S, actual S.
+
+Landed on batch/brumate-main as e8ba92f1. BRM187 message unchanged; a fresh review noted a DEV-only hint at throw time (scan the stuck scope for an element value) as a possible later S change.
