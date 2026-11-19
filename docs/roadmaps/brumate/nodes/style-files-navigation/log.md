@@ -1,0 +1,9 @@
+# Log: style-files-navigation
+
+- 2026-11-19: nothing existed on feat/style-files for this node. The prototype (078616fe) preloads links marked `b-style`; the links node writes plain `<link rel="stylesheet" href>`, so this node matches links by URL.
+- navigate.ts: `preloadSheets` adds `<link rel=preload as=style>` (with the link's nonce) for each stylesheet of the new page that the page does not have, and waits for load or error, before `visit.leave`. `updateHead` identifies a stylesheet link by its URL, not by outerHTML (a CSP nonce changes the markup per request). Routes replacement keeps head stylesheet links; a full replacement drops the ones the new head does not list. Links of replaced routes move to the head unless the URL is in the page.
+- bundles.ts: a bundle stylesheet link the loader adds is a promise in `pending`, so `load(id)` waits for it.
+- e2e (website suite): CSS delayed 400 ms; at the moment the docs page enters the document, every stylesheet link has a `sheet`. Frames are not sampled: a pending stylesheet blocks rendering and holds rAF, so a frame count reads 0 pending even without the fix (first version of the test passed with the fix disabled).
+- "no scrollable region" step of the website suite timed out once under load from the other workers (254 s, 159 s alone); load noise.
+- Fix round 1 (review): timeout 4 s and abort in `preloadSheets`; abort check before `leave`; stale CSS pruned by scope (`b-c-<hash>` in the rules, matched against the page) with a bundle exemption, since `bundles.components` is server-only and a link has no marker; links copied before the route goes, direct links removed after the copy loads; `#defer` bodies preload their links in `defer.ts`; the request listener of the e2e flow is removed.
+- Negative proof: the abort test and the `#defer` test were not run against the code without the fix.

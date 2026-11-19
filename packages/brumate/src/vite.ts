@@ -12,14 +12,22 @@ import {
   normalizePath,
   searchForWorkspaceRoot,
   isFileLoadingAllowed,
+  preprocessCSS,
   transformWithOxc,
   version as viteVersion,
 } from 'vite';
-import type { EnvironmentModuleNode, Plugin, UserConfig, ViteDevServer } from 'vite';
+import type {
+  EnvironmentModuleNode,
+  Plugin,
+  ResolvedConfig,
+  UserConfig,
+  ViteDevServer,
+} from 'vite';
 import type { createRecorder } from './runtime/devtools-calls.ts';
 import { entryClasses } from './captures.ts';
 import { refreshedNames } from './refreshes.ts';
 import { compile } from './compile.ts';
+import { parse as parseCSS } from 'postcss';
 import { DEFAULT_MERGE } from './codegen/client.ts';
 import { bridgeModuleId, hasBridge, mayHaveBridge, nameBridges } from './bridges.ts';
 import {
@@ -240,6 +248,25 @@ const PRERENDER_ENTRY = 'brumate-routes';
 const CLIENT_QUERY = '?brumate-client';
 const RENDER_QUERY = '?brumate-render';
 const SERVER_QUERY = '?brumate-server';
+/**
+ * The query of the style module of a component in a build: its scoped CSS, as a CSS file that
+ * Vite's CSS pipeline makes into the stylesheet of the chunk that imports it. `lang.css` makes
+ * Vite treat it as CSS, as the style blocks of Vue and Svelte do.
+ */
+const STYLE_QUERY = '?brumate-style&lang.css';
+/**
+ * A style module ends with a rule that names it. The sheet of a chunk is the rules of its modules
+ * after the CSS pipeline (urls, imports, PostCSS, minifier), so the text between two marks is the
+ * CSS of one component, as the sheet has it. The build cuts the marks out of the sheets.
+ */
+const MARK = 'b-mark-';
+const MARK_RULE = /\.(b-mark-[\w-]+)\s*\{\s*--b-mark:\s*\1\s*;?\s*\}\s*/g;
+/** CSS files and languages that Vite's CSS pipeline handles. */
+const CSS_FILE = /\.(?:css|less|sass|scss|styl|stylus|pcss|postcss|sss)(?:$|\?)/;
+/** The parameter of `STYLE_QUERY` that marks a style module. */
+const STYLE_PARAM = 'brumate-style';
+/** A `url()` in CSS, with its quote and its value. */
+const CSS_URL = /url\(\s*(['"]?)([^'")]+)\1\s*\)/g;
 /** Exports `mount` from `brumate/testing`, with the loader of this project's client modules. */
 const TESTING = 'virtual:brumate/testing';
 /** The ID of the module of Vite's preload helper, which a client build gets from `preloadHelper`. */
@@ -285,6 +312,14 @@ function preloadHelper(base: string, relative: boolean): string {
 /** The modules that every page loads early, in the client build. See `hints` of `handleRoute`. */
 const HINTS_FILE = '.brumate/hints.json';
 
+/** A bundle of a build, by its root: the component files that it holds. */
+interface Bundle {
+  /** The components with client code, whose client modules the bundle imports. */
+  members: string[];
+  /** The components with CSS, whose style modules the bundle imports, in render order. */
+  styles: string[];
+}
+
 /** What `.brumate/hints.json` holds, from the client build, for the server build. */
 interface ClientHints {
   /** The modules that every page loads early. */
@@ -297,6 +332,16 @@ interface ClientHints {
   styles?: Record<string, string[]>;
   /** The components of each bundle. */
   members?: Record<string, string[]>;
+  /** The stylesheets that hold the CSS of each component with CSS, for the links the server writes. */
+  components?: Record<string, string[]>;
+  /** The CSS text of each component with CSS, which the server writes inline in the pages that render it. */
+  css?: Record<string, string>;
+  /**
+   * The stylesheets that hold the CSS of components only, by URL, and for each the components
+   * with global rules. A page that renders those components has the sheet's rules inline already,
+   * so it can load the sheet after the first paint.
+   */
+  deferred?: Record<string, string[]>;
 }
 /** The dev server answers the devtools panel about a component at this path. */
 const INSPECT = '/__brumate/inspect';
@@ -544,8 +589,15 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   let base = '/';
   /** Whether a build writes URLs that need the URL of the importing chunk to resolve. */
   let relativeUrls = false;
+  /**
+   * Whether the project sets a relative base. Vite resolves it to "/" in a server build, so
+   * `relativeUrls` is false there, but the server must still match the client build.
+   */
+  let relativeBase = false;
   let isSsrBuild = false;
   let isServe = false;
+  /** The resolved config, for the CSS pipeline of the inline styles. */
+  let resolvedConfig: ResolvedConfig | undefined;
   /** Component IDs to absolute file paths. */
   const files = new Map<string, string>();
   const compiled = new Map<string, { source: string; result: CompileResult }>();
@@ -870,6 +922,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       a11y: options.a11y,
       // A build does not show the names of server functions in their IDs.
       hideNames: !isServe,
+      // A build serves the CSS as a style module, which the bundles import (`STYLE_QUERY`).
+      styleFiles: styleFiles(),
       sendableClasses: serialClasses(),
       serverImport: (specifier, name) => serverImport(file, specifier, name),
       // A module of reactive logic can come from a package of components.
@@ -882,12 +936,77 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     };
   }
 
+  /** The files that the CSS of each component imports, from the CSS pipeline. */
+  const cssImports = new Map<string, Set<string>>();
+  /** Adds a file to the watcher of the dev server, once the server exists. */
+  let watchFile: ((file: string) => void) | undefined;
+  const unwatched = new Set<string>();
+
+  /** A file that a component's CSS imports changes the component, as a style import does. */
+  function watchDependency(dependency: string, importer: string): void {
+    if (!dependents.has(dependency)) {
+      dependents.set(dependency, new Set());
+    }
+    dependents.get(dependency)!.add(importer);
+    if (!isServe) {
+      return;
+    }
+    if (watchFile) {
+      watchFile(dependency);
+    } else {
+      unwatched.add(dependency);
+    }
+  }
+
+  /**
+   * The dev server serves files by path, so a relative `url()` in the CSS of a component, which
+   * the page would resolve against its own URL, names the file in the root or in `/@fs/`.
+   */
+  function devUrls(css: string, file: string): string {
+    const prefix = resolvedConfig?.base.startsWith('/') ? resolvedConfig.base : '/';
+    return css.replace(CSS_URL, (match, quote: string, value: string) => {
+      if (/^(?:[a-z][a-z\d+.-]*:|\/|#)/i.test(value) || value.includes('${')) {
+        return match;
+      }
+      const [location = ''] = value.split(/[?#]/, 1);
+      const absolute = normalizePath(path.resolve(path.dirname(file), location));
+      if (!existsSync(absolute)) {
+        return match;
+      }
+      const inside = absolute.startsWith(`${normalizePath(root)}/`);
+      const url = inside
+        ? `${prefix}${path.posix.relative(normalizePath(root), absolute)}`
+        : `/@fs${absolute}`;
+      return `url(${quote}${url}${value.slice(location.length)}${quote})`;
+    });
+  }
+
   // The entry, the parts and the render module of a file come from one compile.
   async function compileFile(file: string): Promise<{ source: string; result: CompileResult }> {
     const source = await readFile(file, 'utf8');
     let cached = compiled.get(file);
     if (cached?.source !== source) {
-      cached = { source, result: compile(source, compileOptions(file)) };
+      let result = compile(source, compileOptions(file));
+      // The CSS stays inline in the dev server and with a relative base, so it takes Vite's CSS
+      // pipeline here. A build with style modules gets it from Vite's CSS plugin.
+      if (result.css && !styleFiles() && resolvedConfig) {
+        const input = isServe ? devUrls(result.css, file) : result.css;
+        const piped = await preprocessCSS(input, `${file}?brumate-inline&lang.css`, resolvedConfig);
+        // A change to a file that the CSS imports compiles the component again.
+        const imports = new Set<string>();
+        for (const dependency of piped.deps ?? []) {
+          const normalized = normalizePath(dependency);
+          if (normalized !== normalizePath(file)) {
+            imports.add(normalized);
+            watchDependency(normalized, file);
+          }
+        }
+        cssImports.set(file, imports);
+        if (piped.code !== result.css) {
+          result = compile(source, { ...compileOptions(file), css: piped.code });
+        }
+      }
+      cached = { source, result };
       compiled.set(file, cached);
       shapes.set(file, getShape(cached.result));
     }
@@ -957,11 +1076,15 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
 
   /**
    * The bundles of a build: for each component that no other component imports, such as a
-   * route or a page, the components with client code that it can render. The page loads the
-   * bundles of its roots at once, as one chunk each, so its code comes in one request.
-   * Components that only import each other get a bundle too.
+   * route or a page, the components with client code that it can render (`members`), and the
+   * components with CSS that it can render (`styles`), whose style modules it imports. The page
+   * loads the bundles of its roots at once, as one chunk each, so its code comes in one request,
+   * and links to their stylesheets. Components that only import each other get a bundle too.
    */
-  async function bundles(kept: Set<string>): Promise<Map<string, string[]>> {
+  async function bundles(
+    kept: Set<string>,
+    styled = new Set<string>(),
+  ): Promise<Map<string, Bundle>> {
     const imports = new Map<string, string[]>();
     await inBatches([...files.values()], async (file) => {
       try {
@@ -976,7 +1099,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         imported.add(target);
       }
     }
-    const result = new Map<string, string[]>();
+    const result = new Map<string, Bundle>();
     // The components that a bundle holds so far.
     const reached = new Set<string>();
     function addRoot(id: string, file: string): void {
@@ -992,14 +1115,20 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }
       }
       walk(file);
+      // The walk adds a component before those it renders, so a stylesheet comes before
+      // those of its children, as the first instances of a page do.
       const members: string[] = [];
+      const styles: string[] = [];
       for (const member of seen) {
         if (kept.has(member)) {
           members.push(member);
         }
+        if (styled.has(member)) {
+          styles.push(member);
+        }
       }
-      if (members.length > 0) {
-        result.set(id, members);
+      if (members.length > 0 || styles.length > 0) {
+        result.set(id, { members, styles });
       }
     }
     for (const [id, file] of files) {
@@ -1010,11 +1139,46 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     // Components that import each other, with no other component that imports them, have no
     // root of their own, so the first of them is the root of their bundle.
     for (const [id, file] of files) {
-      if (!reached.has(file) && kept.has(file)) {
+      if (!reached.has(file) && (kept.has(file) || styled.has(file))) {
         addRoot(id, file);
       }
     }
     return result;
+  }
+
+  /** The bundles of this build, which `buildStart` forgets. */
+  let builtBundles: Promise<Map<string, Bundle>> | undefined;
+
+  /**
+   * The bundles of a build, from the components with client code and, when the CSS is in style
+   * modules, those with CSS. Computed once per build: the manifest and every bundle module read it.
+   */
+  function buildBundles(): Promise<Map<string, Bundle>> {
+    builtBundles ??= findBundles();
+    return builtBundles;
+  }
+
+  async function findBundles(): Promise<Map<string, Bundle>> {
+    const list = [...files.values()];
+    const results = await inBatches(list, async (file) => (await compileFile(file)).result);
+    const kept = new Set<string>();
+    const styled = new Set<string>();
+    for (const [index, file] of list.entries()) {
+      if (results[index]!.clientCode) {
+        kept.add(file);
+      }
+      if (styleFiles() && results[index]!.css) {
+        styled.add(file);
+      }
+    }
+    return bundles(kept, styled);
+  }
+
+  /** Whether the CSS of components is in style modules (`STYLE_QUERY`) instead of their modules. */
+  function styleFiles(): boolean {
+    // A relative base keeps the inline stylesheets: the server could not link to an asset from a
+    // page at any depth.
+    return !isServe && !relativeUrls && !relativeBase;
   }
 
   /** The ID of each component file. */
@@ -1029,18 +1193,14 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
 
   /** A bundle module: the client modules of a root component and of those it renders. */
   async function bundleModule(root: string): Promise<string> {
-    const list = [...files];
-    const needed = await inBatches(
-      list,
-      async ([, file]) => (await compileFile(file)).result.clientCode,
-    );
-    const kept = new Set<string>();
-    for (const [index, [, file]] of list.entries()) {
-      if (needed[index]) {
-        kept.add(file);
-      }
+    const bundle = (await buildBundles()).get(root);
+    const members = bundle?.members ?? [];
+    // The style modules come first, in the order of the bundle, so the stylesheet of the chunk
+    // has the CSS of each component before that of the components it renders.
+    const styles: string[] = [];
+    for (const file of bundle?.styles ?? []) {
+      styles.push(`import ${JSON.stringify(`${file}${STYLE_QUERY}`)};`);
     }
-    const members = (await bundles(kept)).get(root) ?? [];
     // Each module is a plain object of its exports. A namespace object, from `import * as`,
     // would make the bundler write a getter for each export.
     const imports: string[] = [];
@@ -1065,7 +1225,105 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       );
       objects.push(`  ${JSON.stringify(findComponentId(file))}: { ${fields.join(', ')} },`);
     }
-    return [...imports, 'export const modules = {', ...objects, '};'].join('\n');
+    return [...styles, ...imports, 'export const modules = {', ...objects, '};'].join('\n');
+  }
+
+  /** The marks of the style modules, by mark, to the ID of their component. */
+  const marks = new Map<string, string>();
+  /** The CSS of each component and the sheets that load late, from the last client bundle. */
+  let cut: { css: Record<string, string>; deferred: Record<string, string[]> } = {
+    css: {},
+    deferred: {},
+  };
+
+  /** True when a component's CSS has a rule that is not scoped to the component. */
+  async function hasGlobalRules(file: string): Promise<boolean> {
+    const found: { value: boolean } = { value: false };
+    parseCSS((await compileFile(file)).result.css).walkRules((rule) => {
+      const parent = rule.parent;
+      if (parent?.type === 'atrule' && /keyframes$/i.test((parent as { name: string }).name)) {
+        return;
+      }
+      if (!rule.selector.includes('[b-c-')) {
+        found.value = true;
+      }
+    });
+    // The rules of an `@import` are inlined after the scoping, so they apply to every page.
+    parseCSS((await compileFile(file)).result.css).walkAtRules('import', () => {
+      found.value = true;
+    });
+    return found.value;
+  }
+
+  /**
+   * Cuts the marks out of the sheets of the chunks, and returns the CSS text of each component, as
+   * its sheet has it, and the sheets that hold the CSS of components only.
+   */
+  async function cutMarks(
+    chunks: Map<string, { moduleIds: string[]; viteMetadata?: { importedCss: Set<string> } }>,
+    bundle: Record<string, { type: string; source?: unknown }>,
+  ): Promise<{ css: Record<string, string>; deferred: Record<string, string[]> }> {
+    const css: Record<string, string> = {};
+    const deferred: Record<string, string[]> = {};
+    for (const chunk of chunks.values()) {
+      const sheets = chunk.viteMetadata?.importedCss;
+      if (!sheets || sheets.size === 0) {
+        continue;
+      }
+      const styled: string[] = [];
+      let other = false;
+      for (const moduleId of chunk.moduleIds) {
+        if (moduleId.endsWith(STYLE_QUERY)) {
+          styled.push(moduleId.slice(0, -STYLE_QUERY.length));
+        } else if (CSS_FILE.test(moduleId)) {
+          other = true;
+        }
+      }
+      if (styled.length === 0) {
+        continue;
+      }
+      for (const name of sheets) {
+        const asset = bundle[name];
+        if (asset?.type !== 'asset') {
+          continue;
+        }
+        const text = String(asset.source);
+        const found: [string, string][] = [];
+        const order: string[] = [];
+        let rest = '';
+        let position = 0;
+        for (const match of text.matchAll(MARK_RULE)) {
+          const id = marks.get(match[1]!);
+          if (id !== undefined) {
+            found.push([id, text.slice(position, match.index)]);
+            order.push(id);
+          }
+          rest += text.slice(position, match.index);
+          position = match.index + match[0].length;
+        }
+        rest += text.slice(position);
+        // The sheet leaves without marks. Rollup writes it, and the plugins after this one see it.
+        asset.source = rest;
+        // A sheet that lost a mark, or has them out of the order of the modules, gives its
+        // components no inline CSS, and stays a blocking link.
+        const expected = styled.map((file) => componentId(file));
+        if (order.length !== expected.length || order.some((id, index) => id !== expected[index])) {
+          continue;
+        }
+        const globals: string[] = [];
+        for (const [id, rules] of found) {
+          css[id] = rules;
+          const file = files.get(id);
+          if (file !== undefined && (await hasGlobalRules(file))) {
+            globals.push(id);
+          }
+        }
+        if (!other && sheets.size === 1) {
+          deferred[`${base}${name}`] = globals;
+        }
+      }
+    }
+    return { css, deferred };
   }
 
   /** The hints of the client build of this process, for a server build that follows it. */
@@ -1073,6 +1331,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
 
   /** The IDs of the components in each bundle of the client build, by root, for `hints.json`. */
   const bundleMembers = new Map<string, string[]>();
+  /** The roots whose bundles hold style modules and no client code, by component ID. */
+  const styleRoots = new Set<string>();
 
   /** `bridges`: the loaders of the modules with a `bridge`, by module ID. */
   function bridgeLoaders(): string {
@@ -1102,13 +1362,15 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     if (!isServe) {
       // A build loads code by bundles of roots, so each component's code is in the chunk of
       // the page instead of a chunk of its own.
-      const keptFiles = new Set<string>();
-      for (const [, file] of kept) {
-        keptFiles.add(file);
-      }
-      const groups = await bundles(keptFiles);
+      const groups = await buildBundles();
       bundleMembers.clear();
-      for (const [root, members] of groups) {
+      styleRoots.clear();
+      for (const [root, { members }] of groups) {
+        // A bundle of style modules only has no code to load: the page links to its stylesheet.
+        if (members.length === 0) {
+          styleRoots.add(root);
+          continue;
+        }
         const ids: string[] = [];
         for (const member of members) {
           const id = findComponentId(member);
@@ -1805,6 +2067,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     if (targets.length === 0) {
       return undefined;
     }
+    // A file that a component imports compiles into it, so the cached compile is stale.
+    if (!file.endsWith('.brm')) {
+      for (const target of targets) {
+        compiled.delete(target);
+      }
+    }
     // A resumed page cannot run a component again. When an edit keeps the markup, the slots
     // and the update table of each changed component, the page keeps its state: new styles
     // replace the old ones, and the next event loads the new code. When the markup changes,
@@ -1942,6 +2210,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     enforce: 'pre',
 
     async config(config, env) {
+      relativeBase = config.base === './' || config.base === '';
       const appRoot = path.resolve(config.root ?? process.cwd());
       packages = findPackages(appRoot);
       // Installed packages that depend on brumate and export a bridge: their files must reach
@@ -2051,6 +2320,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
 
     configResolved(config) {
+      resolvedConfig = config;
       root = config.root;
       isServe = config.command === 'serve';
       outDir = path.resolve(config.root, config.build.outDir);
@@ -2097,6 +2367,14 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           coreChunk = item.fileName;
         }
       }
+      // The sheets leave without their marks, and the CSS of each component is what they have.
+      const sheetChunks = new Map<string, (typeof bundle)[string] & { type: 'chunk' }>();
+      for (const item of Object.values(bundle)) {
+        if (item.type === 'chunk') {
+          sheetChunks.set(item.fileName, item);
+        }
+      }
+      cut = await cutMarks(sheetChunks, bundle);
       startChunks = new Set();
       bundleChunks = new Set();
       function addStart(name: string | undefined): void {
@@ -2229,9 +2507,14 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           }
           const id = facade.slice(BUNDLE.length + 1);
           const styleNames = [...styles];
-          bundleHints[id] = urls;
+          // A bundle of style modules only gives its pages a stylesheet and no code: its JS chunk,
+          // which nothing loads, is there only so that Vite writes its CSS.
+          bundleHints[id] = styleRoots.has(id) ? [] : urls;
           for (const name of styleNames) {
             bundleHints[id].push(`${base}${name}`);
+          }
+          if (styleRoots.has(id)) {
+            continue;
           }
           chunkUrls[id] = loadUrl(chunk.fileName);
           styleUrls[id] = [];
@@ -2240,6 +2523,26 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           }
           members[id] = bundleMembers.get(id) ?? [];
         }
+        // The stylesheet of each chunk holds the CSS of the style modules in it, so a component
+        // gets the stylesheets of the chunks that hold its style module.
+        const components: Record<string, string[]> = {};
+        for (const chunk of chunks.values()) {
+          const sheets = chunk.viteMetadata?.importedCss;
+          if (!sheets || sheets.size === 0) {
+            continue;
+          }
+          for (const moduleId of chunk.moduleIds) {
+            if (moduleId.endsWith(STYLE_QUERY)) {
+              const file = moduleId.slice(0, -STYLE_QUERY.length);
+              const urls: string[] = [];
+              for (const name of sheets) {
+                urls.push(`${base}${name}`);
+              }
+              components[componentId(file)] = urls;
+            }
+          }
+        }
+        const { css, deferred } = cut;
         // A bundle without a chunk would leave its pages without client code. Only the output
         // with the manifest has them: a framework such as Nitro writes other outputs too.
         let hasManifest = false;
@@ -2262,6 +2565,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           chunks: chunkUrls,
           styles: styleUrls,
           members,
+          components,
+          css,
+          deferred,
         };
         // A build of several environments in one process, such as with Nitro, builds the
         // server after the client, with the hints of that client.
@@ -2327,6 +2633,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       await scan();
       // A rebuild in watch mode counts the features of the components again.
       builtFeatures = undefined;
+      builtBundles = undefined;
       knownFeatures = undefined;
       traceBrowser = undefined;
       loadedComponents.clear();
@@ -2461,7 +2768,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
       if (id === `\0${BUNDLES}`) {
         const lines: string[] = [];
-        for (const root of bundleMembers.keys()) {
+        for (const root of [...bundleMembers.keys(), ...styleRoots]) {
           lines.push(
             `  ${JSON.stringify(root)}: () => import(${JSON.stringify(`${BUNDLE}${root}`)}),`,
           );
@@ -2475,7 +2782,14 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         const hints = clientHints();
         const bundles =
           hints.chunks && hints.members
-            ? { chunks: hints.chunks, styles: hints.styles, members: hints.members }
+            ? {
+                chunks: hints.chunks,
+                styles: hints.styles,
+                members: hints.members,
+                components: hints.components,
+                css: hints.css,
+                deferred: hints.deferred,
+              }
             : undefined;
         return [
           "import { setClientBundles } from 'brumate/server';",
@@ -2522,6 +2836,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
       // Vite can add its own parameters, such as `import`.
       const params = new URLSearchParams(query);
+      const isStyle = params.has(STYLE_PARAM);
       const isRender = params.has(RENDER_QUERY.slice(1));
       // A test in a browser environment imports the server version of a component with this query.
       const isServer = params.has(SERVER_QUERY.slice(1));
@@ -2539,7 +2854,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         this.error({ message, frame, loc: loc && { ...loc, file }, id: file });
       }
       const { source, result } = output;
-      if (!isServe && !isSsrBuild && isClient) {
+      if (!isServe && !isSsrBuild && isClient && !isStyle) {
         loadedComponents.add(file);
       }
       // A stylesheet that the component imports, or a module of reactive logic that it calls into,
@@ -2551,6 +2866,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           dependents.set(normalized, new Set());
         }
         dependents.get(normalized)!.add(file);
+      }
+      // The style module is the scoped CSS, which Vite's CSS plugin transforms after this.
+      if (isStyle) {
+        const mark = `${MARK}${hash(file)}`;
+        marks.set(mark, componentId(file));
+        return { code: `${result.css}\n.${mark}{--b-mark:${mark}}\n`, map: null };
       }
       for (const warning of isClient && !params.has('part') ? result.warnings : []) {
         const { line, column } = getLocation(source, warning.range.start);
@@ -2682,7 +3003,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       // The shared module of a module of reactive logic is TypeScript too, under a query
       // that Vite does not strip types for.
       const shared = isReactiveModule(file ?? '') && id.endsWith(SHARED_QUERY);
-      if (!file?.endsWith('.brm') && !shared) {
+      if (
+        (!file?.endsWith('.brm') && !shared) ||
+        new URLSearchParams(id.split('?')[1]).has(STYLE_PARAM)
+      ) {
         return undefined;
       }
       const result = await transformWithOxc(code, `${file}.ts`, { lang: 'ts', sourcemap: true });
@@ -2707,6 +3031,11 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         manifests.push(normalizePath(`${item.root}/package.json`));
       }
       server.watcher.add(manifests);
+      watchFile = (file) => server.watcher.add(file);
+      if (unwatched.size > 0) {
+        server.watcher.add([...unwatched]);
+        unwatched.clear();
+      }
       server.watcher.on('change', (file) => {
         if (
           manifests.includes(normalizePath(file)) &&

@@ -214,6 +214,49 @@ export async function run({ browser, url, runner }) {
     await page.locator('.who', { hasText: 'You are signed in as' }).waitFor({ timeout: TIMEOUT });
   });
 
+  await step('/about: the #defer body waits for its own stylesheet before it shows', async () => {
+    // The body of the block links a stylesheet that the page does not have, and the sheet is slow.
+    await page.route('**/e2e-defer.css', async (route) => {
+      await new Promise((done) => setTimeout(done, 400));
+      await route.fulfill({ contentType: 'text/css', body: '.who{color:rgb(1,2,3)}' });
+    });
+    await page.route('**/about', async (route) => {
+      const request = route.request();
+      if (!request.headers()['x-brumate-defer']) {
+        await route.continue();
+        return;
+      }
+      const response = await route.fetch();
+      const link = '<link rel="stylesheet" href="/e2e-defer.css">';
+      await route.fulfill({ response, body: link + (await response.text()) });
+    });
+    await page.addInitScript(() => {
+      window.__e2eDefer = { shown: false, pending: -1 };
+      new MutationObserver(() => {
+        const who = document.querySelector('.who');
+        if (who && /You are/.test(who.textContent) && !window.__e2eDefer.shown) {
+          window.__e2eDefer.shown = true;
+          const link = document.querySelector('link[href="/e2e-defer.css"]');
+          if (!link) {
+            window.__e2eDefer.pending = -1;
+          } else {
+            window.__e2eDefer.pending = link.sheet ? 0 : 1;
+          }
+        }
+      }).observe(document, { childList: true, subtree: true, characterData: true });
+    });
+    try {
+      await page.goto(`${url}/about`);
+      await page.locator('.who', { hasText: 'You are signed in as' }).waitFor({ timeout: TIMEOUT });
+      const seen = await page.evaluate(() => window.__e2eDefer);
+      assert(seen.pending !== -1, 'the body of the block did not link the stylesheet');
+      assert(seen.pending === 0, 'the #defer body showed before its stylesheet applied');
+    } finally {
+      await page.unroute('**/about');
+      await page.unroute('**/e2e-defer.css');
+    }
+  });
+
   await step(
     '/team: browser code on a prerendered page keeps its #defer line for the user',
     async () => {

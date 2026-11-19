@@ -213,6 +213,37 @@ A `<style global>` block in the root layout works too.
 
 ## On the page
 
-Each component's styles are written into the page once, right before its first instance. A page carries only the CSS of the components it shows, so its CSS is the critical CSS, and no stylesheet request delays the first paint.
+In a build, the CSS of a component is not in its JavaScript. It goes through the CSS pipeline into `.css` assets, one per bundle of a route, plus shared chunks that several bundles use, and the files are cached across pages.
+
+A page carries each component's CSS twice. The server writes the CSS of the components a page renders into the page, as `<style>` elements in render order, so the first paint needs no stylesheet request. The stylesheets of the bundles hold the same CSS for the rest of the visit, and a first load links them with `rel="preload"` and a `<noscript>` link, so they do not block the paint, when the page rendered the components whose global rules they hold. A sheet that holds anything else, such as a CSS file that a module imports, or a sheet whose component marks a plugin removed, stays a blocking link, and so does every sheet a navigation request gets. A component that the browser renders later gets its CSS from the bundle's stylesheet.
+
+A client navigation waits for the stylesheets of the next page before it swaps the page, for at most 4 seconds, so no frame shows unstyled. A `#defer` body waits for its stylesheets before it shows. Stylesheets that no element of the page uses any more are removed after a navigation.
+
+The dev server keeps the CSS inline, and a hot update swaps the text of the `<style>`.
+
+## What runs on component CSS
+
+A build runs the project's CSS pipeline on the CSS of each component, after the compiler has scoped it. Vite runs these steps:
+
+1. `url()` and `@import` resolve, and assets are rewritten to their built URLs.
+2. PostCSS runs with the project's config (`postcss.config.js` or `css.postcss`), or Lightning CSS runs in its place.
+3. The minifier runs with `build.cssTarget` as its browser targets.
+
+`lang="scss"` and `lang="less"` compile first, in the compiler, before scoping.
+
+The copy in the page is cut out of the built stylesheet, so it takes every step above, and the two copies are the same text. A plugin that removes or reorders the rules the build uses to find a component's CSS does not break the page: that component has no inline copy, and the page links the stylesheet, which blocks the first paint.
+
+An `@import` in component CSS is inlined after the scoping, so its rules are global, not scoped to the component. A page links a sheet with such rules without deferring it.
+
+With `css.transformer: 'lightningcss'`:
+
+- Lightning CSS replaces PostCSS. Vite runs one of them, so the PostCSS plugins of the project do not run on component CSS, as on any other CSS file.
+- `css.lightningcss.targets` lowers features in step 2. The minifier then reads `build.cssTarget` and can join them again, so set `build.cssTarget` to the same browsers. For example, `inset: 0` stays as `top`, `right`, `bottom` and `left` only when both name a browser that lacks `inset`.
+
+The dev server, and a build with a relative `base` (`'./'`, where the server cannot link a stylesheet from a page at any depth), write the CSS inline only. They run steps 1 and 2 on each component's CSS through Vite's `preprocessCSS`, once per change of the file, so a PostCSS plugin shows in dev as it does in production. The minifier does not run in dev. Hot updates carry the transformed CSS.
+
+- A change to a file that the CSS imports updates the component. A change to `postcss.config.js` needs a restart of the dev server, as in Vite.
+- In dev, a relative `url()` names the file in the project, so it works on a page at any depth. In a build with a relative `base`, the page can be at any depth and the assets have no URL that fits all of them, so a `url()` stays as written. Use a root-relative URL from `public/` there.
+- In dev and in a build with a relative `base`, a `url()` inside a file that the CSS imports is not rewritten.
 
 [Style compilation](./style-compilation.md) explains how scoping and dynamic values are compiled.

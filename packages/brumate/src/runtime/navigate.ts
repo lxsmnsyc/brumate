@@ -1,6 +1,18 @@
 // Client navigation. The loader imports it on the first navigation, so pages
 // that never navigate do not load it.
 
+import {
+  SHEET,
+  WAIT,
+  findSheets,
+  hasSheet,
+  inUse,
+  linkPreloads,
+  preloadSheets,
+  scopes,
+  scopesOf,
+  sheetKey,
+} from './sheets.ts';
 import { loadOnce } from './skew.ts';
 import { HAS_SCRIPTS } from './features.ts';
 import { startTransition } from './view-transitions.ts';
@@ -211,13 +223,78 @@ function planRoutes(next: Document, state: Element | null, requested: number): P
   return result;
 }
 
+/**
+ * Removes the stylesheet links of the head that no element of the page uses: the page keeps only
+ * the CSS of the components that it shows. A link counts as used when an element has one of the
+ * scopes of its rules. A global stylesheet, one that is not loaded, one that cannot be read and
+ * one that a bundle of the page names (a component that the browser renders may need it) stay.
+ */
+function pruneSheets(): void {
+  // An inline style of a component stays while an element of the page has one of its scopes. A
+  // style without scopes in its rules is global, and stays.
+  for (const style of document.head.querySelectorAll<HTMLStyleElement>('style[b-style]')) {
+    if (!inUse([...new Set(style.textContent.match(/b-c-[\w-]+/g) ?? [])])) {
+      style.remove();
+    }
+  }
+  const bundled = new Set<string>();
+  for (const script of document.querySelectorAll('script[b-load]')) {
+    for (const url of script.getAttribute('b-load')!.split(' ')) {
+      bundled.add(url.slice(url.lastIndexOf('/') + 1));
+    }
+  }
+  for (const link of document.head.querySelectorAll<HTMLLinkElement>(SHEET)) {
+    if (link.hasAttribute('b-bundle')) {
+      continue;
+    }
+    const href = link.getAttribute('href')!;
+    if (!bundled.has(href.slice(href.lastIndexOf('/') + 1)) && !inUse(scopesOf(link))) {
+      link.remove();
+    }
+  }
+}
+
+/**
+ * Moves the stylesheet links that the page still needs out of the routes that go. A link of an
+ * old route points at the CSS of a chunk, which can hold the CSS of components that a kept layout
+ * shows too. The head gets a copy before the route goes, so the old link applies until the copy
+ * does. Returns the links to remove once the copies load, and the copies that turned out useless.
+ */
+function copySheets(old: Node[]): Map<Element, HTMLLinkElement> {
+  const ignore = new Set<Element>();
+  const links: HTMLLinkElement[] = [];
+  for (const node of old) {
+    if (node.nodeType === 1) {
+      const element = node as Element;
+      for (const link of element.matches(SHEET) ? [element] : findSheets(element)) {
+        links.push(link as HTMLLinkElement);
+        ignore.add(link);
+      }
+    }
+  }
+  const copies = new Map<Element, HTMLLinkElement>();
+  for (const link of links) {
+    // The scopes come while the link is in the page, and the check comes once the route is out.
+    const names = scopesOf(link);
+    if (!hasSheet(sheetKey(link), ignore)) {
+      const copy = link.cloneNode() as HTMLLinkElement;
+      copies.set(link, copy);
+      document.head.append(copy);
+      scopes.set(copy, names);
+    }
+  }
+  return copies;
+}
+
 /** Replaces the routes that change, and keeps the rest of the page. */
 function replaceRoutes(next: Document, state: Element, result: Plan): Node[] {
   const added: Node[] = [];
   const removed: HTMLStyleElement[] = [];
+  const old: Node[] = [];
   for (const [before, region] of result.replace) {
     const nodes = between(before.start, before.end);
     for (const node of nodes) {
+      old.push(node);
       if (node.nodeType === 1) {
         const element = node as Element;
         if (element.matches('style[b-style]')) {
@@ -231,11 +308,23 @@ function replaceRoutes(next: Document, state: Element, result: Plan): Node[] {
       added.push(node);
       parent.insertBefore(document.adoptNode(node), before.start);
     }
-    for (const node of nodes) {
+  }
+  // The links of the new routes are in the page now, so a URL that both had stays once.
+  const copies = copySheets(old);
+  for (const node of old) {
+    const copy = copies.get(node as Element);
+    if (copy) {
+      // A link of the route itself stays until its copy applies, so no frame loses the CSS.
+      const remove = () => node.parentNode?.removeChild(node);
+      copy.addEventListener('load', remove, { once: true });
+      copy.addEventListener('error', remove, { once: true });
+      setTimeout(remove, WAIT);
+    } else {
       node.parentNode?.removeChild(node);
     }
   }
   keepStyles(removed);
+  pruneSheets();
   // The core drops the scopes of the old routes, and adds only the scopes of the new ones.
   const dropped: string[] = [];
   const roots: string[] = [];
@@ -524,16 +613,26 @@ function headHTML(element: Element): string {
  * Makes the head of the page match the new one, keeping elements that are in both.
  * Returns the scripts that ask to run again, which the caller adds once the body is in place.
  */
-function updateHead(next: Document): HTMLScriptElement[] {
+function updateHead(next: Document, keepSheets: boolean): HTMLScriptElement[] {
   const rerun: HTMLScriptElement[] = [];
   const keep = new Map<string, Element>();
+  // A stylesheet is the same by its URL, and an inline one by its component, not by their markup:
+  // with a nonce, the markup differs per request, and they would load again on every navigation.
+  const identity = (element: Element): string => {
+    if (element.matches(SHEET)) {
+      return `sheet:${sheetKey(element)}`;
+    }
+    return element.matches('style[b-style]')
+      ? `style:${element.getAttribute('b-style')}`
+      : headHTML(element);
+  };
   for (const element of document.head.children) {
-    keep.set(headHTML(element), element);
+    keep.set(identity(element), element);
   }
   // A copy, because adopting an element removes it from the live list.
   // oxlint-disable-next-line unicorn/no-useless-spread
   for (const element of [...next.head.children]) {
-    const html = headHTML(element);
+    const html = identity(element);
     if (element.matches('script[data-rerun]')) {
       // Never kept: the old copy leaves and a new one runs after the body.
       rerun.push(element as HTMLScriptElement);
@@ -549,7 +648,9 @@ function updateHead(next: Document): HTMLScriptElement[] {
     if (
       element.matches('script[data-rerun]') ||
       (!(element.tagName === 'SCRIPT' && (element as HTMLScriptElement).src) &&
-        !element.hasAttribute('b-bundle'))
+        !element.hasAttribute('b-bundle') &&
+        // Replacing routes keeps the layouts, whose components can use the CSS of these links.
+        !(keepSheets && (element.matches(SHEET) || element.matches('style[b-style]'))))
     ) {
       element.remove();
     }
@@ -823,6 +924,7 @@ async function load(visit: Visit, trace?: RequestTrace): Promise<void> {
     }
   }
   const next = new DOMParser().parseFromString(trustedHTML(text.slice(0, end)), 'text/html');
+  linkPreloads(next);
   const state = next.body.querySelector(`${STATE}[b-route]`);
   // A page of another build: the site was deployed since this page loaded, so it loads in full,
   // once for each build. When two builds answer in turn during a deploy, the page swaps in.
@@ -849,6 +951,13 @@ async function load(visit: Visit, trace?: RequestTrace): Promise<void> {
   if (DEV) {
     report(visit, started, routes, shift);
   }
+  // The stylesheets of the new page load before the swap, so no frame shows it unstyled.
+  await preloadSheets(next, current.signal);
+  // A newer visit may have taken over while the stylesheets loaded, and the old one must not leave.
+  if (current.signal.aborted) {
+    stop();
+    return;
+  }
   await visit.leave(routes !== undefined);
   if (current.signal.aborted) {
     stop();
@@ -872,7 +981,7 @@ async function load(visit: Visit, trace?: RequestTrace): Promise<void> {
       title ||
       next.body.querySelector('h1')?.textContent ||
       '';
-    const rerun = updateHead(next);
+    const rerun = updateHead(next, routes !== undefined);
     document.title = title;
     const same = url.href === location.href;
     // A change of only the query string, such as a filter, keeps the focus, so typing goes on.

@@ -82,6 +82,19 @@ export interface CompileOptions {
    */
   hideNames?: boolean;
   /**
+   * The stylesheet is a CSS module of its own, which the Vite plugin serves as
+   * `<file>?brumate-style&lang.css` in builds, so Vite's CSS pipeline makes it into the stylesheet
+   * of a bundle. The render and server modules then leave it out: they write no `$$css` and
+   * call no `style`. The CSS is in `css` of the result.
+   */
+  styleFiles?: boolean;
+  /**
+   * The CSS of the component after a CSS pipeline, which replaces the scoped CSS that the compiler
+   * wrote. The Vite plugin runs the project's PostCSS or Lightning CSS on the CSS of a first
+   * compile, and compiles again with the result, where the CSS stays inline (the dev server).
+   */
+  css?: string;
+  /**
    * Reads a module of reactive logic, such as `./counter.brm.ts`, that the
    * component imports. Defaults to reading it from disk next to `path`.
    */
@@ -499,7 +512,10 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
   if (errors.length > 0) {
     fail(errors);
   }
-  const plan = createPlan(file, graph, options.path, options.hideNames);
+  const plan = createPlan(file, graph, options.path, options.hideNames, options.styleFiles);
+  if (options.css !== undefined) {
+    plan.styles = { ...plan.styles, css: options.css };
+  }
   const styleErrors = filterBySeverity([...plan.styles.diagnostics, ...plan.diagnostics], 'error');
   if (styleErrors.length > 0) {
     fail(styleErrors);

@@ -164,9 +164,6 @@ export async function renderPage(
   for (const url of hints) {
     preload += `<link rel="modulepreload"${nonce} href="${escapeAttribute(url)}">`;
   }
-  for (const url of styles) {
-    preload += `<link rel="stylesheet"${nonce} href="${escapeAttribute(url)}">`;
-  }
   let parts: RenderResult;
   try {
     parts = await render(
@@ -178,6 +175,7 @@ export async function renderPage(
         actions: extra.actions,
         route: view.key,
         params: props.params as Record<string, string> | undefined,
+        linked: styles,
         base: Number.isSafeInteger(base) && base > 0 ? base : undefined,
       },
     );
@@ -186,6 +184,20 @@ export async function renderPage(
     throw error;
   }
   endRender();
+  // The stylesheets of the bundles. A sheet that holds the CSS of components only, whose global
+  // rules are in the page already, loads after the first paint (the client applies it at `load`,
+  // and a `<noscript>` link covers a page without scripts). Any other sheet blocks the paint, as it
+  // always did. A navigation waits for the sheets of the next page, so it gets plain links.
+  for (const url of styles) {
+    const needs = navigation ? undefined : (options.bundles ?? clientBundles)?.deferred?.[url];
+    const href = escapeAttribute(url);
+    if (needs?.every((id) => parts.styled.has(id))) {
+      preload += `<link rel="preload" as="style" b-sheet${nonce} href="${href}">`;
+      preload += `<noscript b-sheet><link rel="stylesheet"${nonce} href="${href}"></noscript>`;
+    } else {
+      preload += `<link rel="stylesheet"${nonce} href="${href}">`;
+    }
+  }
   const endStream = event?.traced('stream', 'the rest of the page') ?? (() => {});
   const headers = new Headers(parts.headers);
   headers.set('content-type', 'text/html; charset=utf-8');

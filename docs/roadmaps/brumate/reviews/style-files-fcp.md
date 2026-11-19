@@ -73,3 +73,74 @@ Paint timestamps have a resolution of 4 ms here, so deltas of 4 ms are one tick.
 - Warm loads do not improve: the cache serves the files, but base already paints at the same time from inline CSS (within noise on every profile). Gzip makes the HTML 3 to 4 KB smaller on head, which does not offset the extra request.
 - Navigation swap time is within noise on every profile except possibly `/ui/button` to `/ui/dialog` on Slow 4G, where head is 40 ms faster (4%) and the two distributions barely overlap; one pair on one profile, so I would not claim it.
 - The cost comes from the stylesheets sitting after 47 to 51 preload links and being fetched only after the HTML. A hint earlier in the head (a `preload` of the CSS before the module preloads, or an HTTP `Link` header / 103 Early Hints) or inlining the CSS of the first route are the candidates to test; not measured here.
+
+## Round 2: style-files-inline (2026-11-19)
+
+Question: does inlining the CSS of the components that the server renders, and loading the bundle stylesheets after the page, bring first-load FCP back to the base?
+
+Build under test: `feat/style-files-inline` (style-files plus style-files-inline). Same harness, same setup and verdict rule as above (base `f5cd683b`; 20 runs per build and profile as 4 ABAB batches of 5; load average of 4 or less before each batch; `--pairs docs-server,ui-server --load-pages /,/docs/components/ --gzip`; Chrome 157.0.8103.79, 8 CPUs). Load average at each batch start: 3.1 to 3.9. One machine, shared with other workers, so only compare inside a table. The head is compared to the base here; the earlier table showed warm loads and swaps of `c401cfb7` within noise of the base on every profile, so "within noise of the base" means within noise of `feat/style-files` too, though that build was not run again.
+
+What changed on the page: each component's CSS is in the head as `<style b-style>` in render order (12 on `/`), and the head has 0 `<link rel=stylesheet>`. The 3 (`/`) or 4 (`/docs/components/`) bundle sheets are `<link rel=preload as=style b-sheet>`; the client turns them into stylesheets at `load`. A navigation response still has plain stylesheet links, which the swap waits for.
+
+### slow4g + cpu 4 (ms, median [min-max, IQR], n=20)
+
+| page or pair                       | base               | head               | delta | verdict      |
+| ---------------------------------- | ------------------ | ------------------ | ----- | ------------ |
+| `/` first load FCP                 | 684 [664-772, 12]  | 696 [684-840, 20]  | +12   | within noise |
+| `/` first load LCP                 | 764 [724-872, 20]  | 796 [760-1092, 48] | +32   | within noise |
+| `/` warm FCP                       | 684 [656-708, 16]  | 664 [652-820, 20]  | -20   | within noise |
+| `/docs/components/` first load FCP | 684 [668-1032, 12] | 684 [664-816, 24]  | 0     | within noise |
+| `/docs/components/` first load LCP | 752 [732-1032, 36] | 756 [724-1032, 44] | +4    | within noise |
+| `/docs/components/` warm FCP       | 696 [676-808, 24]  | 696 [680-840, 24]  | 0     | within noise |
+| docs swap                          | 816 [801-1020, 33] | 817 [807-839, 12]  | +1    | within noise |
+| ui swap                            | 888 [873-1422, 38] | 896 [881-955, 8]   | +8    | within noise |
+
+Style-files without this node was 1928 and 1952 ms on the two pages (earlier table), so the +1.2 s is gone.
+
+### fast4g + cpu 4
+
+| page or pair                       | base              | head               | delta | verdict      |
+| ---------------------------------- | ----------------- | ------------------ | ----- | ------------ |
+| `/` first load FCP                 | 340 [256-400, 36] | 340 [332-1136, 24] | 0     | within noise |
+| `/` warm FCP                       | 284 [256-312, 12] | 280 [256-456, 28]  | -4    | within noise |
+| `/docs/components/` first load FCP | 336 [256-376, 40] | 340 [332-412, 24]  | +4    | within noise |
+| `/docs/components/` warm FCP       | 296 [284-400, 20] | 296 [284-404, 12]  | 0     | within noise |
+| docs swap                          | 266 [254-281, 7]  | 264 [253-275, 7]   | -2    | within noise |
+| ui swap                            | 293 [283-317, 10] | 301 [286-309, 10]  | +9    | within noise |
+
+### unthrottled
+
+| page or pair                       | base            | head            | delta | verdict      |
+| ---------------------------------- | --------------- | --------------- | ----- | ------------ |
+| `/` first load FCP                 | 72 [60-100, 16] | 80 [60-172, 16] | +8    | within noise |
+| `/` warm FCP                       | 44 [40-60, 8]   | 48 [36-60, 16]  | +4    | within noise |
+| `/docs/components/` first load FCP | 72 [64-88, 12]  | 88 [72-180, 16] | +16   | within noise |
+| `/docs/components/` warm FCP       | 52 [40-64, 12]  | 48 [40-128, 12] | -4    | within noise |
+| docs swap                          | 37 [24-57, 12]  | 39 [27-59, 13]  | +2    | within noise |
+| ui swap                            | 52 [28-65, 13]  | 48 [29-67, 20]  | -3    | within noise |
+
+The unthrottled first-load delta of `/docs/components/` (+16 ms) is inside the head's max-min range (108 ms) by the rule; one 4-tick shift is not claimed.
+
+### HTML transfer (gzip, bytes, first load)
+
+| page                | base  | `feat/style-files` (earlier table) | head  |
+| ------------------- | ----- | ---------------------------------- | ----- |
+| `/`                 | 20746 | about 16400                        | 20511 |
+| `/docs/components/` | 34284 | about 31400                        | 34317 |
+
+Linked CSS transfer on the head is 6.2 KB gzip on both pages, fetched after `load` (no request blocks the paint). The page therefore carries its component CSS twice (inline and in the bundle sheet), which the cache serves on later pages and navigations.
+
+### Conclusion
+
+First-load FCP and LCP are back to the base on every profile (within noise), with 0 render-blocking component CSS requests, warm loads and navigation swaps unchanged. The cost is HTML size: the style-files saving of 3 to 4 KB gzip is given back, so the HTML is within 0.1% of the base.
+
+### Round 2, after fix round 1 (2026-11-19)
+
+The fix changed which sheets load late (only sheets whose chunk holds component CSS alone, and whose components with global rules the page rendered), so Slow 4G + cpu 4 ran again against the base: 10 runs per build and page (2 ABAB batches of 5, load 2.3 to 2.5).
+
+| page                | base median [min-max] | head median [min-max] | delta | blocking CSS requests | HTML transfer gzip (base, head) |
+| ------------------- | --------------------- | --------------------- | ----- | --------------------- | ------------------------------- |
+| `/`                 | 680 [668-716]         | 688 [688-704]         | +8    | 0                     | 20745, 20462                    |
+| `/docs/components/` | 680 [676-684]         | 676 [672-684]         | -4    | 0                     | 34285, 34278                    |
+
+Within noise on both pages. On the website all sheets of `/` still qualify (the layout renders on every page), so none turned into a blocking link.

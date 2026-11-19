@@ -97,6 +97,11 @@ export interface Plan {
   liveBlocks: Set<Body>;
   /** True when server function IDs hash the names of the functions. */
   hideNames: boolean;
+  /**
+   * True when the stylesheet is a style module of its own (`styleFiles`), so the render and
+   * server modules leave it out.
+   */
+  styleFiles: boolean;
   /** Errors in markup that the client could not update. */
   diagnostics: Diagnostic[];
 }
@@ -424,7 +429,13 @@ export function clientState(
   return { isLiveSite, clientSites, slots };
 }
 
-export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames = false): Plan {
+export function createPlan(
+  file: SFCFile,
+  graph: Graph,
+  path?: string,
+  hideNames = false,
+  styleFiles = false,
+): Plan {
   const model = graph.model;
   const name = getComponentName(file.filename);
   const bodyScopes = new Map<Body, Scope>();
@@ -830,6 +841,7 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     styles,
     liveBlocks,
     hideNames,
+    styleFiles,
     scopes,
     bodyScopes,
     anchors,
