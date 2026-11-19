@@ -1,7 +1,7 @@
 ---
 id: tsc-check-api
 title: brumate check runs the type checker in process
-status: todo
+status: active
 priority: should
 type: refactor
 outline: false
