@@ -20,6 +20,7 @@ const read = new WeakSet<Element>();
 function loadBundle(url: string, nonce: string | null): Promise<void> | undefined {
   const href = new URL(url, import.meta.url).href;
   // A stylesheet goes in the head unless the page has it, such as from the head of the page.
+  // `load` waits for it, so a component that the browser renders does not show unstyled.
   if (url.endsWith('.css')) {
     for (const link of document.querySelectorAll<HTMLLinkElement>('link[rel=stylesheet]')) {
       if (link.href === href) {
@@ -35,8 +36,13 @@ function loadBundle(url: string, nonce: string | null): Promise<void> | undefine
       link.setAttribute('nonce', nonce);
     }
     link.setAttribute('b-bundle', '');
+    // A stylesheet that fails to load does not stop the component: it shows without it.
+    const sheet = new Promise<void>((resolve) => {
+      link.onload = link.onerror = () => resolve();
+    });
+    pending.set(url, sheet);
     document.head.append(link);
-    return undefined;
+    return sheet;
   }
   let promise = pending.get(url);
   if (!promise) {

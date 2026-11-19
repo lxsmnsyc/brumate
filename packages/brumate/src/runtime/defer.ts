@@ -7,6 +7,7 @@
 // This module adds that markup to the page and runs its scripts, in order.
 
 import { build, skew } from './client.ts';
+import { preloadSheets } from './sheets.ts';
 import { trustedHTML, trustedScript } from './trusted.ts';
 /** The nonce of a script. Browsers hide the attribute once the page loads, and keep the property. */
 function readNonce(script: HTMLScriptElement): string | null {
@@ -61,6 +62,8 @@ export async function loadDeferred(template: Element): Promise<void> {
   }
   const parsed = document.createElement('template');
   parsed.innerHTML = trustedHTML(await response.text());
+  // The links of the body load before it comes in, so it does not show unstyled.
+  await preloadSheets(parsed.content);
   const nonce = pageNonce();
   // A copy, because appending moves nodes out of the live list.
   for (const node of Array.from(parsed.content.childNodes)) {
