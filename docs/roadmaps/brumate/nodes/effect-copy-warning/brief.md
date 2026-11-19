@@ -1,7 +1,7 @@
 ---
 id: effect-copy-warning
 title: A warning for an effect that only copies signals
-status: active
+status: done
 priority: must
 type: feature
 story:
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-12
-spent:
+spent: 171000
 owns: []
 shared:
   - packages/brumate/src/analyze.ts
