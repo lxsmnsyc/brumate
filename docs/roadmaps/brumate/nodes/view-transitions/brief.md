@@ -1,7 +1,7 @@
 ---
 id: view-transitions
 title: Named view transitions
-status: todo
+status: active
 priority: must
 type: feature
 story:
