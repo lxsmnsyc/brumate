@@ -1,7 +1,7 @@
 ---
 id: style-files-tests
 title: "Build and docs for component stylesheets"
-status: todo
+status: active
 priority: must
 type: chore
 story: style-files
