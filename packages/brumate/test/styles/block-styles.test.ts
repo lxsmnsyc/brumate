@@ -79,7 +79,7 @@ describe('scope of a block style', () => {
     const { styles } = results['scopeFor.brm']!.plan;
     const block = `${fileAttribute(styles)}-1`;
     expect(styles.blocks.map((item) => item.attribute)).toEqual([block]);
-    expect(styles.css).toBe(`.tag[${block}] { border: 1px solid; }`);
+    expect(styles.css).toBe(`.tag:where([${block}]) { border: 1px solid; }`);
     const found = elements(html);
     expect(found.tag!.map(marks)).toEqual([block, block]);
     // The component has no style of its own, so its elements carry no attribute of it.
@@ -120,9 +120,9 @@ describe('scope of a block style', () => {
     // same specificity.
     const rules = styles.css.split('\n');
     expect(rules).toEqual([
-      `.tag[${fileAttribute(styles)}] { margin: 0; }`,
-      `.tag[${outer}] { padding: 1px; }`,
-      `.inner[${inner}] { color: green; }`,
+      `.tag:where([${fileAttribute(styles)}]) { margin: 0; }`,
+      `.tag:where([${outer}]) { padding: 1px; }`,
+      `.inner:where([${inner}]) { color: green; }`,
     ]);
   });
 
@@ -143,8 +143,8 @@ describe('scope of a block style', () => {
     const attribute = fileAttribute(plan.styles);
     // The `#if` is the outer block, though its style comes after the `#for`.
     expect(css.split('\n')).toEqual([
-      `.outer[${attribute}-1] { color: blue; }`,
-      `.inner[${attribute}-2] { color: red; }`,
+      `.outer:where([${attribute}-1]) { color: blue; }`,
+      `.inner:where([${attribute}-2]) { color: red; }`,
     ]);
   });
 
@@ -164,8 +164,8 @@ describe('scope of a block style', () => {
     });
     const attribute = fileAttribute(results['scopeIf.brm']!.plan.styles);
     expect(results['scopeIf.brm']!.plan.styles.css.split('\n')).toEqual([
-      `.a[${attribute}-1] { color: red; }`,
-      `.a[${attribute}-2] { color: blue; }`,
+      `.a:where([${attribute}-1]) { color: red; }`,
+      `.a:where([${attribute}-2]) { color: blue; }`,
     ]);
     // The first branch shows. The branch that does not show has no element to carry its attribute.
     expect(elements(html).a!.map(marks)).toEqual([`${attribute}-1`, '']);
@@ -244,7 +244,7 @@ describe('variables of a block style', () => {
     const attribute = fileAttribute(results['varsFor.brm']!.plan.styles);
     const names = [`--s-${attribute.slice(4)}-1-0`, `--s-${attribute.slice(4)}-1-1`];
     expect(results['varsFor.brm']!.plan.styles.css).toBe(
-      `.tag[${attribute}-1] { background: var(${names[0]}); border-color: var(${names[1]}); }`,
+      `.tag:where([${attribute}-1]) { background: var(${names[0]}); border-color: var(${names[1]}); }`,
     );
     expect(html).toContain(`<span ${attribute}-1 style="${names[0]}:red;${names[1]}:red-dark"`);
     expect(html).toContain(`<span ${attribute}-1 style="${names[0]}:blue;${names[1]}:blue-dark"`);
@@ -340,10 +340,12 @@ describe('style languages in a block', () => {
       );
       const { css } = plan.styles;
       const attribute = fileAttribute(plan.styles);
-      expect(css).toMatch(new RegExp(`\\.tag\\[${attribute}-1\\] \\{\\n\\s+padding: 8px;\\n\\}`));
+      expect(css).toMatch(
+        new RegExp(`\\.tag:where\\(\\[${attribute}-1\\]\\) \\{\\n\\s+padding: 8px;\\n\\}`),
+      );
       expect(css).toMatch(
         new RegExp(
-          `\\.tag\\[${attribute}-1\\] b\\[${attribute}-1\\] \\{\\n\\s+color: var\\(--s-\\w+-1-0\\);\\n\\}`,
+          `\\.tag:where\\(\\[${attribute}-1\\]\\) b:where\\(\\[${attribute}-1\\]\\) \\{\\n\\s+color: var\\(--s-\\w+-1-0\\);\\n\\}`,
         ),
       );
     }
@@ -385,9 +387,9 @@ describe('global markers in a block', () => {
     ).plan.styles;
     const attribute = inBlock.blocks[0]!.attribute;
     // The compound around :global(…) is scoped, and the one inside it is not.
-    expect(inBlock.css).toContain(`.tag[${attribute}] .x {`);
+    expect(inBlock.css).toContain(`.tag:where([${attribute}]) .x {`);
     expect(inBlock.css).toMatch(/ {2}body \{/);
-    expect(inBlock.css).toContain(`p[${attribute}] { b {`);
+    expect(inBlock.css).toContain(`p:where([${attribute}]) { b {`);
     expect(inBlock.css).not.toContain(':global');
   });
 });

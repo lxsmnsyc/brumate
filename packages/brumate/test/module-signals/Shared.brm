@@ -1,0 +1,11 @@
+<script module>
+  import { $signal } from 'brumate/signals';
+
+  export let count = $signal(1);
+
+  export function bump() {
+    count = count + 1;
+  }
+</script>
+
+<p class="shared">{count}</p>

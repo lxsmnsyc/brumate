@@ -2,7 +2,7 @@
 import * as $$b from 'brumate/server';
 import OffscreenChild from './OffscreenChild.brm';
 export const rpc = {  };
-const $$css = ".flex[b-c-1oupne3] {\n    display: flex;\n  }";
+const $$css = ".flex:where([b-c-1oupne3]) {\n    display: flex;\n  }";
 let $$t: any;
 
 export default async function Offscreen($$props: Record<string, any>, $$ctx: $$b.Context): Promise<string> {
@@ -320,7 +320,7 @@ export function log$($$s, entry: string): void {
 # Render module
 import * as $$b from 'brumate/client';
 import OffscreenChild from "./OffscreenChild.brm?brumate-render";
-const $$css = ".flex[b-c-1oupne3] {\n    display: flex;\n  }";
+const $$css = ".flex:where([b-c-1oupne3]) {\n    display: flex;\n  }";
 const $$t0 = $$b.template("<p b-x=\"0\" b-c-1oupne3 class=\"late\">Late </p>", 1);
 const $$t1 = $$b.template("<!--x0--><aside b-x=\"1\" b-c-1oupne3 class=\"portal-a\">Portal </aside><!--/P-->", 2);
 
@@ -400,7 +400,7 @@ export default function Offscreen($$props: Record<string, any>): string | Docume
 Offscreen.brumateId = "Offscreen_1oupne3";
 
 # HTML
-<style b-style="Offscreen_1oupne3">.flex[b-c-1oupne3] {
+<style b-style="Offscreen_1oupne3">.flex:where([b-c-1oupne3]) {
     display: flex;
   }</style>
 <button b-c-1oupne3 class="tab-a" b-b="0:0" b-on="click=Offscreen_1oupne3#h7">A</button>

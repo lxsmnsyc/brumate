@@ -11,7 +11,7 @@
 // - Server functions answer in the page: calls to `/_brumate/` go to them
 //   instead of the network.
 
-import { analyzeProject, compile, generateShared } from 'brumate';
+import { analyzeProject, compile, generateShared, transformModuleSignals } from 'brumate';
 import type { CompileResult } from 'brumate';
 import * as client from 'brumate/client';
 import * as context from 'brumate/context';
@@ -274,9 +274,14 @@ export async function runSample(
   }
 
   function script(file: string): string {
-    return once(`ts:${file}`, () =>
-      blob(rewrite(strip(file, sources.get(file)!), resolver(file, 'server'))),
-    );
+    return once(`ts:${file}`, () => {
+      const source = sources.get(file)!;
+      // A module of reactive logic with a signal at its top level becomes stores, as in the plugin.
+      const code = file.endsWith('.brm.ts')
+        ? (transformModuleSignals({ path: file, source }) ?? source)
+        : source;
+      return blob(rewrite(strip(file, code), resolver(file, 'server')));
+    });
   }
   // The browser code of the functions of a module of reactive logic, shared by every call.
   function shared(file: string): string {

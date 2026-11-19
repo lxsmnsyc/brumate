@@ -1,0 +1,11 @@
+<script>
+  import { items, label, double, note, rename, bump, step } from './cart.brm.ts';
+</script>
+
+<p class="label">{label}</p>
+<p class="double">{double}</p>
+<p class="note">{note.text}</p>
+<p class="step">{step}</p>
+<p class="first">{items[0]}</p>
+<button class="rename" onClick=(() => rename('b'))>Rename</button>
+<button class="bump" onClick=(() => bump())>Bump</button>

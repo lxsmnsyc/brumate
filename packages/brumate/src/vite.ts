@@ -72,7 +72,8 @@ import type { BridgePackage, BrumatePackage } from './packages.ts';
 import type { NavigateOptions } from './runtime/boot.ts';
 import { anchorLabel, formatReport, report, scopeLabel } from './inspect.ts';
 import { instanceScope, slotIndex } from './codegen/scopes.ts';
-import { isReactiveModule, resolveFromDisk } from './modules.ts';
+import { ModuleError, isReactiveModule, resolveFromDisk } from './modules.ts';
+import { transformModuleSignals } from './module-signals.ts';
 import { forEachNode } from './project.ts';
 import { SHARED_QUERY, generateShared } from './shared-module.ts';
 import { originalPosition } from './sourcemap.ts';
@@ -2944,6 +2945,21 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           }
         } catch (error) {
           this.error((error as Error).message);
+        }
+      }
+      // A module of reactive logic with a signal or a memo at its top level becomes stores. The
+      // types stay, and Vite strips them after this plugin.
+      if (file && isReactiveModule(file) && !id.endsWith(SHARED_QUERY)) {
+        try {
+          const compiled = transformModuleSignals({ path: file, source: code });
+          if (compiled !== undefined) {
+            return { code: compiled, map: null };
+          }
+        } catch (error) {
+          if (error instanceof ModuleError) {
+            this.error({ message: error.message, id: file, pos: error.offset });
+          }
+          throw error;
         }
       }
       // The shared module of a module of reactive logic is TypeScript too, under a query

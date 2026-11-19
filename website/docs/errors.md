@@ -1241,18 +1241,6 @@ $effect(() => {
 });
 ```
 
-## BRM096
-
-`The callback of {name} cannot be async`
-
-The callback of `$effect` or `$client` is `async`.
-
-```ts
-$effect(() => {
-  load(id).then((value) => (data = value));
-});
-```
-
 ## BRM097
 
 `$effect takes one argument`
@@ -1472,9 +1460,9 @@ title = 'New';
 
 ## BRM117
 
-`Cannot assign to {kind} "{name}"`
+`Cannot assign to {kind} "{name}"{hint}`
 
-Code writes a memo, a const prop or another value that cannot change.
+Code writes a memo, a const prop, a module signal of an import or another value that cannot change.
 
 ```ts
 let count = $signal(0);
@@ -2280,4 +2268,32 @@ A module function reads a value of its module that is not exported.
 
 ```ts
 export const STEP = 1;
+```
+
+## BRM211
+
+`{name} cannot be compiled in a module{reason}. {fix}`
+
+A module uses a form that its signals and memos cannot compile: a compile-time function such as `$effect` at the top level, a memo that awaits or calls a function it cannot follow, or a signal in a destructuring write.
+
+```ts
+export let count = $signal(0);
+export const double = $memo(count * 2);
+```
+
+## BRM208
+
+`"{name}" is a signal of {module}, and a file of plain code gets its store, not its value. {fix}`
+
+A `.ts` or `.js` file imports a signal or a memo that a module declares at its top level. TypeScript types it as its value, and it is a store.
+
+```ts
+// cart.brm.ts
+export let items = $signal<number[]>([]);
+export function count(): number {
+  return items.length;
+}
+
+// plain.ts
+import { count } from './cart.brm.ts';
 ```

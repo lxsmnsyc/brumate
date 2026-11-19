@@ -1,0 +1,21 @@
+<script module>
+  import { $memo, $signal } from 'brumate/signals';
+
+  let count = $signal(1);
+  const double = $memo(count * 2);
+
+  export function reset() {
+    count = 0;
+  }
+</script>
+
+<script>
+  function up() {
+    count = count + 1;
+  }
+</script>
+
+<p class="count">{count}</p>
+<p class="double">{double}</p>
+<button class="up" onClick=up>Up</button>
+<button class="reset" onClick=reset>Reset</button>

@@ -212,9 +212,15 @@ export interface DevtoolsHooks {
   write?(scope: Scope, slot: number, value: unknown): void;
   /**
    * An effect or a `$client` callback, by its name in the update code, ran
-   * and took `time` milliseconds, or its cleanup ran.
+   * and took `time` milliseconds, or its cleanup ran. An async callback reports `pending` when a
+   * run starts, and `run` or `skip` when it settles.
    */
-  effect?(scope: Scope, name: string, kind: 'run' | 'cleanup', time: number): void;
+  effect?(
+    scope: Scope,
+    name: string,
+    kind: 'run' | 'cleanup' | 'pending' | 'skip',
+    time: number,
+  ): void;
   /** A client navigation changed the page: the routes that stayed, and those it replaced. */
   navigated?(report: NavigationReport): void;
 }

@@ -115,7 +115,7 @@
   "BRM114": "The prop \"{name}\" is not Bindable. Type it as Bindable<HTMLElement>, so a parent can bind it",
   "BRM115": "\"{name}\" is the props object, so read one key at a time, destructure it, or spread it in markup",
   "BRM116": "\"{name}\" is the props object, and props are read-only. Copy the key to a $signal or a $memo to change it",
-  "BRM117": "Cannot assign to {kind} \"{name}\"",
+  "BRM117": "Cannot assign to {kind} \"{name}\"{hint}",
   "BRM118": "Signal \"{name}\" can only be written in event handlers, effects, $client callbacks and functions",
   "BRM119": "Server function \"{name}\" captures \"{variable}\". Pass it as an argument",
   "BRM120": "$optimistic follows a memo, an action or a prop, not a signal",
@@ -202,5 +202,7 @@
   "BRM202": "$gate takes a value and a function, as in $gate(value, (prev, next) => next > prev)",
   "BRM203": "$gate takes a value that is ready. Use $memo for a promise or a server function",
   "BRM204": "Declare a gated value with \"const name = $gate(value, (prev, next) => boolean)\" at the top level of a script",
-  "BRM207": "#reveal has no style of its own"
+  "BRM207": "#reveal has no style of its own",
+  "BRM208": "\"{name}\" is a signal of {module}, and a file of plain code gets its store, not its value. {fix}",
+  "BRM211": "{name} cannot be compiled in a module{reason}. {fix}"
 }

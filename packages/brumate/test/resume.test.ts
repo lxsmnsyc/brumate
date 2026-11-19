@@ -2036,6 +2036,14 @@ describe('resume', () => {
     await waitFor(() => expect(text('.caught')).toBe('Error: Effect at 3'));
   });
 
+  it('catches the rejection of an async effect in the #try around it', async () => {
+    await resume('asyncEffectTry', {});
+    click(document.querySelector('.up')!);
+    await waitFor(() => expect(text('.ok')).toBe('1'));
+    click(document.querySelector('.up')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Async effect at 2'));
+  });
+
   it('catches the error of a memo in the #try around it, also when the write waited for the code', async () => {
     await resume('tryWaitingUpdate', {});
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {});

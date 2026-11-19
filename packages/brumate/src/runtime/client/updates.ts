@@ -409,7 +409,7 @@ export function asyncMemo(scope: Scope, slot: number, promise: Promise<unknown>)
 }
 
 /** Thrown when a memo reads a value that is still loading. */
-class NotReady extends Error {
+export class NotReady extends Error {
   readonly source: Promise<unknown>;
 
   constructor(source: Promise<unknown>) {
@@ -1041,26 +1041,7 @@ export function effect(
     cleanup = callback();
   } catch (error) {
     if (error instanceof NotReady) {
-      // The run is skipped. It runs again when the value arrives, unless a change ran it first.
-      const token = {};
-      skipped.set(key, token);
-      scope.cleanups.set(name, noop);
-      function again(): void {
-        if (skipped.get(key) === token && scopes.get(scope.id) === scope) {
-          effect(scope, name, callback);
-        }
-      }
-      // After the writes that the value starts, which can run the effect themselves.
-      void error.source.then(
-        () => Promise.allSettled(loadingUpdates).then(again),
-        // The error reaches the nearest `#try`.
-        (reason: unknown) => {
-          if (skipped.get(key) === token) {
-            skipped.delete(key);
-            fail(scope, reason);
-          }
-        },
-      );
+      skipEffect(scope, name, error, () => effect(scope, name, callback));
       return;
     }
     // The error goes to the nearest `#try` around the effect. The effect runs again on the next change.
@@ -1072,18 +1053,109 @@ export function effect(
     }
   }
   // An entry without a cleanup too, so a hidden `#offscreen` body knows what to run again.
-  let stored = typeof cleanup === 'function' ? (cleanup as () => void) : noop;
+  scope.cleanups.set(name, reportCleanup(scope, name, toCleanup(cleanup), start, true));
+}
+
+/**
+ * The cleanup of a run as one function, for a value that the callback returned: a function, or
+ * an object with `[Symbol.asyncDispose]` or `[Symbol.dispose]`. Any other value is no cleanup.
+ */
+export function toCleanup(value: unknown): (() => unknown) | undefined {
+  if (typeof value === 'function') {
+    return value as () => unknown;
+  }
+  if (typeof value === 'object' && value !== null) {
+    const dispose =
+      (value as AsyncDisposable)[Symbol.asyncDispose] ?? (value as Disposable)[Symbol.dispose];
+    if (typeof dispose === 'function') {
+      return () => dispose.call(value);
+    }
+  }
+  return undefined;
+}
+
+/**
+ * The function that a scope stores for a run. With `catches`, a promise that a cleanup returns,
+ * which fails, goes to `#try`. An async effect awaits the cleanup and sends its failure itself.
+ * In development, each way that a cleanup runs reports it: the next run, a removed scope, a hidden
+ * `#offscreen` body, or a page that navigation leaves.
+ */
+export function reportCleanup(
+  scope: Scope,
+  name: string,
+  cleanup: (() => unknown) | undefined,
+  start: number,
+  catches?: boolean,
+): () => unknown {
   if (DEV) {
     devtools()?.effect?.(scope, name, 'run', performance.now() - start);
-    // Each way that a cleanup runs calls this function: the next run, a removed scope, a hidden
-    // `#offscreen` body, or a page that navigation leaves.
-    const own = stored;
-    stored = () => {
-      devtools()?.effect?.(scope, name, 'cleanup', 0);
-      own();
-    };
+  } else if (!cleanup) {
+    return noop;
   }
-  scope.cleanups.set(name, stored);
+  return () => {
+    if (DEV) {
+      devtools()?.effect?.(scope, name, 'cleanup', 0);
+    }
+    const result = cleanup?.();
+    if (catches && result instanceof Promise) {
+      void result.catch((error: unknown) => fail(scope, error));
+    }
+    return result;
+  };
+}
+
+/**
+ * A run that reads a value that is still loading is skipped. It runs again when the value arrives,
+ * unless a change ran it first. The cleanup of the run before has already run.
+ */
+export function skipEffect(scope: Scope, name: string, error: NotReady, rerun: () => void): void {
+  const key = `${scope.id}:${name}`;
+  const token = {};
+  skipped.set(key, token);
+  scope.cleanups!.set(name, noop);
+  function again(): void {
+    if (skipped.get(key) === token && scopes.get(scope.id) === scope) {
+      rerun();
+    }
+  }
+  // After the writes that the value starts, which can run the effect themselves.
+  void error.source.then(
+    () => Promise.allSettled(loadingUpdates).then(again),
+    // The error reaches the nearest `#try`.
+    (reason: unknown) => {
+      if (skipped.get(key) === token) {
+        skipped.delete(key);
+        fail(scope, reason);
+      }
+    },
+  );
+}
+
+/**
+ * Calls the callback of an async effect, as `effect` does. Only its synchronous part, up to the
+ * first `await`, counts as running, so a write there does not run the effect again.
+ */
+export function enterEffect(
+  scope: Scope,
+  name: string,
+  callback: () => unknown,
+  client?: boolean,
+): Promise<unknown> {
+  const key = `${scope.id}:${name}`;
+  skipped.delete(key);
+  const outer = origin;
+  origin = key;
+  if (!client) {
+    runningEffects++;
+  }
+  try {
+    return Promise.resolve(callback());
+  } finally {
+    origin = outer;
+    if (!client) {
+      runningEffects--;
+    }
+  }
 }
 
 export function noop(): void {}

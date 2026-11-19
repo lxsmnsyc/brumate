@@ -2,13 +2,15 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { parseSync } from 'oxc-parser';
 import { CompileError, compile } from './compile.ts';
 import type { Diagnostic } from './model.ts';
 import { findError } from './error-catalog.ts';
 import { BrumateError, getLocation } from './error.ts';
 import { BRIDGE_EXPORT, scriptBridges } from './bridges.ts';
 import { collectSources, defaultExclude, findScripts } from './files.ts';
-import { resolveFromDisk } from './modules.ts';
+import { ModuleError, isReactiveModule, resolveFromDisk } from './modules.ts';
+import { findSignalImports, planModuleSignals } from './module-signals.ts';
 import type { BrumatePackage } from './packages.ts';
 import { findPackages, resolveComponentPackage } from './packages.ts';
 import { analyzeProjectProps } from './project.ts';
@@ -249,7 +251,60 @@ function typeCheck(root: string, tscBin?: string): { records: CheckRecord[]; not
   return { records };
 }
 
-/** Finds the calls of `bridge` in scripts that are not module-level exports. */
+/** The message of BRM208, for a signal that a plain file imports. */
+function signalImportMessage(name: string, specifier: string): string {
+  return `"${name}" is a signal of ${specifier}, and a file of plain code gets its store, not its value. Import it in a component, or read it in a function that the module exports`;
+}
+
+/**
+ * Finds the problems of module signals in a script file: a form that the top level of a module
+ * cannot take, and a signal that a plain file imports.
+ */
+function checkModuleSignals(source: string, file: string, root: string): CheckRecord[] {
+  const records: CheckRecord[] = [];
+  const name = toPosix(path.relative(root, file));
+  if (isReactiveModule(file)) {
+    if (!source.includes('brumate/signals')) {
+      return records;
+    }
+    try {
+      const program = parseSync(file, source, { lang: 'ts', preserveParens: false }).program;
+      planModuleSignals(program, source, false, file);
+    } catch (error) {
+      if (!(error instanceof ModuleError)) {
+        throw error;
+      }
+      const entry = findError(error.message);
+      const start = getLocation(source, error.offset);
+      records.push({
+        file: name,
+        range: { start, end: start },
+        severity: 'error',
+        message: error.message,
+        code: entry?.code ?? null,
+        link: entry?.link ?? null,
+        source: 'brumate',
+      });
+    }
+    return records;
+  }
+  for (const item of findSignalImports(source, file, resolveFromDisk)) {
+    const message = signalImportMessage(item.name, item.specifier);
+    const entry = findError(message);
+    records.push({
+      file: name,
+      range: { start: getLocation(source, item.start), end: getLocation(source, item.end) },
+      severity: 'error',
+      message,
+      code: entry?.code ?? null,
+      link: entry?.link ?? null,
+      source: 'brumate',
+    });
+  }
+  return records;
+}
+
+/** Finds the calls of `bridge` in scripts that are not module-level exports, and module signal problems. */
 async function checkScripts(root: string, paths: string[]): Promise<CheckRecord[]> {
   const files = new Set<string>();
   if (paths.length === 0) {
@@ -271,6 +326,7 @@ async function checkScripts(root: string, paths: string[]): Promise<CheckRecord[
   const records: CheckRecord[] = [];
   for (const file of files) {
     const source = readFileSync(file, 'utf8');
+    records.push(...checkModuleSignals(source, file, root));
     for (const { call, exported } of scriptBridges(source, file)) {
       if (exported === undefined) {
         const start = getLocation(source, call.start);
