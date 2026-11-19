@@ -1810,9 +1810,6 @@ class Analyzer {
     if (callback.params.length > 0) {
       this.report('error', `The callback of ${name} takes no parameters`, callback);
     }
-    if (callback.async) {
-      this.report('error', `The callback of ${name} cannot be async`, callback);
-    }
     if (name === '$effect') {
       if (call.arguments.length > 1) {
         this.report('error', '$effect takes one argument', call);

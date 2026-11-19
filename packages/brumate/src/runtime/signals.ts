@@ -108,14 +108,25 @@ export function $optimistic<T>(_source: T): T {
   return compileTimeOnly('$optimistic');
 }
 
-/** Runs a callback when the values it reads change, after the page resumes. Never on load. */
-export function $effect(_callback: () => void | (() => void)): void {
+/**
+ * What a callback of `$effect` or `$client` can return to clean up its run: a function, an async
+ * function, or an object with `[Symbol.dispose]` or `[Symbol.asyncDispose]`. The type says `object`
+ * for the disposables, since `Disposable` is in `esnext.disposable`, which a project may not have in
+ * its `lib`.
+ */
+export type Cleanup = (() => void | Promise<void>) | object;
+
+/**
+ * Runs a callback when the values it reads change, after the page resumes. Never on load. An
+ * `async` callback runs one at a time, and its cleanup waits for the run to settle.
+ */
+export function $effect(_callback: () => void | Cleanup | Promise<void | Cleanup>): void {
   compileTimeOnly('$effect');
 }
 
 /** Runs a callback in the browser when a trigger fires. */
 export function $client(
-  _callback: () => void | (() => void),
+  _callback: () => void | Cleanup | Promise<void | Cleanup>,
   _trigger?: 'visible' | 'idle' | 'load',
 ): void {
   compileTimeOnly('$client');

@@ -1,0 +1,24 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let count = $signal(0);
+</script>
+
+#try {
+  <button class="up" onClick=(() => count++)>{count}</button>
+  #if (count > 0) {
+    <script>
+      import { $effect } from 'brumate/signals';
+
+      $effect(async () => {
+        await Promise.resolve();
+        if (count === 2) {
+          throw new Error('Async effect at 2');
+        }
+      });
+    </script>
+    <p class="ok">{count}</p>
+  }
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

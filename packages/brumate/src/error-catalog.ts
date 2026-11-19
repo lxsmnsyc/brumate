@@ -660,12 +660,6 @@ const SCRIPT: ErrorEntry[] = [
     '$effect(() => {\n  document.title = title;\n});',
   ),
   entry(
-    'BRM096',
-    'The callback of {name} cannot be async',
-    'The callback of `$effect` or `$client` is `async`.',
-    '$effect(() => {\n  load(id).then((value) => (data = value));\n});',
-  ),
-  entry(
     'BRM097',
     '$effect takes one argument',
     '`$effect` has more than one argument.',

@@ -1241,18 +1241,6 @@ $effect(() => {
 });
 ```
 
-## BRM096: The callback of {name} cannot be async
-
-The callback of `$effect` or `$client` is `async`.
-
-https://brumate-docs.vercel.app/docs/errors#brm096
-
-```brm fragment
-$effect(() => {
-  load(id).then((value) => (data = value));
-});
-```
-
 ## BRM097: $effect takes one argument
 
 `$effect` has more than one argument.

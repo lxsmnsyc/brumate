@@ -33,7 +33,7 @@ The effect does work that markup cannot do: it calls `showModal()` and `close()`
 
 - An effect never runs when the page loads. Its first run is after the first change of a value it reads. The server already rendered the page with the current values, so there is nothing to catch up on.
 - It never runs on the server.
-- When it reads a memo that has no value yet, such as one the server still streams, that run is skipped, and the effect runs again when the value arrives, also when it reaches the memo through a function that a parent passed. An effect that needs the value in its own run uses `$resolve(memo).then(…)`, since an effect callback cannot be `async`. If the load fails, the error goes to the nearest [`#try`](./control-flow.md#try-and-catch). The cleanup of the previous run has already run when a run is skipped. See [reads while a memo is pending](./async-data.md#reads-while-a-memo-is-pending).
+- When it reads a memo that has no value yet, such as one the server still streams, that run is skipped, and the effect runs again when the value arrives, also when it reaches the memo through a function that a parent passed. An effect that needs the value in its own run is `async` and waits with `await $resolve(memo)`, as [Async effects](#async-effects) shows. A read of the memo before the first `await` skips the run. A read after an `await` that finds no value fails, and the error goes to the nearest `#try`. If the load fails, the error goes to the nearest [`#try`](./control-flow.md#try-and-catch). The cleanup of the previous run has already run when a run is skipped. See [reads while a memo is pending](./async-data.md#reads-while-a-memo-is-pending).
 - It can write signals. After a change, effects run after the page has updated, once each.
 - In a hidden [`#offscreen`](./control-flow.md#offscreen) body, it does not run. Its cleanup runs when the body hides, and it runs again when the body shows.
 
@@ -107,6 +107,29 @@ The callback can return a function. It runs before the next run of the effect, a
 Stopping writes `running`, so the effect runs again. Its cleanup clears the timer of the last run first.
 
 A value that only the cleanup reads is not a dependency. The effect does not run again when it changes, and the cleanup reads its latest value when it runs.
+
+### Async effects
+
+The callback of `$effect` and `$client` can be `async`. The setup that has to wait before it can return its cleanup needs no flag for a run that went stale:
+
+```ts
+$effect(async () => {
+  const connection = await connect(room);
+  return async () => await connection.close();
+});
+```
+
+The compiler calls `asyncEffect` for an `async` callback, so a page without one ships no code for it. Five rules hold:
+
+1. A run that goes stale while it is pending, because the effect runs again or its scope goes, cleans up as soon as it settles.
+2. One run at a time. The next run starts after the run before it and its cleanup have settled. Changes that come meanwhile make one run, which reads the values of that moment. So `connection` above is closed before the next `connect`.
+3. A scope that goes does not wait for a pending run. A closed `#if`, a hidden [`#offscreen`](./control-flow.md#offscreen) body or a page that navigation leaves calls the cleanup and goes on. When an `#offscreen` body shows again, its run waits for that cleanup, by rule 2.
+4. A rejection of the run or of its cleanup goes to the nearest [`#try`](./control-flow.md#try-and-catch), as a throw of a sync effect does.
+5. The cleanup is a function, an async function, or an object with `[Symbol.dispose]` or `[Symbol.asyncDispose]`, such as a `DisposableStack`. A sync effect takes the same forms. The ones that return a promise are what rule 2 waits for.
+
+Reads after an `await` are dependencies, as before it. A write after an `await` is outside the pass of the effects, so it makes its own pass, as a write after an `await` in a handler does. A `$client` callback runs once, so rule 2 matters for it only when a hidden `#offscreen` body shows again.
+
+The callback takes no parameters, so a stale run has no `AbortSignal`. It runs to its end, and its cleanup runs at once when it settles.
 
 ### Effects depend on the functions they call
 
