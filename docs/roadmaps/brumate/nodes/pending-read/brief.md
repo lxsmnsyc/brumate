@@ -1,7 +1,7 @@
 ---
 id: pending-read
 title: A browser render holds at a read of a property of a pending memo
-status: active
+status: done
 priority: must
 type: fix
 story:
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-12
-spent:
+spent: 520000
 owns: []
 shared:
   - packages/brumate/src/runtime/client/components.ts

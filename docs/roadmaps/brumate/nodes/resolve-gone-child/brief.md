@@ -1,7 +1,7 @@
 ---
 id: resolve-gone-child
 title: A browser render of ResolveGoneChild leaves a promise in a slot
-status: todo
+status: done
 priority: must
 type: fix
 story:
@@ -17,7 +17,7 @@ spike: false
 hypothesis:
 verify:
 exclusive: []
-fulfilled_by:
+fulfilled_by: pending-read
 gate: false
 added: 2026-11-19
 spent:
