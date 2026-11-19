@@ -1,7 +1,7 @@
 ---
 id: resume-test-races
 title: Resume tests that race, and a test of a skew reload
-status: active
+status: done
 priority: must
 type: fix
 story:
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-12
-spent:
+spent: 140000
 owns: []
 shared:
   - packages/brumate/src/runtime/bundles.ts

@@ -1,7 +1,7 @@
 ---
 id: ref-element-writes
 title: A ref in a list whose source reads it settles in a browser render
-status: active
+status: done
 priority: must
 type: fix
 story:
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-12
-spent:
+spent: 70000
 owns: []
 shared:
   - packages/brumate/src/runtime/client/updates.ts
