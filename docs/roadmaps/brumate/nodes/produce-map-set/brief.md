@@ -1,7 +1,7 @@
 ---
 id: produce-map-set
 title: $produce warns on, then drafts, maps and sets
-status: active
+status: done
 priority: must
 type: feature
 story:
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-12
-spent:
+spent: 231000
 owns:
   - packages/brumate/src/runtime/produce.ts
   - packages/brumate/test/produce.test.ts
