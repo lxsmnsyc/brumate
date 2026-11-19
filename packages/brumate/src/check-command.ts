@@ -70,7 +70,7 @@ function toPosix(file: string): string {
 }
 
 function fromDiagnostic(source: string, file: string, diagnostic: Diagnostic): CheckRecord {
-  const entry = diagnostic.severity === 'error' ? findError(diagnostic.message) : undefined;
+  const entry = findError(diagnostic.message);
   // A range at the end of the file stays in the file.
   const first = Math.min(diagnostic.range.start, source.length);
   const start = getLocation(source, first);

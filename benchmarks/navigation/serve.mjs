@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { createServer as createHttpServer } from 'node:http';
 import path from 'node:path';
 import { Readable } from 'node:stream';
+import { constants, createGzip, gzipSync } from 'node:zlib';
 import { pathToFileURL } from 'node:url';
 import { freePort, repo, startProcess } from '../../e2e/lib.mjs';
 
@@ -31,12 +32,16 @@ export async function serveStatic() {
   return { url, stop };
 }
 
+function accepts(request) {
+  return /\bgzip\b/.test(String(request.headers['accept-encoding'] ?? ''));
+}
+
 /**
  * The production build of an app behind its server: every page is rendered by `route`, as a
  * deployment with a server does, and the files of `dist/client` are served with a cache that never
  * expires, as a CDN does. There is no content security policy, which the numbers do not depend on.
  */
-export async function serveServer(root) {
+export async function serveServer(root, { gzip = false } = {}) {
   const client = path.join(root, 'dist/client');
   if (!existsSync(path.join(root, 'dist/server/server.js'))) {
     throw new Error(`${path.relative(repo, root)}/dist is missing. Run without --no-build.`);
@@ -70,7 +75,14 @@ export async function serveServer(root) {
             TYPES[path.extname(file)] ?? 'application/octet-stream',
           );
           response.setHeader('cache-control', 'public, max-age=31536000, immutable');
-          response.end(await readFile(file));
+          const body = await readFile(file);
+          if (gzip && accepts(request)) {
+            response.setHeader('content-encoding', 'gzip');
+            response.setHeader('vary', 'accept-encoding');
+            response.end(gzipSync(body));
+            return;
+          }
+          response.end(body);
           return;
         }
       }
@@ -90,8 +102,18 @@ export async function serveServer(root) {
           headers[name] = value;
         }
       }
+      const compress = gzip && accepts(request) && /text\/html/.test(headers['content-type'] ?? '');
+      if (compress) {
+        headers['content-encoding'] = 'gzip';
+        headers.vary = 'accept-encoding';
+      }
       response.writeHead(answer.status, headers);
-      if (answer.body) {
+      if (answer.body && compress) {
+        // Flush each chunk, so a streamed page still reaches the browser as it is written.
+        const zip = createGzip({ flush: constants.Z_SYNC_FLUSH });
+        zip.pipe(response);
+        Readable.fromWeb(answer.body).pipe(zip);
+      } else if (answer.body) {
         Readable.fromWeb(answer.body).pipe(response);
       } else {
         response.end();

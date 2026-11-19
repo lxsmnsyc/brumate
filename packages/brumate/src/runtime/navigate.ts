@@ -2,6 +2,8 @@
 // that never navigate do not load it.
 
 import { loadOnce } from './skew.ts';
+import { HAS_SCRIPTS } from './features.ts';
+import { startTransition } from './view-transitions.ts';
 import { trustedHTML, trustedScript } from './trusted.ts';
 import { TRACE } from './trace-flag.ts';
 import type { RequestTrace } from './trace-browser.ts';
@@ -55,12 +57,7 @@ async function transition(visit: Visit, update: () => void): Promise<void> {
   } else if (visit.push) {
     type = 'push';
   }
-  const types = [type];
-  // Browsers that have transitions without types take only a callback.
-  const started =
-    typeof ViewTransition !== 'undefined' && 'types' in ViewTransition.prototype
-      ? document.startViewTransition({ update, types })
-      : document.startViewTransition(update);
+  const started = startTransition(update, [type]);
   await started.updateCallbackDone;
 }
 
@@ -469,7 +466,10 @@ function pageNonce(): string | undefined {
 function runnable(script: HTMLScriptElement): HTMLScriptElement {
   const copy = document.createElement('script');
   for (const attribute of script.attributes) {
-    if (attribute.name !== 'nonce') {
+    if (HAS_SCRIPTS && attribute.name === 'src') {
+      // Under `require-trusted-types-for`, a script that the markup holds loads its file this way.
+      copy.setAttribute('src', trustedScript(attribute.value, true));
+    } else if (attribute.name !== 'nonce') {
       copy.setAttribute(attribute.name, attribute.value);
     }
   }
@@ -511,6 +511,16 @@ function append(nodes: Node[], shift: Shift | undefined): void {
 }
 
 /**
+ * The HTML of a head element, which says whether the new page has the same one. The nonce is left
+ * out: each response has its own, and the browser hides the one of the loaded page.
+ */
+function headHTML(element: Element): string {
+  return HAS_SCRIPTS
+    ? element.outerHTML.replace(/^(<[^>]*?) nonce="[^"]*"/, '$1')
+    : element.outerHTML;
+}
+
+/**
  * Makes the head of the page match the new one, keeping elements that are in both.
  * Returns the scripts that ask to run again, which the caller adds once the body is in place.
  */
@@ -518,12 +528,12 @@ function updateHead(next: Document): HTMLScriptElement[] {
   const rerun: HTMLScriptElement[] = [];
   const keep = new Map<string, Element>();
   for (const element of document.head.children) {
-    keep.set(element.outerHTML, element);
+    keep.set(headHTML(element), element);
   }
   // A copy, because adopting an element removes it from the live list.
   // oxlint-disable-next-line unicorn/no-useless-spread
   for (const element of [...next.head.children]) {
-    const html = element.outerHTML;
+    const html = headHTML(element);
     if (element.matches('script[data-rerun]')) {
       // Never kept: the old copy leaves and a new one runs after the body.
       rerun.push(element as HTMLScriptElement);

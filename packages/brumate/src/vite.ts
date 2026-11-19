@@ -40,7 +40,7 @@ import {
   serverStubs,
 } from './server-files.ts';
 import type { CompileOptions, CompileResult } from './compile.ts';
-import { getLocation } from './error.ts';
+import { getLocation, withCode } from './error.ts';
 import { functionId, getComponentName, hash } from './plan.ts';
 import { analyzeProject, importedComponents, resolveRelative } from './project.ts';
 import {
@@ -2554,7 +2554,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
       for (const warning of isClient && !params.has('part') ? result.warnings : []) {
         const { line, column } = getLocation(source, warning.range.start);
-        this.warn(`${warning.message} (${getFileName(file)}:${line}:${column})`);
+        this.warn(`${withCode(warning.message)} (${getFileName(file)}:${line}:${column})`);
       }
       const part = params.get('part');
       let code: string;

@@ -1,0 +1,10 @@
+#head {
+  <script src="https://third-party.test/plain.js"></script>
+  <script src="https://third-party.test/idle.js" trigger="idle"></script>
+  <script src="https://third-party.test/two.js" trigger="idle"></script>
+  <script src="https://third-party.test/rerun.js" data-rerun></script>
+}
+
+<h1>Two</h1>
+<script src="https://third-party.test/block.js"></script>
+<p class="two">Page two</p>

@@ -1,0 +1,33 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { transition } from 'brumate/events';
+
+  let items = $signal([1, 2, 3, 4]);
+  let next = 5;
+
+  function reverse() {
+    items = items.toReversed();
+  }
+  function add() {
+    items = [...items, next++];
+  }
+  function remove() {
+    items = items.slice(1);
+  }
+</script>
+
+<h1>List</h1>
+<button class="reverse" onClick=(transition(reverse))>Reverse</button>
+<button class="add" onClick=(transition(add))>Add</button>
+<button class="remove" onClick=(transition(remove))>Remove</button>
+<button class="plain" onClick=(reverse)>Reverse, no transition</button>
+
+<ul>
+  #for (item of items by item) {
+    <li viewTransition="item" class="item" data-id={item}>Item {item}</li>
+  }
+</ul>
+
+<div class="hero" viewTransitionName="hero" style="width: 120px; height: 80px; background: teal"></div>
+<div class="space" style="height: 4000px">Scroll down</div>
+<p class="far" viewTransition="far">Far below</p>

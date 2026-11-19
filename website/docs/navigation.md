@@ -82,20 +82,52 @@ To turn client navigation off for the whole site, set `navigate: false` in the p
 
 ## Scripts in the head
 
-A script in the head runs when the page loads. A client navigation keeps the scripts that the next page has too, with the same HTML, and does not run them again. Add `data-rerun` to a script that must run after every navigation to a page that has it, such as one that reads state of the page:
+A script in the head runs when the page loads. A client navigation keeps the scripts that the next page has too, with the same HTML, and does not run them again. The nonce of the response is not part of that HTML. Add `data-rerun` to a script that must run after every navigation to a page that has it, such as one that reads state of the page:
 
 ```brm
-<head>
-  {raw(`<script data-rerun>document.documentElement.dataset.visits = String(Number(localStorage.visits || 0) + 1)</script>`)}
-</head>
+#head {
+  <script inline data-rerun>
+    document.documentElement.dataset.visits = String(Number(localStorage.visits || 0) + 1);
+  </script>
+}
 ```
 
-- The script is written inside an HTML string, since `<script>` is not markup in a `.brm` file. `raw()` sends it as it is.
+- `inline` marks code that is written in the file. The compiler does not read it, so `<`, `{` and `}` stay as written. It ends at `</script>`.
 - It runs once per navigation, after the new body is in the page, so it reads the new body and the new URL. It is added at the end of the head.
 - A page without the script removes it, as for any other head element.
 - A script with `src` is requested again from the cache, and runs when it loads. Two such scripts run in no fixed order. A module script does not run again, because the browser keeps modules by URL.
 - The first load of the site runs head scripts as the browser does, with or without the attribute.
 - Scripts without the attribute keep their behavior.
+
+## Scripts of other sites
+
+A script of another site, such as analytics, a chat widget or the loader of a tag manager, is often the heaviest code of a page. `trigger` says when it loads, so it does not undo what resume saves:
+
+```brm
+#head {
+  <script src="https://cdn.example.com/chat.js" trigger="idle"></script>
+}
+
+<script inline trigger="interaction">
+  window.dataLayer = window.dataLayer || [];
+</script>
+```
+
+| `trigger`     | The script loads                                                                     |
+| ------------- | ------------------------------------------------------------------------------------ |
+| `idle`        | when the browser is idle, as `requestIdleCallback` says                              |
+| `visible`     | when the element after it comes into view. Not in `#head`, where no element follows. |
+| `interaction` | at the first `pointerdown`, `keydown`, `touchstart` or `scroll`                      |
+| `load`        | at once, when the page or the block that holds it is in place                        |
+
+- `<script src="…">` loads a file. `<script inline>` holds code of the file, as written. A script with both, or a `src` script with code inside, is an error.
+- Without `trigger`, a script in `#head` is a `<script>` element and runs as HTML does, also with JS off. Every other script, with a trigger or without, is written as `<template b-script="…">` (`load` when there is no trigger, so it also works in a block that the browser opens) and the loader makes the script. Without the loader, such a script does not run, so with JS off only the scripts of `#head` without a trigger run.
+- `visible` watches the element after the script. When none follows it, or the browser has no `IntersectionObserver`, the script loads at once.
+- A page runs a script once, by its resolved `src`, or by the text of an inline script. A second one in another block, or on another page after a client navigation, does nothing. A page that a navigation brings and that has a new script starts it at its trigger.
+- Other attributes pass on as written: `async`, `defer`, `type="module"`, `integrity`, `crossorigin`, `referrerpolicy` and `data-*`. They can be expressions, as on any element. `trigger` is a plain string. `trigger` and `data-rerun` do not go together.
+- The script gets the nonce of the page. Under `require-trusted-types-for 'script'`, the loader passes the `src` and the code through the `brumate` policy, so `trusted-types brumate` is enough.
+- A script of another site is outside what brumate checks. Add `integrity` and `crossorigin` to a file that you can pin. See [Security](./reference-security.md).
+- A build whose pages have no script in markup has none of the code for it.
 
 ## Navigating from code
 
@@ -257,3 +289,26 @@ header {
 ```
 
 In a browser without view transitions, the page changes at once.
+
+### Marking elements
+
+Two attributes mark an element for a transition, in a navigation with `transition: true` and in a handler wrapped in `transition()`:
+
+- `viewTransition="card"` is a class of the element, which CSS matches as `::view-transition-group(.card)`. The core gives the element a name of its own, `card-<n>`. An element that a keyed `#for` moves keeps its name and slides, a new one fades in and a removed one fades out.
+- `viewTransitionName=(expr)` is the name, to pair an element of one page with the element of the next one.
+
+```brm
+<img viewTransition="photo" viewTransitionName=(`photo-${photo.id}`) src={photo.src}>
+```
+
+With the same `viewTransitionName` on the list page and on the detail page, the picture moves from one to the other when a link navigates between them.
+
+- Names exist only while a transition runs. The core sets `view-transition-name` and `view-transition-class` on the marked elements just before it, and removes them when the transition finishes, also when it is skipped or the update throws. The HTML has no `view-transition-*` style, so a marked element takes part only in a transition of brumate.
+- Only elements in view are named, before and after the change. An element that comes from far off screen fades in, and one that leaves to far off screen fades out.
+- Two elements of the page with one name make the browser skip the transition. The core names the first and leaves the second without one, and warns in development.
+- A transition of a handler does not start with `prefers-reduced-motion`. A navigation does not check it, so switch the animation off in CSS as above.
+- A name is a CSS identifier. The core escapes it, so an ID such as `5` or a name with a space works, and the same value pairs on both pages. `none`, `auto` and the keywords of CSS are not names: the element gets none, and development warns with the element.
+- A prop that a wrapper passes on with `{...rest}` marks the element too: `<Card viewTransition="card" />` reaches the `<div {...rest}>` of `Card`. The file that writes the attribute turns the feature on for the app. A spread of data that no file writes as `viewTransition`, such as an object from a server, does not turn it on.
+- The core sets the name as an inline style, so a `style=(…)` binding of the same element that updates during the transition can drop it. Give the name through `viewTransitionName` and keep the rest in the style.
+- A transition that starts while another one runs shares the names of the elements that they both mark, and the end of the first leaves them for the second.
+- A page that marks no element carries none of this code.

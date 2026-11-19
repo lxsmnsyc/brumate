@@ -53,6 +53,23 @@ export interface ElementNode extends Range {
   tag: string;
   attributes: Attribute[];
   children: Markup[];
+  /** For a `<script src>` or `<script inline>` in markup. */
+  script?: ScriptMark;
+}
+
+/** When a script of markup runs, as its `trigger` writes it. */
+export type ScriptTrigger = 'idle' | 'visible' | 'interaction' | 'load';
+
+/**
+ * The marks of a `<script>` in markup. Its `trigger` and `inline` attributes stay in
+ * `attributes`, so the type check reads them, and the render leaves them out. An `inline`
+ * script has one text child, which is code that the compiler does not read.
+ */
+export interface ScriptMark {
+  trigger: ScriptTrigger | undefined;
+  inline: boolean;
+  /** True inside `#head`, where a script without a trigger is an element that runs as it is. */
+  head: boolean;
 }
 
 export interface ComponentNode extends Range {

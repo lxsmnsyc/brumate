@@ -204,5 +204,11 @@
   "BRM204": "Declare a gated value with \"const name = $gate(value, (prev, next) => boolean)\" at the top level of a script",
   "BRM207": "#reveal has no style of its own",
   "BRM208": "\"{name}\" is a signal of {module}, and a file of plain code gets its store, not its value. {fix}",
-  "BRM211": "{name} cannot be compiled in a module{reason}. {fix}"
+  "BRM209": "\"{name}\" is written only by this effect. Use {form}",
+  "BRM211": "{name} cannot be compiled in a module{reason}. {fix}",
+  "BRM212": "A <script> with src is not inline. Give it src or inline, not both",
+  "BRM213": "A <script> with src has no code inside. Write the code in <script inline>",
+  "BRM214": "The trigger of a <script> is a plain string: idle, visible, interaction or load",
+  "BRM215": "A script in #head cannot wait to be visible, since no element follows it. Use idle or interaction",
+  "BRM216": "A script with a trigger runs once per page, so data-rerun does not apply. Remove one of them"
 }
