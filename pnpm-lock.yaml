@@ -286,7 +286,7 @@ importers:
         version: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1)
       vitest:
         specifier: ^5.0.4
-        version: 5.0.5(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
 
   examples/kit-app:
     dependencies:
@@ -314,7 +314,7 @@ importers:
         version: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1)
       vitest:
         specifier: ^5.0.4
-        version: 5.0.5(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
 
   examples/nitro:
     dependencies:
@@ -339,7 +339,7 @@ importers:
         version: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1)
       vitest:
         specifier: ^5.0.4
-        version: 5.0.5(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
 
   examples/todos:
     dependencies:
@@ -364,7 +364,7 @@ importers:
         version: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1)
       vitest:
         specifier: ^5.0.4
-        version: 5.0.5(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
 
   examples/tracker:
     dependencies:
@@ -389,7 +389,7 @@ importers:
         version: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1)
       vitest:
         specifier: ^5.0.4
-        version: 5.0.5(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
 
   examples/ui:
     dependencies:
@@ -432,7 +432,7 @@ importers:
         version: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1)
       vitest:
         specifier: ^5.0.4
-        version: 5.0.5(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
 
   packages/brumate:
     dependencies:
@@ -467,6 +467,12 @@ importers:
         specifier: ^1.8.0
         version: 1.8.0(seroval@1.8.0)
     devDependencies:
+      '@opentelemetry/api':
+        specifier: ^1.10.0
+        version: 1.10.0
+      '@opentelemetry/sdk-trace-base':
+        specifier: ^2.12.0
+        version: 2.12.1(@opentelemetry/api@1.10.0)
       '@oxc-project/types':
         specifier: ^0.154.0
         version: 0.154.0
@@ -499,7 +505,7 @@ importers:
         version: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1)
       vitest:
         specifier: ^5.0.4
-        version: 5.0.5(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
 
   packages/language-core:
     dependencies:
@@ -555,7 +561,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.4
-        version: 5.0.5(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
 
   packages/tsc:
     dependencies:
@@ -583,7 +589,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.4
-        version: 5.0.5(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
 
   packages/typescript-plugin:
     dependencies:
@@ -633,7 +639,7 @@ importers:
         version: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1)
       vitest:
         specifier: ^5.0.4
-        version: 5.0.5(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
 
   packages/vscode:
     devDependencies:
@@ -669,7 +675,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.4
-        version: 5.0.5(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
       vscode-oniguruma:
         specifier: ^2.0.1
         version: 2.0.1
@@ -739,7 +745,7 @@ importers:
         version: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1)
       vitest:
         specifier: ^5.0.4
-        version: 5.0.5(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
+        version: 5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
 
 packages:
 
@@ -1218,6 +1224,38 @@ packages:
   '@nodelib/fs.walk@1.2.8':
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
+
+  '@opentelemetry/api@1.10.0':
+    resolution: {integrity: sha512-lMkyes8iHrG+mk6WH7X70MdCLI2RS0FwNBY1PyQ8UemaijE2m5mv5A0Niy3HtbYTFrgkUEQjFMXmSAk2hQDuPQ==}
+    engines: {node: '>=8.0.0'}
+
+  '@opentelemetry/core@2.12.1':
+    resolution: {integrity: sha512-3hr6Pj0/G0oVgIGb97IVcw9BjZ6eudonKjrmQxw7JquyU/XmVbJelkmyoU0sT/OvHGkv+r1tcrwv8MbSX7aKHw==}
+    engines: {node: ^18.19.0 || >=20.6.0}
+    peerDependencies:
+      '@opentelemetry/api': '>=1.0.0 <1.10.0'
+
+  '@opentelemetry/resources@2.12.1':
+    resolution: {integrity: sha512-IwrNcuLCvnJAnNLkXxx0Uw+rjBkVW6VGQrhd7PanNf0LavOzkTk9sDAjdqegM7p/VdxefNRrii6d+wBRJfz35g==}
+    engines: {node: ^18.19.0 || >=20.6.0}
+    peerDependencies:
+      '@opentelemetry/api': '>=1.3.0 <1.10.0'
+
+  '@opentelemetry/sdk-trace-base@2.12.1':
+    resolution: {integrity: sha512-CMrcqFxTikYmYQCuHToBO4kQvWIseRk2ztzWidTd7VutIxj1rljvJZCZnFPJEGNOS7FvaSmRL21Jeuu3/wrCAQ==}
+    engines: {node: ^18.19.0 || >=20.6.0}
+    peerDependencies:
+      '@opentelemetry/api': '>=1.3.0 <1.10.0'
+
+  '@opentelemetry/sdk-trace@2.12.1':
+    resolution: {integrity: sha512-vANdmCYnn+Ka/alBKxwICMl4Koa+aQBlRC9zAZy+Ig1Obbo3RZt2oiyv+8/gET5rrBBYrO3YniPcXfwZrN01rg==}
+    engines: {node: ^18.19.0 || >=20.6.0}
+    peerDependencies:
+      '@opentelemetry/api': '>=1.3.0 <1.10.0'
+
+  '@opentelemetry/semantic-conventions@1.45.0':
+    resolution: {integrity: sha512-aOP45mbcOKbQVvFWfQmgoOPT8R2iwbbbgl83k4CujGV9BrJhFr3qG55MFpwFs4YLabpuW3HhzUY9eQxPlDqaZw==}
+    engines: {node: '>=14'}
 
   '@oxc-parser/binding-android-arm-eabi@0.144.0':
     resolution: {integrity: sha512-IaoGBEp/huvja99PxI/b72TbKFzA/UzxxAka7f233dc/Tg/rRTX9Qn8IquFLWwWf4IddN/5TaJ8S4Subbjq7wQ==}
@@ -4067,21 +4105,11 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
-  seroval-plugins@1.7.0:
-    resolution: {integrity: sha512-WM4rArfPtLZriTuxC5DBvNulEwAaRcjNe/dkMOEesOcuvXf5nEwKf5Bw3AT92WHohqcc45+57GdtsCuBTI0mjw==}
-    engines: {node: '>=20'}
-    peerDependencies:
-      seroval: ^1.0
-
   seroval-plugins@1.8.0:
     resolution: {integrity: sha512-96vBb12rDvPPwdKUgWw1op3fGq8AVBFOr0IllbnM72yR5J9WWXF18cQ4g1XfDO7HCyh2dt70P3XdtyRayP8FWg==}
     engines: {node: '>=20'}
     peerDependencies:
       seroval: ^1.8.0
-
-  seroval@1.7.0:
-    resolution: {integrity: sha512-FU+LUkmDzWNsJ6oubZFN3dGPKny53DRhPJG6nftEaXDL8MIn19+kEE1Gvc+63Go+qPOwVUlKIdKhsu2HN6tksw==}
-    engines: {node: '>=20'}
 
   seroval@1.8.0:
     resolution: {integrity: sha512-W5N4cMPc58lypAsScCmhGTyZxNZ6gPHvLHtMqtyvDFpfyNDsH1QjU0nI9Lr34+Q5ZLPsWeqOhkgTY5XtaPVQ4A==}
@@ -5148,6 +5176,36 @@ snapshots:
     dependencies:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.3
+
+  '@opentelemetry/api@1.10.0': {}
+
+  '@opentelemetry/core@2.12.1(@opentelemetry/api@1.10.0)':
+    dependencies:
+      '@opentelemetry/api': 1.10.0
+      '@opentelemetry/semantic-conventions': 1.45.0
+
+  '@opentelemetry/resources@2.12.1(@opentelemetry/api@1.10.0)':
+    dependencies:
+      '@opentelemetry/api': 1.10.0
+      '@opentelemetry/core': 2.12.1(@opentelemetry/api@1.10.0)
+      '@opentelemetry/semantic-conventions': 1.45.0
+
+  '@opentelemetry/sdk-trace-base@2.12.1(@opentelemetry/api@1.10.0)':
+    dependencies:
+      '@opentelemetry/api': 1.10.0
+      '@opentelemetry/core': 2.12.1(@opentelemetry/api@1.10.0)
+      '@opentelemetry/resources': 2.12.1(@opentelemetry/api@1.10.0)
+      '@opentelemetry/sdk-trace': 2.12.1(@opentelemetry/api@1.10.0)
+      '@opentelemetry/semantic-conventions': 1.45.0
+
+  '@opentelemetry/sdk-trace@2.12.1(@opentelemetry/api@1.10.0)':
+    dependencies:
+      '@opentelemetry/api': 1.10.0
+      '@opentelemetry/core': 2.12.1(@opentelemetry/api@1.10.0)
+      '@opentelemetry/resources': 2.12.1(@opentelemetry/api@1.10.0)
+      '@opentelemetry/semantic-conventions': 1.45.0
+
+  '@opentelemetry/semantic-conventions@1.45.0': {}
 
   '@oxc-parser/binding-android-arm-eabi@0.144.0':
     optional: true
@@ -6269,8 +6327,8 @@ snapshots:
       oxc-parser: 0.154.0
       postcss: 8.5.31
       postcss-selector-parser: 7.1.6
-      seroval: 1.7.0
-      seroval-plugins: 1.7.0(seroval@1.7.0)
+      seroval: 1.8.0
+      seroval-plugins: 1.8.0(seroval@1.8.0)
     optionalDependencies:
       less: 4.9.1(supports-color@7.2.0)
       sass: 1.105.2
@@ -7586,15 +7644,9 @@ snapshots:
 
   semver@7.8.5: {}
 
-  seroval-plugins@1.7.0(seroval@1.7.0):
-    dependencies:
-      seroval: 1.7.0
-
   seroval-plugins@1.8.0(seroval@1.8.0):
     dependencies:
       seroval: 1.8.0
-
-  seroval@1.7.0: {}
 
   seroval@1.8.0: {}
 
@@ -7929,7 +7981,7 @@ snapshots:
       sass: 1.105.2
       yaml: 2.9.1
 
-  vitest@5.0.5(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1)):
+  vitest@5.0.5(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1)):
     dependencies:
       '@types/chai': 5.2.3
       '@vitest/mocker': 5.0.5(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
@@ -7946,6 +7998,7 @@ snapshots:
       vite: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1)
       why-is-node-running: 3.2.1
     optionalDependencies:
+      '@opentelemetry/api': 1.10.0
       '@types/node': 24.19.2
       happy-dom: 20.14.6
     transitivePeerDependencies:
