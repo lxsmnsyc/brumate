@@ -1,7 +1,7 @@
 ---
 id: head-nonce-keep
 title: Client navigation keeps head elements that carry a CSP nonce
-status: todo
+status: active
 priority: must
 type: fix
 story:
