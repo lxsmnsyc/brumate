@@ -1,7 +1,7 @@
 ---
 id: style-files
 title: Component CSS as Vite stylesheets in builds
-status: active
+status: done
 priority: must
 type: story
 story:
