@@ -260,11 +260,7 @@
       "id": "O1",
       "kind": "rebuttal",
       "axis": "time",
-      "answers": [
-        "P1",
-        "P2",
-        "P5"
-      ],
+      "answers": ["P1", "P2", "P5"],
       "text": "A synthetic partial built from the prerendered pages (new head entries, the changed route region, the state record without the layout entries) is 18.7 KB gzip for /docs/context (38% less than 30.4 KB) and 24.1 KB for /ui/dialog (32% less than 35.7 KB). That is not the 15 to 16 KB (50 to 54%) of P1/P2/P5 and it misses the 40% gate on the ui pair; with brotli it is 42% and 37%. Keeping the whole state record gives 35% and 31%.",
       "estimate": {
         "value": 32,
@@ -282,10 +278,7 @@
       "id": "O2",
       "kind": "rebuttal",
       "axis": "time",
-      "answers": [
-        "P1",
-        "P5"
-      ],
+      "answers": ["P1", "P5"],
       "text": "P1 puts head and state at 4 to 5 KB and says the 10.9 KB state record is mostly kept layouts. Measured the other way: the new route needs only 7 new head tags (0.26 KB gzip), but the state record is about 96% route entries: the layout entries are 2.4 KB raw of 72 KB, so the new route still needs about 10 KB gzip of state (13.5 KB for ui). The spike will see its gate fail on the state record, not the head.",
       "estimate": {
         "value": 10,
@@ -304,9 +297,7 @@
       "kind": "cost",
       "axis": "device",
       "severity": "medium",
-      "answers": [
-        "P2"
-      ],
+      "answers": ["P2"],
       "text": "Routes-only static files add about 74% (docs) to 83% (ui) of the raw size of each page on top of the full page. The website has 117 prerendered pages with 30.3 MB of HTML, so P2 adds roughly 23 MB of deploy output, and the build writes each page twice, on a machine with 13 GB free of 228 GB at 94% use. Every page needs both files kept in step with the contract.",
       "estimate": {
         "value": 23,
@@ -325,9 +316,7 @@
       "kind": "risk",
       "axis": "time",
       "severity": "medium",
-      "answers": [
-        "P1"
-      ],
+      "answers": ["P1"],
       "text": "A second response shape on the same URL selected by a header is a known cache hazard. Next.js adds an `_rsc` search param to every router request \"for CDNs that don't support custom headers... rather than relying on Vary\", and htmx users get the fragment on reopen-tab and reload (issues 724, 497). Brumate already varies on x-brumate-base; Q1 B (private) avoids shared caches but not the browser history cache, and it removes any CDN hit for navigation responses. Likelihood medium; the fix is option C (a separate URL), which is a larger change than P1 states.",
       "evidence": {
         "type": "prior-art",
@@ -342,9 +331,7 @@
       "kind": "cost",
       "axis": "tokens",
       "severity": "high",
-      "answers": [
-        "P3"
-      ],
+      "answers": ["P3"],
       "text": "P3 spends about 2.4M tokens over 5 nodes (4 L or M builds plus spike) for a measured 32 to 38% gzip saving. The server still runs every kept layout (brief decision 2), so the server-mode wait (32 to 46 ms of the 61 to 125 ms) does not shrink, and the bytes cross localhost in the baseline. The read, parse and swap share (39 to 67 ms) is the only part that can fall, and the baseline did not isolate how much of it is the layout DOMParser work. The gate measures bytes while the acceptance asks for \"no slower swap\"; no number links the two.",
       "estimate": {
         "value": 2.4,
@@ -392,12 +379,7 @@
       "id": "O8",
       "kind": "rebuttal",
       "axis": "time",
-      "answers": [
-        "O1",
-        "P1",
-        "P2",
-        "P5"
-      ],
+      "answers": ["O1", "P1", "P2", "P5"],
       "text": "On a release/0.9 build the synthetic partial is 20.1 to 21.0 KB gzip for /docs/context (36.7% to 39.6% fewer than 33.2 KB) and 26.2 to 26.9 KB for /ui/dialog (37.8% to 39.4% fewer than 43.2 KB); the low figure drops the layout entries from the state, the high one keeps all state. Brotli gives 40.8% to 43.9% and 41.9% to 43.9%. This replaces O1: the gate of 40% gzip is missed by 0.4 to 3 points on both pairs and cleared only with brotli. The claimed 50 to 54% (P1, P2, P5) is still out of reach.",
       "estimate": {
         "value": 37,
@@ -415,11 +397,7 @@
       "id": "O9",
       "kind": "rebuttal",
       "axis": "time",
-      "answers": [
-        "O2",
-        "P1",
-        "P5"
-      ],
+      "answers": ["O2", "P1", "P5"],
       "text": "O2 holds on release/0.9: the new route needs 7 head tags (259 B and 219 B gzip) but state of 10.9 KB gzip (docs) and 14.4 KB (ui) of which the layout entries are about 2.4 KB raw. A partial must still send about 10 KB of state, so the state record and not the head decides the gate. Region gzip is 10.5 KB (docs) and 12.7 KB (ui), equal to J3.",
       "estimate": {
         "value": 10.9,
@@ -438,10 +416,7 @@
       "kind": "cost",
       "axis": "device",
       "severity": "medium",
-      "answers": [
-        "O3",
-        "P2"
-      ],
+      "answers": ["O3", "P2"],
       "text": "On release/0.9 the routes-only static files are 70% (docs, 136.5 of 193.8 KB) to 76% (ui, 244.7 of 323.9 KB) of the raw size of a page. The website has 117 prerendered pages and 33.8 MB of HTML, so P2 adds about 24 MB of deploy output. This replaces the 23 MB of O3.",
       "estimate": {
         "value": 24,
@@ -459,9 +434,7 @@
       "id": "O11",
       "kind": "alternative",
       "axis": "tokens",
-      "answers": [
-        "O6"
-      ],
+      "answers": ["O6"],
       "text": "On release/0.9 the state dedupe is smaller than O6 said: 58.7 KB of the docs state record and 106.5 KB of the ui record repeat text already in the HTML, which cuts the full response by 21.7% gzip (33.2 to 26.0 KB, docs) and 18.3% (43.2 to 35.3 KB, ui), and 12.1% and 12.3% brotli. It still needs no new header or response shape and one M node (about 0.3M tokens), but alone it does not reach 40%. This replaces O6.",
       "estimate": {
         "value": 18,
@@ -481,12 +454,7 @@
       "by": "proponent",
       "kind": "concession",
       "text": "Dropped: the static routes-only files (P2, A1), the 50 to 54% claim of P1 and P5, and the plan to ship partial first. O10 measured 24 MB more deploy output for the website, O8 measured 36.7 to 39.6% for a partial alone, and O9 measured that the new route needs about 96% of the state.",
-      "answers": [
-        "P1",
-        "P2",
-        "P5",
-        "A1"
-      ],
+      "answers": ["P1", "P2", "P5", "A1"],
       "why": "O8, O9 and O10 are measured on release/0.9 and the partial alone misses the 40% gate; the static website then gets no partial, only whatever helps the full page"
     },
     "P7": {
@@ -557,10 +525,7 @@
       "kind": "risk",
       "axis": "time",
       "severity": "high",
-      "answers": [
-        "P7",
-        "P8"
-      ],
+      "answers": ["P7", "P8"],
       "text": "The dedupe script blanks any long state string whose text is in the HTML; it does not check that resume never reads it. In DocPage.brm the loop `#for (part, index of page.parts by index)` renders `{part.html}` from `page = pages[slug]`, and `slug` is a prop. State records exist so the browser can re-run a block (a changed prop, `#key`, a `#loading` reload, a refresh), and a block that re-runs with \"\" would render empty prose. A safe dedupe needs the compiler to prove that the value only reaches a one-time raw insert whose DOM is already there, or the client must read it back from the DOM, whose serialization differs from the string (entities, attribute order). That is a compiler analysis, larger than the M node P7 and P10 assume. Likelihood of a silent blank render without it: high for any page that updates a prop.",
       "evidence": {
         "type": "source",
@@ -575,9 +540,7 @@
       "kind": "risk",
       "axis": "time",
       "severity": "medium",
-      "answers": [
-        "P8"
-      ],
+      "answers": ["P8"],
       "text": "A constant marker query parameter does not cure O4. The partial body depends on x-brumate-keep and x-brumate-base, so two clients at the same marker URL need different bodies, and a CDN that drops Vary stores the first. Next.js knows this: its `_rsc` value is a hash of the prefetch, segment-prefetch, router-state-tree and next-url headers. A hashed parameter makes a URL per client state, which is a shared cache that never hits, the same result as Q1 B (private). So the marker only adds URL churn and a strip step in the server; the safety comes from `cache-control: private`, and the history-cache case is covered only if the marker is in the URL of every partial fetch.",
       "evidence": {
         "type": "prior-art",
@@ -592,9 +555,7 @@
       "kind": "risk",
       "axis": "time",
       "severity": "low",
-      "answers": [
-        "P8"
-      ],
+      "answers": ["P8"],
       "text": "The combined script cuts the layout entries by position, and a route entry reads a reference that only the dropped part assigns: in the /docs/context record the route part uses `$R[8]` (the params object), which the layout part assigns, and `$R` numbers are per render. A real partial must renumber or resend, and the client must keep its layouts' state (assumed by P8). The cost is small, so the margin stays: all state kept adds about 0.7 to 0.95 KB gzip (O8: 21.0 against 20.1 KB docs), which puts P8 near 13.9 KB (46% against the deduped page) and 19 KB for ui, still above 40%. The risk is correctness of the reference scheme, not the number.",
       "estimate": {
         "value": 0.9,
@@ -613,11 +574,7 @@
       "kind": "cost",
       "axis": "time",
       "severity": "high",
-      "answers": [
-        "P9",
-        "P8",
-        "P10"
-      ],
+      "answers": ["P9", "P8", "P10"],
       "text": "The saving that P8 buys is 13 KB per click, about 12 ms on Fast 4G (P9's own arithmetic), and the server wait does not shrink because kept layouts still run (brief decision 2). The harness record says a change under 15 ms or 25% is not visible in its data (medians trusted to about 20%), so the throttled swap-time half of the P9 gate cannot show a 12 ms effect: it will read \"not worse\" by noise, and the byte gate decides alone. The gate is therefore the byte gate P9 meant to replace, and the 2.1M tokens after the spike buy a 12 to 65 ms gain on links where the page already waits one round trip.",
       "estimate": {
         "value": 12,
@@ -635,10 +592,7 @@
       "id": "O16",
       "kind": "alternative",
       "axis": "tokens",
-      "answers": [
-        "P8",
-        "P10"
-      ],
+      "answers": ["P8", "P10"],
       "text": "Settle on P7 plus today's full swap, and park the partial story (spike and 2.1M tokens) until an app with a server asks for it: P6 concedes the static website gets nothing from a partial, and the only apps that do are examples/nitro and examples/kit-app. P8 adds render paths (partial server, silent layouts, client apply, and the full-page fallback of 8 cases listed in the brief), each with tests, for 12 to 65 ms. Do the dedupe, measure the deduped page on the throttled link (the missing measurement of O7), and restart the spike from that number if it shows a wait that a person notices.",
       "estimate": {
         "value": 0.3,
@@ -658,11 +612,7 @@
       "by": "proponent",
       "kind": "concession",
       "text": "Conceded: the partial story is parked, and the full swap stays as the navigation model, with the component router out (P4). What changed my mind: O15 puts the 13 KB saved per click at 12 to 65 ms, below what the harness can see, for about 2.1M tokens; O13 and O14 add a cache fix that is private only and a reference scheme ($R renumbering) to build; and P6 already gave up the static website, the only measured app. The story restarts from a throttled run of the deduped page, as O16 says, or when an app with a server asks.",
-      "answers": [
-        "P8",
-        "P9",
-        "P10"
-      ],
+      "answers": ["P8", "P9", "P10"],
       "why": "O13, O14, O15 and O16 upheld; the saving is real in bytes but not shown to change what a person waits for, and the measured app is static"
     },
     "P12": {

@@ -10,17 +10,17 @@
 
 The story brief has no Acceptance list. Its Goal and Why are checked here.
 
-| Item | Result | Evidence |
-| --- | --- | --- |
-| CSS of components goes through Vite's CSS pipeline into cacheable `.css` assets in a build | pass | `style-files.test.ts` "is in the stylesheets of the bundles"; hints name them |
-| No `$$css` string in modules, no component `<style>` in pages as the only copy | pass | "is in no module of the client build, and in no `$$css` of the server build"; the page holds inline `<style b-style>` on purpose (first paint) |
-| Dev keeps inline `<style>` and the `textContent` swap | pass | `style-files-postcss.test.ts` dev render and hot update tests; `liveBlocks` unchanged |
-| Page no longer sends CSS twice | partial | CSS leaves the JS; the page still carries it inline and in the bundle sheet by design (inline outcome, Gotchas) |
-| Project PostCSS, Lightning CSS and targets run on `.brm` styles | pass | `style-files-postcss.test.ts` (PostCSS, Lightning CSS, dev, relative base) |
-| Order of equal-specificity rules does not depend on the route taken | pass | "writes each component once in the head, in the same order on every request"; navigation outcome (`updateHead` by component ID) |
-| `${}` variables, `targets`, block styles, `<style global>` keep working | pass | build test (`var(--s-…)`, `b-c-…-1`, global rule); new linked-CSS live tests |
-| No unstyled frame on first load or navigation | pass | inline FCP table in `reviews/style-files-fcp.md`; e2e website navigation steps |
-| Byte gate | missed, waived | modules outcome: +862 B gzip on two views; the maintainer chose to continue, size is not a gate |
+| Item                                                                                       | Result         | Evidence                                                                                                                                       |
+| ------------------------------------------------------------------------------------------ | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| CSS of components goes through Vite's CSS pipeline into cacheable `.css` assets in a build | pass           | `style-files.test.ts` "is in the stylesheets of the bundles"; hints name them                                                                  |
+| No `$$css` string in modules, no component `<style>` in pages as the only copy             | pass           | "is in no module of the client build, and in no `$$css` of the server build"; the page holds inline `<style b-style>` on purpose (first paint) |
+| Dev keeps inline `<style>` and the `textContent` swap                                      | pass           | `style-files-postcss.test.ts` dev render and hot update tests; `liveBlocks` unchanged                                                          |
+| Page no longer sends CSS twice                                                             | partial        | CSS leaves the JS; the page still carries it inline and in the bundle sheet by design (inline outcome, Gotchas)                                |
+| Project PostCSS, Lightning CSS and targets run on `.brm` styles                            | pass           | `style-files-postcss.test.ts` (PostCSS, Lightning CSS, dev, relative base)                                                                     |
+| Order of equal-specificity rules does not depend on the route taken                        | pass           | "writes each component once in the head, in the same order on every request"; navigation outcome (`updateHead` by component ID)                |
+| `${}` variables, `targets`, block styles, `<style global>` keep working                    | pass           | build test (`var(--s-…)`, `b-c-…-1`, global rule); new linked-CSS live tests                                                                   |
+| No unstyled frame on first load or navigation                                              | pass           | inline FCP table in `reviews/style-files-fcp.md`; e2e website navigation steps                                                                 |
+| Byte gate                                                                                  | missed, waived | modules outcome: +862 B gzip on two views; the maintainer chose to continue, size is not a gate                                                |
 
 ## Deviations
 
@@ -48,10 +48,10 @@ The story brief has no Acceptance list. Its Goal and Why are checked here.
 
 Final bytes, static count on the website build of this branch (gzip -9; HTML plus the stylesheets it links; JS is unchanged from modules: -98 B and -2 B, 84,148 and 50,617 B). No Chrome run was made.
 
-| View | HTML | Linked CSS | HTML + CSS | Base HTML (no CSS) | Diff |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| `/` | 19,950 | 5,355 | 25,305 | 20,313 | +4,992 |
-| `/docs/components/` | 33,356 | 5,058 | 38,414 | 33,455 | +4,959 |
+| View                |   HTML | Linked CSS | HTML + CSS | Base HTML (no CSS) |   Diff |
+| ------------------- | -----: | ---------: | ---------: | -----------------: | -----: |
+| `/`                 | 19,950 |      5,355 |     25,305 |             20,313 | +4,992 |
+| `/docs/components/` | 33,356 |      5,058 |     38,414 |             33,455 | +4,959 |
 
 Cold cache; the sheets are cached after view 1 and shared across pages. Against the byte gate (+862 B on two views, warm cache), the final HTML is back near the base size because inline CSS returned. The maintainer chose this for the first paint (`reviews/style-files-fcp.md`).
 
