@@ -4,6 +4,7 @@
 //
 //   node benchmarks/navigation/run.mjs [--pairs docs-server,...] [--runs 20] [--build] [--no-build]
 //     [--check] [--expect full|partial] [--json file]
+//     [--network fast4g|slow4g] [--cpu 4] [--gzip] [--first-load] [--load-pages /,/docs/components/]
 import { execFileSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
@@ -65,6 +66,24 @@ const PAIRS = {
     keep: 'header',
   },
 };
+/**
+ * The network profiles of Chrome DevTools (core/sdk/NetworkManager.ts in devtools-frontend, read
+ * 2026-11-19). The throughput is in bytes per second. DevTools takes 90% of the nominal rate and
+ * multiplies the round-trip time (2.75 for Fast 4G, 3.75 for Slow 4G), as it does for its own presets.
+ */
+const NETWORKS = {
+  fast4g: {
+    download: ((9 * 1000 * 1000) / 8) * 0.9,
+    upload: ((1.5 * 1000 * 1000) / 8) * 0.9,
+    latency: 60 * 2.75,
+  },
+  slow4g: {
+    download: ((1.6 * 1000 * 1000) / 8) * 0.9,
+    upload: ((750 * 1000) / 8) * 0.9,
+    latency: 150 * 3.75,
+  },
+};
+const LOAD_PAGES = ['/', '/docs/components/'];
 const APPS = {
   website: { root: path.join(repo, 'website'), filter: 'website' },
   tracker: { root: path.join(repo, 'examples/tracker'), filter: 'example-tracker' },
@@ -80,6 +99,12 @@ const { values } = parseArgs({
     build: { type: 'boolean', default: false },
     'no-build': { type: 'boolean', default: false },
     json: { type: 'string' },
+    network: { type: 'string' },
+    cpu: { type: 'string', default: '1' },
+    gzip: { type: 'boolean', default: false },
+    'first-load': { type: 'boolean', default: false },
+    'load-pages': { type: 'string' },
+    label: { type: 'string' },
     'install-browser': { type: 'boolean', default: false },
     help: { type: 'boolean', short: 'h', default: false },
   },
@@ -97,6 +122,13 @@ if (values.help) {
   --build          build the packages and the apps first (default: only when a dist is missing)
   --no-build       never build
   --json FILE      write the results as JSON
+  --network NAME   throttle the network like the DevTools preset: ${Object.keys(NETWORKS).join(', ')} (default: off)
+  --cpu N          slow the CPU down N times (default 1, off)
+  --gzip           the server compresses HTML, JS and CSS with gzip, as a host does (default: off)
+  --first-load     also measure the first load of pages with an empty cache, and a second load
+                   with the cache kept: FCP, LCP and the CSS (server mode, the website)
+  --load-pages a,b the pages of --first-load (default ${LOAD_PAGES.join(',')})
+  --label NAME     a name for this build, kept in the JSON
   --install-browser  download Playwright's Chromium when no Chrome is found`);
   process.exit(0);
 }
@@ -105,6 +137,22 @@ function DEFAULT_CHECK() {
   return ['docs-static', 'docs-server'];
 }
 
+if (values.network && !(values.network in NETWORKS)) {
+  console.error(`--network is ${Object.keys(NETWORKS).join(' or ')}.`);
+  process.exit(2);
+}
+const NETWORK = values.network ? NETWORKS[values.network] : undefined;
+const CPU = Number(values.cpu);
+if (!(CPU >= 1)) {
+  console.error('--cpu is a number of at least 1.');
+  process.exit(2);
+}
+const LOADS = [];
+if (values['first-load']) {
+  for (const page of (values['load-pages'] ?? LOAD_PAGES.join(',')).split(',')) {
+    LOADS.push(page.trim());
+  }
+}
 if (!['full', 'partial'].includes(values.expect) || !['script', 'mouse'].includes(values.input)) {
   console.error('--expect is full or partial, and --input is script or mouse.');
   process.exit(2);
@@ -202,6 +250,17 @@ const INIT = () => {
     },
     true,
   );
+  // The last largest contentful paint, which the load measurement reads.
+  window.__lcp = 0;
+  try {
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        window.__lcp = entry.startTime;
+      }
+    }).observe({ type: 'largest-contentful-paint', buffered: true });
+  } catch {
+    // No LCP in this browser.
+  }
   const push = history.pushState;
   history.pushState = function (...args) {
     const result = push.apply(this, args);
@@ -215,7 +274,7 @@ const INIT = () => {
 
 /** One navigation on a fresh load of the first page. Returns undefined when the client did not take the click. */
 async function navigateOnce(page, site, pair, { javascript } = {}) {
-  const answer = await page.goto(site + pair.from, { waitUntil: 'load' });
+  const answer = await page.goto(site + pair.from, { waitUntil: 'load', timeout: 120_000 });
   const fromHtml = await answer.text();
   // The client starts after the page loads. A click before it follows the link as the browser does.
   await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {});
@@ -306,7 +365,103 @@ async function newPage(browser) {
   const context = await browser.newContext();
   await context.addInitScript(INIT);
   const page = await context.newPage();
+  await throttle(context, page);
   return { page, context };
+}
+
+/** Throttles the network and the CPU of a page, as the DevTools panels do, through the protocol. */
+async function throttle(context, page) {
+  if (!NETWORK && CPU === 1) {
+    return;
+  }
+  const session = await context.newCDPSession(page);
+  if (NETWORK) {
+    await session.send('Network.enable');
+    await session.send('Network.emulateNetworkConditions', {
+      offline: false,
+      latency: NETWORK.latency,
+      downloadThroughput: NETWORK.download,
+      uploadThroughput: NETWORK.upload,
+    });
+  }
+  if (CPU > 1) {
+    await session.send('Emulation.setCPUThrottlingRate', { rate: CPU });
+  }
+}
+
+/** One load of a page: the paint times, and the CSS that the page loaded. */
+async function loadOnce(page, url) {
+  await page.goto(url, { waitUntil: 'load', timeout: 120_000 });
+  await page.waitForFunction(
+    () => performance.getEntriesByName('first-contentful-paint').length > 0,
+    undefined,
+    { timeout: 60_000 },
+  );
+  await page.waitForLoadState('networkidle', { timeout: 60_000 }).catch(() => {});
+  return page.evaluate(() => {
+    const css = [];
+    let cssBlocking = 0;
+    let cssDecoded = 0;
+    let cssTransfer = 0;
+    for (const entry of performance.getEntriesByType('resource')) {
+      if (new URL(entry.name).pathname.endsWith('.css')) {
+        const blocking = entry.renderBlockingStatus === 'blocking';
+        cssBlocking += blocking ? 1 : 0;
+        cssDecoded += entry.decodedBodySize;
+        cssTransfer += entry.transferSize;
+        css.push({
+          url: new URL(entry.name).pathname,
+          transfer: entry.transferSize,
+          encoded: entry.encodedBodySize,
+          decoded: entry.decodedBodySize,
+          blocking,
+        });
+      }
+    }
+    let inline = 0;
+    for (const style of document.querySelectorAll('style')) {
+      inline += new Blob([style.textContent]).size;
+    }
+    const document_ = performance.getEntriesByType('navigation')[0];
+    // The order of the head: where the stylesheets sit among the scripts and the other tags.
+    const head = [];
+    for (const child of document.head.children) {
+      head.push(
+        child.tagName.toLowerCase() +
+          (child.tagName === 'LINK' ? `[${child.rel}]` : '') +
+          (child.tagName === 'STYLE' ? `(${child.textContent.length})` : ''),
+      );
+    }
+    return {
+      fcp: performance.getEntriesByName('first-contentful-paint')[0].startTime,
+      lcp: window.__lcp,
+      responseEnd: document_.responseEnd,
+      dom: document_.domContentLoadedEventEnd,
+      load: document_.loadEventStart,
+      htmlTransfer: document_.transferSize,
+      htmlDecoded: document_.decodedBodySize,
+      css,
+      cssFiles: css.length,
+      cssBlocking,
+      cssDecoded: inline + cssDecoded,
+      cssTransfer,
+      inline,
+      head,
+    };
+  });
+}
+
+/** A first load with an empty cache (a new context), and then a second load with the cache kept. */
+async function loadPage(browser, url) {
+  const { page, context } = await newPage(browser);
+  try {
+    const cold = await loadOnce(page, url);
+    await page.goto('about:blank');
+    const warm = await loadOnce(page, url);
+    return { cold, warm };
+  } finally {
+    await context.close();
+  }
 }
 
 /**
@@ -434,6 +589,7 @@ async function openPair(browser, name, pair, site) {
           encoded: median(pluck(runs, 'encoded')),
         },
         regions: regionBytes(first.fromHtml, first.body),
+        samples: { swap: pluck(runs, 'swap') },
         time: {
           swap: stats(pluck(runs, 'swap')),
           frame: stats(pluck(runs, 'frame')),
@@ -544,10 +700,105 @@ async function serverFor(pair) {
   if (!servers.has(key)) {
     servers.set(
       key,
-      pair.mode === 'static' ? await serveStatic() : await serveServer(APPS[pair.app].root),
+      pair.mode === 'static'
+        ? await serveStatic()
+        : await serveServer(APPS[pair.app].root, { gzip: values.gzip }),
     );
   }
   return servers.get(key).url;
+}
+
+/** The pages take turns in each round, so a change of the load of the machine reaches all of them. */
+async function measureLoads() {
+  const found = [];
+  const site = LOADS.length > 0 ? await serverFor({ app: 'website', mode: 'server' }) : '';
+  for (const route of LOADS) {
+    // One load first, which warms the server and the pages it reads, and is not counted.
+    await loadPage(browser, site + route);
+    found.push({ page: route, runs: [], load: [] });
+  }
+  for (let turn = 1; turn <= RUNS && LOADS.length > 0; turn++) {
+    console.error(`first load ${turn} of ${RUNS}, load ${os.loadavg()[0].toFixed(1)}`);
+    for (const item of found) {
+      item.load.push(round(os.loadavg()[0], 2));
+      item.runs.push(await loadPage(browser, site + item.page));
+    }
+  }
+  const out = [];
+  for (const item of found) {
+    const { runs } = item;
+    out.push({
+      page: item.page,
+      cold: summarize(pluck(runs, 'cold')),
+      warm: summarize(pluck(runs, 'warm')),
+      head: runs[0].cold.head,
+      css: runs[0].cold.css,
+      samples: {
+        coldFcp: pluck(pluck(runs, 'cold'), 'fcp'),
+        warmFcp: pluck(pluck(runs, 'warm'), 'fcp'),
+        coldLcp: pluck(pluck(runs, 'cold'), 'lcp'),
+        warmLcp: pluck(pluck(runs, 'warm'), 'lcp'),
+      },
+      loadAverage: { median: round(median(item.load), 2), max: round(Math.max(...item.load), 2) },
+    });
+  }
+  return out;
+}
+
+function summarize(loads) {
+  const first = loads[0];
+  return {
+    fcp: stats(pluck(loads, 'fcp')),
+    lcp: stats(pluck(loads, 'lcp')),
+    responseEnd: stats(pluck(loads, 'responseEnd')),
+    cssFiles: first.cssFiles,
+    cssBlocking: first.cssBlocking,
+    cssDecoded: first.cssDecoded,
+    cssTransfer: first.cssTransfer,
+    inline: first.inline,
+    htmlTransfer: first.htmlTransfer,
+    htmlDecoded: first.htmlDecoded,
+  };
+}
+
+function printLoads(loads) {
+  if (loads.length === 0) {
+    return;
+  }
+  const rows = [
+    [
+      'page',
+      'cache',
+      'FCP ms med',
+      'min',
+      'max',
+      'LCP med',
+      'CSS files',
+      'blocking',
+      'CSS B',
+      'CSS transfer B',
+      'HTML transfer B',
+    ],
+  ];
+  for (const item of loads) {
+    for (const cache of ['cold', 'warm']) {
+      const one = item[cache];
+      rows.push([
+        item.page,
+        cache,
+        one.fcp.median,
+        one.fcp.min,
+        one.fcp.max,
+        one.lcp.median,
+        one.cssFiles,
+        one.cssBlocking,
+        one.cssDecoded,
+        one.cssTransfer,
+        one.htmlTransfer,
+      ]);
+    }
+  }
+  console.log(table(rows));
 }
 
 const results = [];
@@ -576,11 +827,15 @@ try {
       );
     }
   }
+  const loads = await measureLoads();
   const meta = {
     commit: git('rev-parse', 'HEAD'),
     dirty: git('status', '--porcelain', '--', 'packages', 'website', 'examples').length > 0,
     browser: browser.version(),
-    cpuThrottle: 'off',
+    label: values.label,
+    network: values.network ?? 'off',
+    cpuThrottle: CPU === 1 ? 'off' : CPU,
+    gzip: values.gzip,
     input: values.input,
     runs: RUNS,
     cpus: os.cpus().length,
@@ -622,9 +877,10 @@ try {
     ]);
   }
   console.log(
-    `commit ${meta.commit.slice(0, 8)}${meta.dirty ? ' (dirty)' : ''}, ${meta.browser}, ${RUNS} runs, CPU throttle off, ${meta.cpus} CPUs`,
+    `commit ${meta.commit.slice(0, 8)}${meta.dirty ? ' (dirty)' : ''}, ${meta.browser}, ${RUNS} runs, network ${meta.network}, CPU throttle ${meta.cpuThrottle}, ${meta.cpus} CPUs`,
   );
   console.log(table(rows));
+  printLoads(loads);
   for (const result of results) {
     if (result.scripts) {
       const { load, navigation } = result.scripts;
@@ -634,7 +890,10 @@ try {
     }
   }
   if (values.json) {
-    writeFileSync(path.resolve(values.json), `${JSON.stringify({ meta, results }, null, 2)}\n`);
+    writeFileSync(
+      path.resolve(values.json),
+      `${JSON.stringify({ meta, results, loads }, null, 2)}\n`,
+    );
   }
   if (values.check) {
     for (const result of results) {
