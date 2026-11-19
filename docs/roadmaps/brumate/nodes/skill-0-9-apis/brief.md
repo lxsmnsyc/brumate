@@ -1,7 +1,7 @@
 ---
 id: skill-0-9-apis
 title: The brumate skill teaches the 0.9 APIs
-status: active
+status: done
 priority: must
 type: docs
 story:
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-12
-spent:
+spent: 150000
 owns: []
 shared:
   - packages/brumate/skills/**
