@@ -1,7 +1,7 @@
 ---
 id: style-files-navigation
 title: "Client navigation loads the next page's stylesheets before the swap"
-status: active
+status: done
 priority: must
 type: feature
 story: style-files
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-18
-spent:
+spent: 327000
 owns: []
 shared:
   - packages/brumate/src/runtime/navigate.ts
