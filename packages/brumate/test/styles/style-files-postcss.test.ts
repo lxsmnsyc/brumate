@@ -263,8 +263,8 @@ describe('a PostCSS plugin that drops the marks', () => {
     for (const [, href] of links) {
       css += readFileSync(`${app}dropped/client${href}`, 'utf8');
     }
-    expect(css).toContain('.card[');
-    expect(css).toContain('.tile[');
+    expect(css).toContain('.card:where([');
+    expect(css).toContain('.tile:where([');
     expect(sheetsOf('dropped')).not.toContain('b-mark');
   });
 });

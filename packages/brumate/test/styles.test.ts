@@ -174,7 +174,7 @@ describe('minified styles', () => {
     expect(result.server).toMatch(/\$\$ctx\.style\("Card_\w+"\)/);
     expect(result.render).not.toMatch(/\bstyle\(/);
     // The Vite plugin serves `css` as the style module, and Vite's CSS pipeline minifies it.
-    expect(result.css).toMatch(/\.card\[b-c-\w+\],\s*p\[b-c-\w+\]/);
+    expect(result.css).toMatch(/\.card:where\(\[b-c-\w+\]\),\s*p:where\(\[b-c-\w+\]\)/);
   });
 
   it('leaves out comments and whitespace in a build without style modules', () => {

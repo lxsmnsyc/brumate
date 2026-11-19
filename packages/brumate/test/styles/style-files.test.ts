@@ -384,10 +384,10 @@ describe('component CSS in a build', () => {
       }
     }
     expect(css).toMatch(/body\{margin:0\}/);
-    expect(css).toMatch(/\.frame\[b-c-\w+\]\{padding:4px\}/);
-    expect(css).toMatch(/\.card\[b-c-\w+\]\{background:var\(--s-[\w-]+\)\}/);
-    expect(css).toMatch(/\.tag\[b-c-\w+-1\]\{color:#?\w+\}/);
-    expect(css).toMatch(/\.plain\[b-c-\w+\]\{color:green\}/);
+    expect(css).toMatch(/\.frame:where\(\[b-c-\w+\]\)\{padding:4px\}/);
+    expect(css).toMatch(/\.card:where\(\[b-c-\w+\]\)\{background:var\(--s-[\w-]+\)\}/);
+    expect(css).toMatch(/\.tag:where\(\[b-c-\w+-1\]\)\{color:#?\w+\}/);
+    expect(css).toMatch(/\.plain:where\(\[b-c-\w+\]\)\{color:green\}/);
   });
 
   it('reaches a page as inline styles of the components it renders, with no blocking link', async () => {
@@ -402,9 +402,9 @@ describe('component CSS in a build', () => {
       css += text;
     }
     // The card has no client code, and its CSS is in the page as the other components' is.
-    expect(css).toMatch(/\.card\[b-c-\w+\]/);
-    expect(css).toMatch(/\.count\[b-c-\w+\]/);
-    expect(css).toMatch(/\.frame\[b-c-\w+\]/);
+    expect(css).toMatch(/\.card:where\(\[b-c-\w+\]\)/);
+    expect(css).toMatch(/\.count:where\(\[b-c-\w+\]\)/);
+    expect(css).toMatch(/\.frame:where\(\[b-c-\w+\]\)/);
     // The value of the variable is on the element, as in development.
     expect(html).toMatch(/style="--s-[\w-]+: ?teal"/);
   });
@@ -431,7 +431,7 @@ describe('component CSS in a build', () => {
     );
     const navigation = await response!.text();
     expect(navigation).not.toContain('b-sheet');
-    expect(linkedCss(navigation)).toMatch(/\.count\[b-c-\w+\]/);
+    expect(linkedCss(navigation)).toMatch(/\.count:where\(\[b-c-\w+\]\)/);
     // What the page preloads and what the navigation links are the same files, so a later
     // navigation finds them in the cache.
     for (const [, href] of preloads) {
@@ -441,7 +441,9 @@ describe('component CSS in a build', () => {
 
   it('writes the CSS of a page with no client code inline', async () => {
     const html = await page('/plain');
-    expect(html).toMatch(/<style[^>]* b-style="[^"]+">[^<]*\.plain\[b-c-\w+\]\{color:green\}/);
+    expect(html).toMatch(
+      /<style[^>]* b-style="[^"]+">[^<]*\.plain:where\(\[b-c-\w+\]\)\{color:green\}/,
+    );
   });
 
   it('writes the CSS of a component that only a `#defer` body renders, in that body', async () => {
@@ -454,7 +456,9 @@ describe('component CSS in a build', () => {
     );
     const body = await response!.text();
     expect(body).toContain('class="late"');
-    expect(body).toMatch(/<style[^>]* b-style="[^"]+">[^<]*\.late\[b-c-\w+\]\{color:purple\}/);
+    expect(body).toMatch(
+      /<style[^>]* b-style="[^"]+">[^<]*\.late:where\(\[b-c-\w+\]\)\{color:purple\}/,
+    );
   });
 
   it('writes the CSS after the pipeline: `url()` and `@import` as the sheet has them', async () => {
@@ -541,7 +545,7 @@ describe('component CSS in a build', () => {
   it('reaches a render outside the routes', async () => {
     const html = await custom();
     expect(html).toContain('class="card"');
-    expect(html.includes('.card[') || linkedCss(html).includes('.card[')).toBe(true);
+    expect(html.includes('.card:where([') || linkedCss(html).includes('.card:where([')).toBe(true);
   });
 });
 
@@ -587,7 +591,7 @@ describe('the marks in the sheets of a build', () => {
 describe('component CSS in a build with a relative base', () => {
   it('stays inline, as the server could not link an asset from a page at any depth', async () => {
     const html = await page('/', relativeHandle);
-    expect(html).toMatch(/<style[^>]*>[^<]*\.card\[b-c-\w+\]/);
+    expect(html).toMatch(/<style[^>]*>[^<]*\.card:where\(\[b-c-\w+\]\)/);
     let modules = '';
     for (const [name, code] of files('relative/server')) {
       if (name.endsWith('.js')) {
