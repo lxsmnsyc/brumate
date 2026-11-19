@@ -1,7 +1,7 @@
 ---
 id: observability-core
 title: onTrace on the server, span names and the trace-span contract
-status: active
+status: done
 priority:
 type: feature
 story: observability
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-18
-spent:
+spent: 245000
 owns:
   - packages/brumate/src/runtime/trace.ts
   - packages/brumate/test/trace/**
