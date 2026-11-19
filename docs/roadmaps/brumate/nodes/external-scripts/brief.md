@@ -1,7 +1,7 @@
 ---
 id: external-scripts
 title: External scripts
-status: todo
+status: active
 priority: must
 type: feature
 story:

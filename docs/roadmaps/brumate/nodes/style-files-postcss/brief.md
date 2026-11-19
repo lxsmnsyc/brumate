@@ -1,7 +1,7 @@
 ---
 id: style-files-postcss
 title: "The project's CSS pipeline runs on component styles in builds"
-status: todo
+status: active
 priority: must
 type: feature
 story: style-files
