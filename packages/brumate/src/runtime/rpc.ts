@@ -3,6 +3,8 @@ import { build, skew } from './client.ts';
 import type { Scope } from './client.ts';
 import { callPlugins, serialOptions } from './serial.ts';
 import { fromChunkStream } from './stream-read.ts';
+import { TRACE } from './trace-flag.ts';
+import type { RequestTrace } from './trace-browser.ts';
 
 /**
  * Calls a server function. It is a separate module, so pages that never call
@@ -16,6 +18,7 @@ export async function call(
   id: string,
   args: unknown[],
   signal?: AbortSignal,
+  trace?: RequestTrace,
 ): Promise<unknown> {
   // The plugin of uploads takes each file and blob in the arguments, wherever it is.
   const files: Blob[] = [];
@@ -46,7 +49,7 @@ export async function call(
   } else {
     init = { headers: { 'content-type': 'application/json' }, body: json };
   }
-  return post(prefix, id, { ...init, signal });
+  return post(prefix, id, { ...init, signal }, undefined, trace);
 }
 
 /**
@@ -58,8 +61,9 @@ export async function submit(
   id: string,
   form: FormData,
   key?: string | null,
+  trace?: RequestTrace,
 ): Promise<unknown> {
-  return post(prefix, id, { headers: { 'x-brumate-result': '1' }, body: form }, key);
+  return post(prefix, id, { headers: { 'x-brumate-result': '1' }, body: form }, key, trace);
 }
 
 /** Posts to a server function, and reads its answer. */
@@ -68,6 +72,7 @@ async function post(
   id: string,
   init: RequestInit,
   key?: string | null,
+  trace?: RequestTrace,
 ): Promise<unknown> {
   const headers = new Headers(init.headers);
   // The build of the page, so the server can tell a call from before a deploy.
@@ -76,14 +81,23 @@ async function post(
   }
   // The key of a form of a function that `idempotent` made.
   const query = key ? `?__key=${encodeURIComponent(key)}` : '';
-  return answer(
-    id,
-    await fetch(`${prefix}/${encodeURIComponent(id)}${query}`, {
-      ...init,
-      headers,
-      method: 'POST',
-    }),
-  );
+  const url = `${prefix}/${encodeURIComponent(id)}${query}`;
+  // The server's span joins the one of the call through the header.
+  if (TRACE && trace?.header) {
+    headers.set('traceparent', trace.header);
+  }
+  let sent = fetch(url, { ...init, headers, method: 'POST' });
+  if (TRACE && trace) {
+    sent = sent.catch((error: unknown) => {
+      trace.end(undefined, error);
+      throw error;
+    });
+  }
+  const response = await sent;
+  if (TRACE && trace) {
+    trace.end(response.status);
+  }
+  return answer(id, response);
 }
 
 /** Reads the answer of a server function: its result, a redirect or an error. */
@@ -178,7 +192,11 @@ function renewKey(form: HTMLFormElement, url: URL): void {
  * result into the `$action` when it arrives. It is pending until then. See
  * `submitAction` in the core.
  */
-export function sendAction(form: HTMLFormElement, submitter: HTMLElement | null): Promise<void> {
+export function sendAction(
+  form: HTMLFormElement,
+  submitter: HTMLElement | null,
+  trace?: RequestTrace,
+): Promise<void> {
   const [scopeText, slotText] = form.getAttribute('b-result')!.split(':') as [string, string];
   const scopeId = Number(scopeText);
   const slot = Number(slotText);
@@ -191,7 +209,7 @@ export function sendAction(form: HTMLFormElement, submitter: HTMLElement | null)
       // server answered, so a post that the user means again runs again.
       const url = new URL(form.getAttribute('action') ?? '', location.href);
       const key = url.searchParams.get('__key');
-      const result = submit(rpcPrefix, action, data, key);
+      const result = submit(rpcPrefix, action, data, key, trace);
       if (key) {
         void result.then(
           () => renewKey(form, url),

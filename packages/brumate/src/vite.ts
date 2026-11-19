@@ -75,6 +75,7 @@ import type { renderToStream as RenderToStream } from './runtime/server.ts';
 import { workbenchPage } from './workbench-page.ts';
 import { classifyComponents, propControls } from './workbench.ts';
 import { parse as parseComponent } from './parser.ts';
+import { usesBrowserTrace } from './browser-trace.ts';
 import { BRUMATE_VERSION } from './version.ts';
 import { prerender } from './prerender.ts';
 import type { HotUpdate } from './runtime/hot.ts';
@@ -179,6 +180,13 @@ export interface BrumateOptions {
    * of each component. Defaults to true.
    */
   devtools?: boolean;
+  /**
+   * Whether the client build has the spans of `onTrace` of the loader. `'auto'` (the default)
+   * turns them on when a script under `src/` imports `brumate/loader` or `brumate/static-loader`
+   * and names `onTrace`, and always on the dev server. Set `true` when the entry that passes
+   * `onTrace` is elsewhere, such as in a package, or `false` to leave the code out.
+   */
+  trace?: boolean | 'auto';
 }
 
 /** `import 'virtual:brumate/start'` in the client entry starts the loader. */
@@ -764,6 +772,23 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   let builtFeatures: Promise<Features> | undefined;
   /** The files that `builtFeatures` counted, and the features it found. */
   let counted = new Set<string>();
+  let traceBrowser: Promise<boolean> | undefined;
+  /** Whether the client code has the spans of the browser, from the option and the scan of `src/`. */
+  async function resolveTrace(context: { warn: (message: string) => void }): Promise<boolean> {
+    if (options.trace !== undefined && options.trace !== 'auto') {
+      return options.trace;
+    }
+    if (isServe) {
+      return true;
+    }
+    const found = await usesBrowserTrace(path.join(root, 'src'), middlewareFile());
+    if (!found.on && found.hints.length > 0) {
+      context.warn(
+        `${found.hints.join(', ')} names onTrace, but no script that imports brumate/loader does, so the build leaves the spans of the browser out. Set \`trace: true\` in the brumate plugin options if the loader starts elsewhere.`,
+      );
+    }
+    return found.on;
+  }
   let knownFeatures: Features | undefined;
   /** The components that the client build loaded. */
   const loadedComponents = new Set<string>();
@@ -2303,6 +2328,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       // A rebuild in watch mode counts the features of the components again.
       builtFeatures = undefined;
       knownFeatures = undefined;
+      traceBrowser = undefined;
       loadedComponents.clear();
       writeRouteTypes();
     },
@@ -2571,6 +2597,18 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
 
     async transform(code, id, transformOptions) {
+      // The spans of the browser: on for the dev server, and for a build whose entry has `onTrace`.
+      if (!transformOptions?.ssr && code.includes('__BRUMATE_TRACE__')) {
+        traceBrowser ??= resolveTrace(this);
+        code = code.replace(
+          /(?<!declare const )\b__BRUMATE_TRACE__\b/g,
+          String(await traceBrowser),
+        );
+        // The features of the core are in another file, which the next step reads.
+        if (!readsFeatures(code)) {
+          return { code, map: null };
+        }
+      }
       // The client build leaves out the code of the features of the core that no component
       // uses. The dev server and the server build keep every feature, and so does a build with
       // `features: 'all'`, such as one that compiles components in the browser.
