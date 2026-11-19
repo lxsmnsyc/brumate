@@ -1,7 +1,7 @@
 ---
 id: observability-browser
 title: onTrace in the browser: events, loads, runs, navigations, calls
-status: todo
+status: active
 priority:
 type: feature
 story: observability

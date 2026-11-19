@@ -1,7 +1,7 @@
 ---
 id: observability-otel
 title: brumate/otel: onTrace as OpenTelemetry spans
-status: todo
+status: active
 priority:
 type: feature
 story: observability
