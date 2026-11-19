@@ -1,7 +1,7 @@
 ---
 id: style-files-inline
 title: "The server inlines the CSS of the components it renders"
-status: active
+status: done
 priority: must
 type: feature
 story: style-files
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-19
-spent:
+spent: 420000
 owns: []
 shared:
   - packages/brumate/src/vite.ts
