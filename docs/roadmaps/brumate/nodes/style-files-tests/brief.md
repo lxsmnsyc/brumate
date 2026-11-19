@@ -36,6 +36,9 @@ depends_on:
   - on: style-files-postcss
     kind: hard
     why: it documents the pipeline
+  - on: style-files-inline
+    kind: hard
+    why: it tests and documents the inline path
 ---
 
 > 2026-11-18: refined from the design in `../style-files-spike/outcome.md` after the maintainer's go on per-bundle CSS with a shared chunk. Read that outcome first; the prototype is the local branch `spike/style-files` (078616fe).
