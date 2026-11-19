@@ -1,7 +1,7 @@
 ---
 id: view-transitions
 title: Named view transitions
-status: active
+status: done
 priority: must
 type: feature
 story:
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added:
-spent:
+spent: 240000
 owns:
   - packages/brumate/src/runtime/view-transitions.ts
   - packages/brumate/test/view-transitions/**
