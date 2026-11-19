@@ -44,7 +44,7 @@ shared:
   - website/docs/reference-security.md
   - docs/decisions.md
   - .changeset/*.md
-reserves: []
+reserves: [code BRM212, code BRM213, code BRM214, code BRM215, code BRM216]
 provides: []
 depends_on: []
 ---
