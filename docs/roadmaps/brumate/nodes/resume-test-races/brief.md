@@ -1,7 +1,7 @@
 ---
 id: resume-test-races
 title: Resume tests that race, and a test of a skew reload
-status: todo
+status: active
 priority: must
 type: fix
 story:
