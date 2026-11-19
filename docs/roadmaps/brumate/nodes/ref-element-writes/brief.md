@@ -1,7 +1,7 @@
 ---
 id: ref-element-writes
 title: A ref in a list whose source reads it settles in a browser render
-status: todo
+status: active
 priority: must
 type: fix
 story:
