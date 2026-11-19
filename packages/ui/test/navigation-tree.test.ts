@@ -92,3 +92,35 @@ it('gives the ref of an item to its row', async () => {
   page.get('.read').click();
   await page.waitFor(() => expect(page.text('.seen')).toBe('row'));
 });
+
+it('keeps the nodes and the focus of the rows that spread onto a TreeItem when rows open and close', async () => {
+  // The first mount loads the core, so the second one runs the refresh path.
+  const first = await mount(Navigation, {});
+  first.unmount();
+  const page = await navigation();
+  const link = page.get('.link-start');
+  const guides = page.get('.item-guides');
+  link.focus();
+  expect(document.activeElement).toBe(link);
+  // Open the sibling row, open and close the row itself.
+  pressWith(page.get('.chevron-guides'));
+  await page.waitFor(() => expect(page.text('.state')).toBe('["guides"]'));
+  expect(page.get('.link-start')).toBe(link);
+  expect(page.get('.item-guides')).toBe(guides);
+  pressWith(page.get('.chevron-data'));
+  await page.waitFor(() => expect(page.get('.link-tables')).toBeTruthy());
+  const data = page.get('.item-data');
+  const chevron = page.get('.chevron-data');
+  data.focus();
+  pressWith(chevron);
+  await page.waitFor(() => expect(document.querySelector('.link-tables')).toBeNull());
+  expect(page.get('.item-data')).toBe(data);
+  expect(page.get('.chevron-data')).toBe(chevron);
+  // The chevron keeps focus on the row.
+  expect(document.activeElement).toBe(data);
+  pressWith(page.get('.chevron-guides'));
+  await page.waitFor(() => expect(page.text('.state')).toBe('[]'));
+  expect(page.get('.link-start')).toBe(link);
+  expect(page.get('.item-guides')).toBe(guides);
+  expect(page.get('.chevron-guides')).toBe(guides.querySelector('.chevron-guides'));
+});
