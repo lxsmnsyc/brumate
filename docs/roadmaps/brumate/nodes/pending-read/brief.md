@@ -1,7 +1,7 @@
 ---
 id: pending-read
 title: A browser render holds at a read of a property of a pending memo
-status: todo
+status: active
 priority: must
 type: fix
 story:
