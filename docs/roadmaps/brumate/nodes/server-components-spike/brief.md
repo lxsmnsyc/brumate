@@ -1,7 +1,7 @@
 ---
 id: server-components-spike
 title: "Spike: server components"
-status: todo
+status: active
 priority: must
 type: experiment
 story:

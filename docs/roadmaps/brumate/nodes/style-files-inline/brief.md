@@ -1,7 +1,7 @@
 ---
 id: style-files-inline
 title: "The server inlines the CSS of the components it renders"
-status: todo
+status: active
 priority: must
 type: feature
 story: style-files

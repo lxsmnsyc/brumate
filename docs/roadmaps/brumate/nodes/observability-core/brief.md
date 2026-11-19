@@ -1,7 +1,7 @@
 ---
 id: observability-core
 title: onTrace on the server, span names and the trace-span contract
-status: todo
+status: active
 priority:
 type: feature
 story: observability
