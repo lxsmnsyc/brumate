@@ -52,3 +52,5 @@ Not an experiment.
 - todos, JS before `load`: 14683 B gzip on `batch/brumate-release-0.9`, 14679 B on the branch (-4 B). Client JS emitted in dist: 31166 B before, 31157 B after.
 
 Landed on batch/brumate-release-0.9 as 6246e057.
+
+Cut into release/0.9 on 2026-11-19 (6246e057).

@@ -49,3 +49,5 @@ Not an experiment node.
 - Estimated M, actual M.
 
 Landed on batch/brumate-release-0.9 as f446be40.
+
+Cut into release/0.9 on 2026-11-19 (6246e057).

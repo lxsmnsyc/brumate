@@ -51,3 +51,5 @@ Not a fix node. Two bugs of the head path on a common route were fixed on the wa
 - Estimated M, actual M (the head and Trusted Types bugs and the example app added work).
 
 Landed on batch/brumate-release-0.9 as 402787e4.
+
+Cut into release/0.9 on 2026-11-19 (6246e057).
