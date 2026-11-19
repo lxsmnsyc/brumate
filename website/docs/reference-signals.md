@@ -227,7 +227,7 @@ Changes an object or array in a signal through a draft, and writes the signal wi
 - The first argument is a signal. The second is a function.
 - It is allowed where a signal can be written.
 - The new value shares the objects that the recipe did not change. If the recipe changes nothing, the signal keeps its value.
-- Only plain objects and arrays are drafted.
+- Plain objects, arrays, `Map`s and `Set`s are drafted. An instance of another class is used as it is, and the dev server warns when the recipe changes it and returns nothing.
 
 ## `$setContext`
 
