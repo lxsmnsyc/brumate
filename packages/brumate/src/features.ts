@@ -44,6 +44,8 @@ export interface Features {
   bridges: boolean;
   /** `<script>` elements in markup, which the loader starts on their trigger. */
   scripts: boolean;
+  /** `viewTransition` and `viewTransitionName` attributes, named while a transition runs. */
+  viewTransitions: boolean;
 }
 
 /** No feature at all, which a build that has no component uses. */
@@ -69,6 +71,7 @@ export function noFeatures(): Features {
     stores: false,
     bridges: false,
     scripts: false,
+    viewTransitions: false,
   };
 }
 
@@ -119,6 +122,7 @@ export function getFeatures(result: CompileResult): Features {
     bridges: /\$\$nameBridge\(/.test(all),
     // Set where the emit finds a `<script src>` or `<script inline>` in markup.
     scripts: result.plan.scripts,
+    viewTransitions: result.plan.viewTransitions,
   };
 }
 
@@ -146,6 +150,7 @@ export function joinFeatures(all: Features[]): Features {
     joined.stores ||= features.stores;
     joined.bridges ||= features.bridges;
     joined.scripts ||= features.scripts;
+    joined.viewTransitions ||= features.viewTransitions;
   }
   return joined;
 }
@@ -172,6 +177,7 @@ const GLOBALS: Record<keyof Features, string> = {
   stores: '__BRUMATE_HAS_STORES__',
   bridges: '__BRUMATE_HAS_BRIDGES__',
   scripts: '__BRUMATE_HAS_SCRIPTS__',
+  viewTransitions: '__BRUMATE_HAS_VIEW_TRANSITIONS__',
 };
 
 /** True for code that reads a feature, such as the core. */

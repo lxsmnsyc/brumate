@@ -3,6 +3,7 @@
 
 import { loadOnce } from './skew.ts';
 import { HAS_SCRIPTS } from './features.ts';
+import { startTransition } from './view-transitions.ts';
 import { trustedHTML, trustedScript } from './trusted.ts';
 export interface Visit {
   url: string;
@@ -52,12 +53,7 @@ async function transition(visit: Visit, update: () => void): Promise<void> {
   } else if (visit.push) {
     type = 'push';
   }
-  const types = [type];
-  // Browsers that have transitions without types take only a callback.
-  const started =
-    typeof ViewTransition !== 'undefined' && 'types' in ViewTransition.prototype
-      ? document.startViewTransition({ update, types })
-      : document.startViewTransition(update);
+  const started = startTransition(update, [type]);
   await started.updateCallbackDone;
 }
 

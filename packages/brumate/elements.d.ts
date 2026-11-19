@@ -526,6 +526,10 @@ export type GlobalAttributes<E> = Handlers<E> &
     popover?: Attr<boolean | '' | Keyword<'auto' | 'manual' | 'hint'>>;
     spellcheck?: Attr<boolean | '' | Keyword<'true' | 'false'>>;
     tabindex?: Attr<Num>;
+    /** A class for the element in a view transition. It is named only while a transition runs. */
+    viewTransition?: Attr<string>;
+    /** The name of the element in a view transition, to pair it with one of the next page. */
+    viewTransitionName?: Attr<string>;
     translate?: Attr<'' | Keyword<'yes' | 'no'>>;
     writingsuggestions?: Attr<boolean | '' | Keyword<'true' | 'false'>>;
     autocorrect?: Attr<boolean | '' | Keyword<'on' | 'off'>>;

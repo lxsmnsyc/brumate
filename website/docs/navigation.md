@@ -289,3 +289,26 @@ header {
 ```
 
 In a browser without view transitions, the page changes at once.
+
+### Marking elements
+
+Two attributes mark an element for a transition, in a navigation with `transition: true` and in a handler wrapped in `transition()`:
+
+- `viewTransition="card"` is a class of the element, which CSS matches as `::view-transition-group(.card)`. The core gives the element a name of its own, `card-<n>`. An element that a keyed `#for` moves keeps its name and slides, a new one fades in and a removed one fades out.
+- `viewTransitionName=(expr)` is the name, to pair an element of one page with the element of the next one.
+
+```brm
+<img viewTransition="photo" viewTransitionName=(`photo-${photo.id}`) src={photo.src}>
+```
+
+With the same `viewTransitionName` on the list page and on the detail page, the picture moves from one to the other when a link navigates between them.
+
+- Names exist only while a transition runs. The core sets `view-transition-name` and `view-transition-class` on the marked elements just before it, and removes them when the transition finishes, also when it is skipped or the update throws. The HTML has no `view-transition-*` style, so a marked element takes part only in a transition of brumate.
+- Only elements in view are named, before and after the change. An element that comes from far off screen fades in, and one that leaves to far off screen fades out.
+- Two elements of the page with one name make the browser skip the transition. The core names the first and leaves the second without one, and warns in development.
+- A transition of a handler does not start with `prefers-reduced-motion`. A navigation does not check it, so switch the animation off in CSS as above.
+- A name is a CSS identifier. The core escapes it, so an ID such as `5` or a name with a space works, and the same value pairs on both pages. `none`, `auto` and the keywords of CSS are not names: the element gets none, and development warns with the element.
+- A prop that a wrapper passes on with `{...rest}` marks the element too: `<Card viewTransition="card" />` reaches the `<div {...rest}>` of `Card`. The file that writes the attribute turns the feature on for the app. A spread of data that no file writes as `viewTransition`, such as an object from a server, does not turn it on.
+- The core sets the name as an inline style, so a `style=(…)` binding of the same element that updates during the transition can drop it. Give the name through `viewTransitionName` and keep the rest in the style.
+- A transition that starts while another one runs shares the names of the elements that they both mark, and the end of the first leaves them for the second.
+- A page that marks no element carries none of this code.

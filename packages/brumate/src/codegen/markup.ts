@@ -2292,6 +2292,42 @@ export class Emitter {
     return `\`\${${this.scopeVar(instanceScope(this.plan, declaration.scope))}}:${slot}\``;
   }
 
+  /**
+   * `viewTransition` and `viewTransitionName` on an element are written as `b-vt` and `b-vtn`,
+   * which the runtime turns into `view-transition-*` styles while a transition runs. On a
+   * component or a dynamic tag they stay props, which a spread onto an element renders as `b-vt`
+   * and `b-vtn` in the runtime (`spread` of html.ts). Both set the feature. A spread of data that
+   * the file does not write, such as `{...fromServer}`, does not, so the file that writes the
+   * name on a component or an element must be in the app.
+   */
+  private viewTransitionAttributes(attributes: Attribute[], rename = false): Attribute[] {
+    let result = attributes;
+    for (let index = 0; index < attributes.length; index++) {
+      const attribute = attributes[index]!;
+      if (attribute.kind !== 'static' && attribute.kind !== 'value') {
+        continue;
+      }
+      let name: string | undefined;
+      if (attribute.name === 'viewTransition') {
+        name = 'b-vt';
+      } else if (attribute.name === 'viewTransitionName') {
+        name = 'b-vtn';
+      }
+      if (name === undefined) {
+        continue;
+      }
+      this.plan.viewTransitions = true;
+      if (!rename) {
+        continue;
+      }
+      if (result === attributes) {
+        result = [...attributes];
+      }
+      result[index] = { ...attribute, name } as Attribute;
+    }
+    return result;
+  }
+
   private emitElement(node: ElementNode, scope: Scope): void {
     // A script of markup is a `<script>` only where HTML runs it as it is, in the `#head` of
     // the server without a trigger. Elsewhere it is a `<template b-script>` that the loader
@@ -2306,13 +2342,16 @@ export class Emitter {
       script.trigger === undefined &&
       this.options.mode === 'server';
     const tag = script && !plain ? 'template' : node.tag;
-    const attributes = script
-      ? node.attributes.filter(
-          (attribute) =>
-            attribute.kind !== 'static' ||
-            (attribute.name !== 'trigger' && attribute.name !== 'inline'),
-        )
-      : node.attributes;
+    const attributes = this.viewTransitionAttributes(
+      script
+        ? node.attributes.filter(
+            (attribute) =>
+              attribute.kind !== 'static' ||
+              (attribute.name !== 'trigger' && attribute.name !== 'inline'),
+          )
+        : node.attributes,
+      true,
+    );
     // A `<title>` in `#head` sets the title of the page. The core sets it from the last one in
     // the page, so a block that renders one decides the title. The plan reports the others.
     const pageTitle = node.tag === 'title' && this.headBlocks > 0;
@@ -2827,6 +2866,7 @@ export class Emitter {
   }
 
   private emitComponent(node: ComponentNode, scope: Scope): void {
+    this.viewTransitionAttributes(node.attributes);
     const childrenName = this.emitChildren(node, scope);
     const props = this.props(
       node.attributes,
@@ -2867,6 +2907,7 @@ export class Emitter {
   }
 
   private emitDynamic(node: DynamicTagNode, scope: Scope): void {
+    this.viewTransitionAttributes(node.attributes);
     const childrenName = this.emitChildren(node, scope);
     const extra: string[] = [];
     for (const name of this.scopeAttributes(scope, undefined, staticClasses(node.attributes))) {

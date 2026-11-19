@@ -8,7 +8,7 @@ pnpm e2e
 
 ## Options
 
-- `--only website,todos,tracker,nitro,kit,ui,browser-async,scripts` runs only these suites.
+- `--only website,todos,tracker,nitro,kit,ui,browser-async,scripts,transitions` runs only these suites.
 - `--no-build` uses the builds that are there. By default it runs `pnpm build`, then the build of each suite.
 - `--headed` shows the browser.
 - `--install-browser` downloads Playwright's Chromium when no Chrome is found.
@@ -107,3 +107,11 @@ When a step fails, the later steps of the same flow are skipped, because each ne
 - An inline script runs once, under the nonce and Trusted Types, with its code as written, also in a block that the browser opens.
 - Two blocks with the same `src` request it once.
 - A client navigation keeps the scripts, requests only the new files, and runs a `data-rerun` script again.
+
+`transitions` serves the production build of `examples/view-transitions` under the same policy and reads the animations of the pseudo-elements that the browser makes.
+
+- No element has a `view-transition-name` at rest, and none after a transition, also with `prefers-reduced-motion`.
+- A list that `transition()` reverses has a group for each item, one that is added has only a new image, one that is removed has only an old one, and an element out of view is not named.
+- A handler without `transition()` starts none, and with `prefers-reduced-motion` a handler starts none.
+- A client navigation pairs the two elements of one `viewTransitionName`.
+- In a browser without `startViewTransition`, the handler and the navigation run as before.
