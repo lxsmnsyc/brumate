@@ -212,7 +212,13 @@ A `<style global>` block in the root layout works too.
 
 ## On the page
 
-A build ships each component's CSS twice. The server writes the CSS of the components a page renders into the page, as `<style>` elements, so the first paint needs no stylesheet request. The stylesheets of the bundles hold the same CSS for the rest of the visit, and the page links them without blocking the paint.
+In a build, the CSS of a component is not in its JavaScript. It goes through the CSS pipeline into `.css` assets, one per bundle of a route, plus shared chunks that several bundles use, and the files are cached across pages.
+
+A page carries each component's CSS twice. The server writes the CSS of the components a page renders into the page, as `<style>` elements in render order, so the first paint needs no stylesheet request. The stylesheets of the bundles hold the same CSS for the rest of the visit, and a first load links them with `rel="preload"` and a `<noscript>` link, so they do not block the paint, when the page rendered the components whose global rules they hold. A sheet that holds anything else, such as a CSS file that a module imports, or a sheet whose component marks a plugin removed, stays a blocking link, and so does every sheet a navigation request gets. A component that the browser renders later gets its CSS from the bundle's stylesheet.
+
+A client navigation waits for the stylesheets of the next page before it swaps the page, for at most 4 seconds, so no frame shows unstyled. A `#defer` body waits for its stylesheets before it shows. Stylesheets that no element of the page uses any more are removed after a navigation.
+
+The dev server keeps the CSS inline, and a hot update swaps the text of the `<style>`.
 
 ## What runs on component CSS
 
