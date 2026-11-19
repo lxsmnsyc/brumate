@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-12
-spent: 160000
+spent: 330000
 owns: []
 shared:
   - packages/brumate/src/runtime/client/handlers.ts
