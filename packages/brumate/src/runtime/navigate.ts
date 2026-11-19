@@ -7,6 +7,7 @@ import {
   findSheets,
   hasSheet,
   inUse,
+  linkPreloads,
   preloadSheets,
   scopes,
   scopesOf,
@@ -228,6 +229,13 @@ function planRoutes(next: Document, state: Element | null, requested: number): P
  * one that a bundle of the page names (a component that the browser renders may need it) stay.
  */
 function pruneSheets(): void {
+  // An inline style of a component stays while an element of the page has one of its scopes. A
+  // style without scopes in its rules is global, and stays.
+  for (const style of document.head.querySelectorAll<HTMLStyleElement>('style[b-style]')) {
+    if (!inUse([...new Set(style.textContent.match(/b-c-[\w-]+/g) ?? [])])) {
+      style.remove();
+    }
+  }
   const bundled = new Set<string>();
   for (const script of document.querySelectorAll('script[b-load]')) {
     for (const url of script.getAttribute('b-load')!.split(' ')) {
@@ -594,10 +602,16 @@ function append(nodes: Node[], shift: Shift | undefined): void {
 function updateHead(next: Document, keepSheets: boolean): HTMLScriptElement[] {
   const rerun: HTMLScriptElement[] = [];
   const keep = new Map<string, Element>();
-  // A stylesheet is the same by its URL, not by its markup: with a nonce, its markup differs per
-  // request, and the link would load again on every navigation.
-  const identity = (element: Element) =>
-    element.matches(SHEET) ? `sheet:${sheetKey(element)}` : element.outerHTML;
+  // A stylesheet is the same by its URL, and an inline one by its component, not by their markup:
+  // with a nonce, the markup differs per request, and they would load again on every navigation.
+  const identity = (element: Element): string => {
+    if (element.matches(SHEET)) {
+      return `sheet:${sheetKey(element)}`;
+    }
+    return element.matches('style[b-style]')
+      ? `style:${element.getAttribute('b-style')}`
+      : element.outerHTML;
+  };
   for (const element of document.head.children) {
     keep.set(identity(element), element);
   }
@@ -622,7 +636,7 @@ function updateHead(next: Document, keepSheets: boolean): HTMLScriptElement[] {
       (!(element.tagName === 'SCRIPT' && (element as HTMLScriptElement).src) &&
         !element.hasAttribute('b-bundle') &&
         // Replacing routes keeps the layouts, whose components can use the CSS of these links.
-        !(keepSheets && element.matches(SHEET)))
+        !(keepSheets && (element.matches(SHEET) || element.matches('style[b-style]'))))
     ) {
       element.remove();
     }
@@ -877,6 +891,7 @@ export async function navigate(visit: Visit): Promise<void> {
     }
   }
   const next = new DOMParser().parseFromString(trustedHTML(text.slice(0, end)), 'text/html');
+  linkPreloads(next);
   const state = next.body.querySelector(`${STATE}[b-route]`);
   // A page of another build: the site was deployed since this page loaded, so it loads in full,
   // once for each build. When two builds answer in turn during a deploy, the page swaps in.

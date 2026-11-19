@@ -570,6 +570,15 @@ export async function run({ browser, url, runner }) {
       '/: a navigation waits for the stylesheets of the next page, and links each URL once',
       async () => {
         await page.goto(`${url}/`, { waitUntil: 'load' });
+        // The client applies the stylesheets that the first load only preloaded, after `load`.
+        // Their requests must be over before the test delays the ones of the navigation.
+        await page.waitForFunction(
+          () =>
+            !document.querySelector('link[rel=preload][b-sheet]') &&
+            [...document.querySelectorAll('link[rel~="stylesheet"]')].every((link) => link.sheet),
+          undefined,
+          { timeout: 5000 },
+        );
         await page.evaluate(() => {
           window.__e2eSamePage = true;
           // The moment the docs page is in the document, all its stylesheets must have applied.
@@ -599,7 +608,12 @@ export async function run({ browser, url, runner }) {
         // The stylesheets that the home page did not load come late.
         await page.route('**/*.css', async (route) => {
           await new Promise((resolve) => setTimeout(resolve, 400));
-          await route.continue();
+          // The test can unroute while a delayed request is pending, which makes it already handled.
+          await route.continue().catch((error) => {
+            if (!String(error).includes('already handled')) {
+              throw error;
+            }
+          });
         });
         try {
           await page.locator('.header-nav a', { hasText: 'Docs' }).click();

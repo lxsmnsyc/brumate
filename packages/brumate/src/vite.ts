@@ -20,6 +20,7 @@ import type { createRecorder } from './runtime/devtools-calls.ts';
 import { entryClasses } from './captures.ts';
 import { refreshedNames } from './refreshes.ts';
 import { compile } from './compile.ts';
+import { parse as parseCSS } from 'postcss';
 import { DEFAULT_MERGE } from './codegen/client.ts';
 import { bridgeModuleId, hasBridge, mayHaveBridge, nameBridges } from './bridges.ts';
 import {
@@ -237,6 +238,15 @@ const SERVER_QUERY = '?brumate-server';
  * Vite treat it as CSS, as the style blocks of Vue and Svelte do.
  */
 const STYLE_QUERY = '?brumate-style&lang.css';
+/**
+ * A style module ends with a rule that names it. The sheet of a chunk is the rules of its modules
+ * after the CSS pipeline (urls, imports, PostCSS, minifier), so the text between two marks is the
+ * CSS of one component, as the sheet has it. The build cuts the marks out of the sheets.
+ */
+const MARK = 'b-mark-';
+const MARK_RULE = /\.(b-mark-[\w-]+)\s*\{\s*--b-mark:\s*\1\s*;?\s*\}\s*/g;
+/** CSS files and languages that Vite's CSS pipeline handles. */
+const CSS_FILE = /\.(?:css|less|sass|scss|styl|stylus|pcss|postcss|sss)(?:$|\?)/;
 /** The parameter of `STYLE_QUERY` that marks a style module. */
 const STYLE_PARAM = 'brumate-style';
 /** Exports `mount` from `brumate/testing`, with the loader of this project's client modules. */
@@ -306,6 +316,14 @@ interface ClientHints {
   members?: Record<string, string[]>;
   /** The stylesheets that hold the CSS of each component with CSS, for the links the server writes. */
   components?: Record<string, string[]>;
+  /** The CSS text of each component with CSS, which the server writes inline in the pages that render it. */
+  css?: Record<string, string>;
+  /**
+   * The stylesheets that hold the CSS of components only, by URL, and for each the components
+   * with global rules. A page that renders those components has the sheet's rules inline already,
+   * so it can load the sheet after the first paint.
+   */
+  deferred?: Record<string, string[]>;
 }
 /** The dev server answers the devtools panel about a component at this path. */
 const INSPECT = '/__brumate/inspect';
@@ -1106,6 +1124,100 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       objects.push(`  ${JSON.stringify(findComponentId(file))}: { ${fields.join(', ')} },`);
     }
     return [...styles, ...imports, 'export const modules = {', ...objects, '};'].join('\n');
+  }
+
+  /** The marks of the style modules, by mark, to the ID of their component. */
+  const marks = new Map<string, string>();
+  /** The CSS of each component and the sheets that load late, from the last client bundle. */
+  let cut: { css: Record<string, string>; deferred: Record<string, string[]> } = {
+    css: {},
+    deferred: {},
+  };
+
+  /** True when a component's CSS has a rule that is not scoped to the component. */
+  async function hasGlobalRules(file: string): Promise<boolean> {
+    const found: { value: boolean } = { value: false };
+    parseCSS((await compileFile(file)).result.css).walkRules((rule) => {
+      const parent = rule.parent;
+      if (parent?.type === 'atrule' && /keyframes$/i.test((parent as { name: string }).name)) {
+        return;
+      }
+      if (!rule.selector.includes('[b-c-')) {
+        found.value = true;
+      }
+    });
+    return found.value;
+  }
+
+  /**
+   * Cuts the marks out of the sheets of the chunks, and returns the CSS text of each component, as
+   * its sheet has it, and the sheets that hold the CSS of components only.
+   */
+  async function cutMarks(
+    chunks: Map<string, { moduleIds: string[]; viteMetadata?: { importedCss: Set<string> } }>,
+    bundle: Record<string, { type: string; source?: unknown }>,
+  ): Promise<{ css: Record<string, string>; deferred: Record<string, string[]> }> {
+    const css: Record<string, string> = {};
+    const deferred: Record<string, string[]> = {};
+    for (const chunk of chunks.values()) {
+      const sheets = chunk.viteMetadata?.importedCss;
+      if (!sheets || sheets.size === 0) {
+        continue;
+      }
+      const styled: string[] = [];
+      let other = false;
+      for (const moduleId of chunk.moduleIds) {
+        if (moduleId.endsWith(STYLE_QUERY)) {
+          styled.push(moduleId.slice(0, -STYLE_QUERY.length));
+        } else if (CSS_FILE.test(moduleId)) {
+          other = true;
+        }
+      }
+      if (styled.length === 0) {
+        continue;
+      }
+      for (const name of sheets) {
+        const asset = bundle[name];
+        if (asset?.type !== 'asset') {
+          continue;
+        }
+        const text = String(asset.source);
+        const found: [string, string][] = [];
+        const order: string[] = [];
+        let rest = '';
+        let position = 0;
+        for (const match of text.matchAll(MARK_RULE)) {
+          const id = marks.get(match[1]!);
+          if (id !== undefined) {
+            found.push([id, text.slice(position, match.index)]);
+            order.push(id);
+          }
+          rest += text.slice(position, match.index);
+          position = match.index + match[0].length;
+        }
+        rest += text.slice(position);
+        // The sheet leaves without marks. Rollup writes it, and the plugins after this one see it.
+        asset.source = rest;
+        // A sheet that lost a mark, or has them out of the order of the modules, gives its
+        // components no inline CSS, and stays a blocking link.
+        const expected = styled.map((file) => componentId(file));
+        if (order.length !== expected.length || order.some((id, index) => id !== expected[index])) {
+          continue;
+        }
+        const globals: string[] = [];
+        for (const [id, rules] of found) {
+          css[id] = rules;
+          const file = files.get(id);
+          if (file !== undefined && (await hasGlobalRules(file))) {
+            globals.push(id);
+          }
+        }
+        if (!other && sheets.size === 1) {
+          deferred[`${base}${name}`] = globals;
+        }
+      }
+    }
+    return { css, deferred };
   }
 
   /** The hints of the client build of this process, for a server build that follows it. */
@@ -2142,6 +2254,14 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           coreChunk = item.fileName;
         }
       }
+      // The sheets leave without their marks, and the CSS of each component is what they have.
+      const sheetChunks = new Map<string, (typeof bundle)[string] & { type: 'chunk' }>();
+      for (const item of Object.values(bundle)) {
+        if (item.type === 'chunk') {
+          sheetChunks.set(item.fileName, item);
+        }
+      }
+      cut = await cutMarks(sheetChunks, bundle);
       startChunks = new Set();
       bundleChunks = new Set();
       function addStart(name: string | undefined): void {
@@ -2309,6 +2429,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
             }
           }
         }
+        const { css, deferred } = cut;
         // A bundle without a chunk would leave its pages without client code. Only the output
         // with the manifest has them: a framework such as Nitro writes other outputs too.
         let hasManifest = false;
@@ -2332,6 +2453,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           styles: styleUrls,
           members,
           components,
+          css,
+          deferred,
         };
         // A build of several environments in one process, such as with Nitro, builds the
         // server after the client, with the hints of that client.
@@ -2550,6 +2673,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
                 styles: hints.styles,
                 members: hints.members,
                 components: hints.components,
+                css: hints.css,
+                deferred: hints.deferred,
               }
             : undefined;
         return [
@@ -2630,7 +2755,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
       // The style module is the scoped CSS, which Vite's CSS plugin transforms after this.
       if (isStyle) {
-        return { code: result.css, map: null };
+        const mark = `${MARK}${hash(file)}`;
+        marks.set(mark, componentId(file));
+        return { code: `${result.css}\n.${mark}{--b-mark:${mark}}\n`, map: null };
       }
       for (const warning of isClient && !params.has('part') ? result.warnings : []) {
         const { line, column } = getLocation(source, warning.range.start);

@@ -22,6 +22,23 @@ export function hasSheet(key: string, ignore?: ReadonlySet<Element>): boolean {
   return false;
 }
 
+/**
+ * Makes stylesheets of the preloads that a first load writes (`b-sheet`). A page that a navigation
+ * fetches can have them, such as from a static host that ignores the request headers, and the
+ * swap must wait for them like for any stylesheet.
+ */
+export function linkPreloads(root: ParentNode): void {
+  for (const link of root.querySelectorAll('link[rel=preload][b-sheet]')) {
+    link.setAttribute('rel', 'stylesheet');
+    link.removeAttribute('as');
+    link.removeAttribute('b-sheet');
+  }
+  // The same links for a page without scripts, which a parser without scripting reads as elements.
+  for (const fallback of root.querySelectorAll('noscript[b-sheet]')) {
+    fallback.remove();
+  }
+}
+
 /** The stylesheet links of a tree, including those in the content of its `<template>` elements. */
 export function findSheets(root: ParentNode): Element[] {
   const found = [...root.querySelectorAll(SHEET)];

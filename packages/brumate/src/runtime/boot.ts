@@ -132,6 +132,36 @@ export interface Navigation {
 }
 
 /**
+ * Applies the stylesheets of the bundles that the first load only preloaded (`b-sheet`), so the
+ * page does not wait for them to paint. They load after the page, for the components that the
+ * browser renders later and for navigation.
+ */
+function applySheets(): void {
+  const apply = (): void => {
+    for (const link of document.querySelectorAll<HTMLLinkElement>('link[rel=preload][b-sheet]')) {
+      // The loader may have linked it for a component that it renders.
+      let have = false;
+      for (const other of document.querySelectorAll<HTMLLinkElement>('link[rel~=stylesheet]')) {
+        have ||= other.href === link.href;
+      }
+      if (have) {
+        link.remove();
+      } else {
+        // A stylesheet like any other from here on.
+        link.rel = 'stylesheet';
+        link.removeAttribute('as');
+        link.removeAttribute('b-sheet');
+      }
+    }
+  };
+  if (document.readyState === 'complete') {
+    apply();
+  } else {
+    addEventListener('load', apply, { once: true });
+  }
+}
+
+/**
  * Starts resuming the page. Listens to the events in `b-on` attributes
  * and loads `brumate/client` and the component's module on the first one.
  * `navigate` adds client navigation, and returns how to import the core.
@@ -531,6 +561,7 @@ export function boot(
     observer?.takeRecords();
   };
 
+  applySheets();
   // The core starts at once and loads the code of the components on the page, so a call of a
   // function of another component, such as a function prop, runs at once and in order.
   void loadCore().catch(() => {});

@@ -1218,8 +1218,9 @@ export class Context {
 
   /**
    * Returns a component's stylesheet the first time the page renders the component. A build
-   * passes no `css`: the component's stylesheet is an asset, so the page links to it in its
-   * head, or in place when the head has gone out.
+   * passes no `css`: the page gets the CSS of the component from the bundles, as an inline
+   * `<style>` in its head, or in place when the head has gone out. A component the bundles have
+   * no CSS for gets a link to its stylesheet asset.
    */
   style(id: string, css?: string): string {
     const root = this.root;
@@ -1231,6 +1232,18 @@ export class Context {
     this.undo.push(() => styles.delete(id));
     if (css !== undefined) {
       return styleElement(id, css, root.nonce);
+    }
+    // A build has the CSS of each component, so the page carries it inline and the first paint
+    // waits for no request. The stylesheets of the bundles load after the page.
+    const inline = root.bundles?.css?.[id];
+    if (inline !== undefined) {
+      const element = styleElement(id, inline, root.nonce);
+      if (root.sent || this.inTarget) {
+        return element;
+      }
+      root.sheets.push(element);
+      this.undo.push(() => removeLast(root.sheets, element));
+      return '';
     }
     const nonce = root.nonce === undefined ? '' : ` nonce="${escapeAttribute(root.nonce)}"`;
     // The body of a `#defer` block arrives after the head, and the request for it does not know
@@ -1260,6 +1273,11 @@ export class Context {
       this.undo.push(() => removeLast(root.sheets, html));
     }
     return '';
+  }
+
+  /** The IDs of the components that the page wrote the CSS of. */
+  styledIds(): ReadonlySet<string> {
+    return this.root.styles;
   }
 
   /** The `<link>` elements of the stylesheets that the components of the page asked for. */
@@ -2654,6 +2672,8 @@ export interface RenderResult {
   head: string;
   /** The `<link>` elements of the stylesheets of the components, which a build links. */
   sheets: string;
+  /** The IDs of the components whose CSS the first render wrote, for the stylesheets of the bundles. */
+  styled: ReadonlySet<string>;
   /**
    * The event of the request. Its `signal` aborts when the reader of the
    * response goes away, which `streamParts` and `renderToStream` report.
@@ -2823,6 +2843,10 @@ export interface ClientBundles {
   styles?: Record<string, string[]>;
   /** The URLs of the stylesheet that holds the CSS of each component, by component ID. */
   components?: Record<string, string[]>;
+  /** The sheets of components only, by URL, and the components of each with global rules. */
+  deferred?: Record<string, string[]>;
+  /** The CSS of each component with CSS, which a page writes inline for the components it renders. */
+  css?: Record<string, string>;
   /** The IDs of the components whose code each bundle holds. */
   members: Record<string, string[]>;
   /** The roots whose bundles the browser has, such as those of a page that asks for a `#defer` body. */
@@ -3137,6 +3161,7 @@ export async function render<P>(
       next: () => ctx.next(),
       head: '',
       sheets: '',
+      styled: new Set(),
       defer: ctx.target!.status ?? 'missing',
     };
   }
@@ -3241,6 +3266,7 @@ export async function render<P>(
     next: () => ctx.next(),
     head: ctx.headHTML(),
     sheets: ctx.sheetHTML(),
+    styled: ctx.styledIds(),
     event,
   };
 }
