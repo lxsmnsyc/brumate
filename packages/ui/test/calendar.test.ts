@@ -95,8 +95,9 @@ it('stops at the minimum and the maximum', async () => {
   expect(cell(page, '.due', '2026-11-21').parentElement!.getAttribute('aria-disabled')).toBe(
     'true',
   );
-  expect(cell(page, '.due', '2026-11-20').getAttribute('aria-label')).toBe(
-    'Friday, November 20, 2026, Last available date',
+  // A run on that day adds "Today, " in front, so match the end of the label.
+  expect(cell(page, '.due', '2026-11-20').getAttribute('aria-label')).toMatch(
+    /(^|, )Friday, November 20, 2026, Last available date$/,
   );
   await page.waitFor(() => expect(page.get('.next').hasAttribute('disabled')).toBe(true));
   page.get('.previous').click();
