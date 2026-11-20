@@ -7,7 +7,7 @@ type: experiment
 story:
 early: false
 outline: false
-milestone: 0.9.0
+milestone: 0.10.0
 target:
 ship: auto
 land: auto

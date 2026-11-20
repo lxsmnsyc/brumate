@@ -1,7 +1,7 @@
 ---
 id: coverage-script
 title: A coverage script for the brumate tests
-status: todo
+status: done
 priority: should
 type: chore
 outline: false
