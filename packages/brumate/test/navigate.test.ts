@@ -670,7 +670,7 @@ describe('navigate', () => {
       options.update();
       entry.after = document.body.textContent!;
       seen.push(entry);
-      return { updateCallbackDone: Promise.resolve() };
+      return { updateCallbackDone: Promise.resolve(), finished: Promise.resolve() };
     }) as never;
     await visit('/b', true, true);
     await visit('/a', false, true);

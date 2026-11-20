@@ -202,7 +202,7 @@ const stop = cancelWhen(form, 'submit', () => form.hasAttribute('data-pending'))
 
 ### Animating a change
 
-`transition(handler)` from `brumate/events` runs the handler inside a [view transition](https://developer.mozilla.org/docs/Web/API/View_Transition_API). The browser animates from the page before the handler to the page after it, including elements that `#if` or `#for` removes and items that change order. CSS styles the animation.
+`transition(handler)` from `brumate/events` runs the handler inside a [view transition](https://developer.mozilla.org/docs/Web/API/View_Transition_API). The browser animates from the page before the handler to the page after it, including elements that `#if` or `#for` removes and items that change order, for the elements that the page marks. CSS styles the animation.
 
 ```brm live
 <script>
@@ -215,10 +215,12 @@ const stop = cancelWhen(form, 'submit', () => form.hasAttribute('data-pending'))
 <button onClick=(transition(() => (items = [...items].reverse())))>Reverse</button>
 <ul>
   #for (item of items by item) {
-    <li style=(`view-transition-name: item-${item}`)>{item}</li>
+    <li viewTransition="item">{item}</li>
   }
 </ul>
 ```
+
+`viewTransition="item"` marks an element. While a transition runs, the core gives each marked element a `view-transition-name` of its own and the class `item`, so an item that moves slides, a new one fades in and a removed one fades out. At rest no element has a name, and a page that marks nothing pays nothing. See [View transitions](./navigation.md#view-transitions) for names that pair two pages.
 
 - The transition holds the writes that the handler makes before its first `await`, and the page changes when that part returns. Writes after it, such as after a server call, change the page without an animation.
 - When the code of the page has not loaded yet, the transition waits for it. The browser keeps the old page on screen until then.

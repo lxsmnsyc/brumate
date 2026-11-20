@@ -1241,18 +1241,6 @@ $effect(() => {
 });
 ```
 
-## BRM096
-
-`The callback of {name} cannot be async`
-
-The callback of `$effect` or `$client` is `async`.
-
-```ts
-$effect(() => {
-  load(id).then((value) => (data = value));
-});
-```
-
 ## BRM097
 
 `$effect takes one argument`
@@ -1472,9 +1460,9 @@ title = 'New';
 
 ## BRM117
 
-`Cannot assign to {kind} "{name}"`
+`Cannot assign to {kind} "{name}"{hint}`
 
-Code writes a memo, a const prop or another value that cannot change.
+Code writes a memo, a const prop, a module signal of an import or another value that cannot change.
 
 ```ts
 let count = $signal(0);
@@ -2280,4 +2268,97 @@ A module function reads a value of its module that is not exported.
 
 ```ts
 export const STEP = 1;
+```
+
+## BRM211
+
+`{name} cannot be compiled in a module{reason}. {fix}`
+
+A module uses a form that its signals and memos cannot compile: a compile-time function such as `$effect` at the top level, a memo that awaits or calls a function it cannot follow, or a signal in a destructuring write.
+
+```ts
+export let count = $signal(0);
+export const double = $memo(count * 2);
+```
+
+## BRM208
+
+`"{name}" is a signal of {module}, and a file of plain code gets its store, not its value. {fix}`
+
+A `.ts` or `.js` file imports a signal or a memo that a module declares at its top level. TypeScript types it as its value, and it is a store.
+
+```ts
+// cart.brm.ts
+export let items = $signal<number[]>([]);
+export function count(): number {
+  return items.length;
+}
+
+// plain.ts
+import { count } from './cart.brm.ts';
+```
+
+## BRM209
+
+`"{name}" is written only by this effect. Use {form}`
+
+A warning. An `$effect` only assigns signals that nothing else writes, so each signal is a memo written the long way, and the page updates twice for one change. With one assignment and no `if`, the message gives the memo. An effect with a call, an `await`, a cleanup or a signal that a handler, another effect or a `$bind` also writes stays quiet.
+
+```ts
+let count = $signal(0);
+const message = $memo(`Clicked ${count} times`);
+```
+
+## BRM212
+
+`A <script> with src is not inline. Give it src or inline, not both`
+
+A `<script>` in markup has both `src` and `inline`. `src` loads a file, and `inline` marks code that is written in the file.
+
+```brm
+<script src="https://example.com/chat.js" trigger="idle"></script>
+```
+
+## BRM213
+
+`A <script> with src has no code inside. Write the code in <script inline>`
+
+A `<script src>` in markup has text inside. The browser ignores it.
+
+```brm
+<script inline trigger="idle">
+  window.dataLayer = [];
+</script>
+```
+
+## BRM214
+
+`The trigger of a <script> is a plain string: idle, visible, interaction or load`
+
+The `trigger` of a `<script>` in markup is code in braces, has no value, or names another trigger.
+
+```brm
+<script src="https://example.com/chat.js" trigger="interaction"></script>
+```
+
+## BRM215
+
+`A script in #head cannot wait to be visible, since no element follows it. Use idle or interaction`
+
+A `<script trigger="visible">` is in `#head`. `visible` waits for the element after the script to come into view.
+
+```brm
+#head {
+  <script src="https://example.com/chat.js" trigger="idle"></script>
+}
+```
+
+## BRM216
+
+`A script with a trigger runs once per page, so data-rerun does not apply. Remove one of them`
+
+A `<script>` in markup has `trigger` and `data-rerun`. A script with a trigger never runs again after a navigation.
+
+```brm
+<script src="https://example.com/chat.js" trigger="idle"></script>
 ```

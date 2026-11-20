@@ -36,9 +36,30 @@
 - The start value of a signal is computed once, on the server, and does not track what it reads. Use a memo for a value that follows others.
 - Without an argument, `$signal<number>()` starts as `undefined`.
 - `$produce(signal, (draft) => …)` changes a draft in place and writes the result as a new value. Without it, assign a new array or object: `todos = todos.map(…)`.
+- `$produce` drafts plain objects, arrays, `Map`s and `Set`s, also inside the value. A map or set is copied on the first change and keeps the order of its entries. Keys of a map are never drafted: use the key of the base value, as `draft.set(id, value)` does. An instance of another class is used as it is: return a new value instead.
 - `$untrack(expression)` reads without depending on the values in it.
 - A signal or a memo holds data that the server can send: strings, numbers, booleans, `null`, `undefined`, `bigint`, plain objects and arrays, `Date`, `Map`, `Set`, `URL`, typed arrays and promises. It never holds a function, a class instance or a regular expression. Keep a function as a plain function in the script, or pass it as a function prop. Send the source and the flags of a regular expression, and make it where you use it. An app that sends a class registers a plugin in `src/serial.ts`.
 - Declare signals and memos at the top level of a script, or of the script of a block. A signal never leaves its file: pass its value, or a function that writes it.
+
+```brm
+<script>
+  import { $produce, $signal } from 'brumate/signals';
+
+  let votes = $signal(new Map([['ada', 0]]));
+  let voters = $signal(new Set<string>());
+
+  function vote(name: string) {
+    $produce(votes, (draft) => {
+      draft.set(name, (draft.get(name) ?? 0) + 1);
+    });
+    $produce(voters, (draft) => {
+      draft.add(name);
+    });
+  }
+</script>
+
+<button onClick=(() => vote('ada'))>Ada: {votes.get('ada')}, {voters.size} voters</button>
+```
 
 ```brm wrong: Cannot assign to memo "double"
 <script>
@@ -74,6 +95,22 @@
 </script>
 
 <p>{count}</p>
+```
+
+A signal has the type of its start value. `brumate check` and `brumate-tsc` report a write of another type:
+
+```brm type-error: TS2322
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let count = $signal(0);
+
+  function reset() {
+    count = 'zero';
+  }
+</script>
+
+<button onClick=reset>{count}</button>
 ```
 
 ## Other derived values
@@ -191,10 +228,10 @@ A memo can hold a promise, such as the result of a server function. Markup and o
 - `$client(callback, trigger)` runs once. The trigger is `'visible'` (the default), `'idle'` or `'load'`. Prefer `'visible'` or `'idle'`.
 - A callback returns a cleanup function if it needs one. It runs before the next run of an effect, and when the component leaves the page.
 - An effect depends on the values read by the functions that it calls. Wrap a call that reads and writes the same signal in `$untrack(save())`.
-- The callback of `$effect` and `$client` takes no parameters and is not `async`.
+- The callback of `$effect` and `$client` takes no parameters. It can be `async`, as below.
 - `ref=$bind(name)` writes the element into the signal `name`. On the server it is `undefined`, so read it in handlers, effects and `$client` callbacks.
 - A handler that only writes signals needs no effect: the page updates by itself.
-- An effect that only sets a signal from other signals should be a `$memo`, or a write in the handler that changes them. Keep `$effect` for work outside the page's state: element methods, cookies, `document.title`, timers and libraries.
+- An effect that only sets a signal from other signals should be a `$memo`, or a write in the handler that changes them. Keep `$effect` for work outside the page's state: element methods, cookies, `document.title`, timers and libraries. The compiler warns about such an effect with BRM209, `"message" is written only by this effect. Use …`, and gives the memo when the effect has one assignment and no `if`.
 
 ```brm wrong: The trigger of $client must be "visible", "idle" or "load"
 <script>
@@ -218,9 +255,47 @@ A memo can hold a promise, such as the result of a server function. Markup and o
 <input ref=$bind(field)>
 ```
 
+### Async effects
+
+```ts module="chat.ts"
+export async function connect(room: string): Promise<{ room: string; close(): Promise<void> }> {
+  return { room, close: async () => {} };
+}
+```
+
+```brm uses
+<script>
+  import { $effect, $signal } from 'brumate/signals';
+  import { connect } from './chat.ts';
+
+  let room = $signal('general');
+
+  $effect(async () => {
+    const connection = await connect(room);
+    return async () => await connection.close();
+  });
+</script>
+
+<button onClick=(() => (room = 'random'))>Join random</button>
+```
+
+- The callback of `$effect` and `$client` can be `async`, as `$client(async () => { … }, 'idle')`. A run that goes stale while it is pending cleans up as soon as it settles, so it needs no flag.
+- One run at a time: the next run starts after the run before it and its cleanup have settled. Here `connection` is closed before the next `connect`. A scope that goes, such as a closed `#if`, calls the cleanup and does not wait for a pending run.
+- The cleanup is a function, an async function, or an object with `[Symbol.dispose]` or `[Symbol.asyncDispose]`, such as a `DisposableStack`. A sync effect takes the same forms.
+- Reads after an `await` are dependencies, as before it. A write after an `await` makes its own update, as in an async handler.
+- An effect that needs the value of a memo that has none yet waits with `await $resolve(memo)`. A read of that memo before the first `await` skips the run. A read after an `await` that finds no value throws to the nearest `#try`.
+- A rejection of the run or of its cleanup goes to the nearest `#try`.
+
 ## Context
 
-```brm
+```ts module="theme.ts"
+import { createContext } from 'brumate/context';
+
+export const Theme: ReturnType<typeof createContext<'light' | 'dark'>> =
+  createContext<'light' | 'dark'>('theme');
+```
+
+```brm uses
 <script>
   import { $getContext, $setContext, $signal } from 'brumate/signals';
   import { Theme } from './theme.ts';
@@ -233,7 +308,7 @@ A memo can hold a promise, such as the result of a server function. Markup and o
 <p>{parent}</p>
 ```
 
-`createContext` comes from `brumate/context`: `export const Theme = createContext<'light' | 'dark'>('theme');` in a `.ts` file. It takes only a key and has no default. A component reads the context of the nearest component above it, children included, and `$getContext` throws when none provides it. Give a fallback for a read that may have no provider: `$getContext(Theme, 'light')`.
+`createContext` comes from `brumate/context` and is called in a `.ts` file, as `theme.ts` above shows. It takes only a key and has no default. A component reads the context of the nearest component above it, children included, and `$getContext` throws when none provides it. Give a fallback for a read that may have no provider: `$getContext(Theme, 'light')`.
 
 ## Derived stores
 

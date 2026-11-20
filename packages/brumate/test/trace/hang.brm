@@ -1,0 +1,12 @@
+<script>
+  import { $memo } from 'brumate/signals';
+
+  const late = $memo(new Promise<string>(() => {}));
+</script>
+
+<p>Page</p>
+#loading {
+  <p class="late">{late}</p>
+} #else {
+  <p class="fallback">Loading</p>
+}

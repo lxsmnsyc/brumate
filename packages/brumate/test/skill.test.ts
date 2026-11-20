@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseSync } from 'oxc-parser';
 import { describe, expect, it } from 'vitest';
@@ -19,6 +19,8 @@ import { ERRORS, findError, matchesError, renderErrors } from '../src/error-cata
 const SKILL = fileURLToPath(new URL('../skills/brumate/', import.meta.url));
 const SRC = fileURLToPath(new URL('../src/', import.meta.url));
 const UI_SRC = fileURLToPath(new URL('../../ui/src/', import.meta.url));
+const TSC = fileURLToPath(new URL('../../tsc/bin/brumate-tsc.js', import.meta.url));
+const OUT = fileURLToPath(new URL('./.output/skill/', import.meta.url));
 
 /** The files of the skill, as paths under its folder. */
 const FILES = [
@@ -31,8 +33,9 @@ interface Block {
   line: number;
   /**
    * The words after `brm` in the fence: nothing for a file that compiles, `uses` for one that
-   * calls a module of the same page, `fragment` for a piece of a file, and `wrong: message`
-   * for a file that fails with exactly that message.
+   * calls a module of the same page, `fragment` for a piece of a file, `type-error: TSxxxx` for
+   * a file that compiles but fails the type check with that code, and `wrong: message` for a
+   * file that fails with exactly that message.
    */
   info: string;
   source: string;
@@ -92,10 +95,15 @@ describe('the skill', () => {
   it('has code blocks to test', () => {
     expect(right.length).toBeGreaterThan(10);
     expect(wrong.length).toBeGreaterThan(8);
+    expect(typed.length).toBeGreaterThanOrEqual(1);
   });
 });
 
 const right = all.filter((block) => block.info === '' || block.info === 'uses');
+const typed = all.flatMap((block) => {
+  const found = /^type-error: (TS\d+)$/.exec(block.info);
+  return found ? [{ block, code: found[1]! }] : [];
+});
 const wrong = all.flatMap((block) => {
   const found = /^wrong: (.*)$/.exec(block.info);
   return found ? [{ block, text: found[1]! }] : [];
@@ -127,12 +135,66 @@ function firstMessage(error: unknown): string {
     .replace(/\s\[BRM\d+\]$/, '');
 }
 
+/** The folder that a block is written to, with the modules of its page beside it. */
+function folderOf(block: Block): string {
+  return `${OUT}${block.file.replace(/\W+/g, '-')}-${block.line}/`;
+}
+
+/** Writes the blocks that compile, and a tsconfig for them, under the output folder. */
+function writeBlocks(): void {
+  rmSync(OUT, { recursive: true, force: true });
+  for (const block of [...right, ...typed.map((item) => item.block)]) {
+    const folder = folderOf(block);
+    mkdirSync(folder, { recursive: true });
+    // An import of @brumate/ui is a path into its source, as the package has no dependency on it.
+    const ui = '../../../../../ui/src/';
+    writeFileSync(`${folder}Page.brm`, block.source.replaceAll("'@brumate/ui/", `'${ui}`));
+    for (const [name, source] of block.modules) {
+      mkdirSync(dirname(`${folder}${name}`), { recursive: true });
+      writeFileSync(`${folder}${name}`, source);
+    }
+  }
+  // The folder is hidden from the config of the package, so it has a config of its own.
+  writeFileSync(
+    `${OUT}tsconfig.json`,
+    JSON.stringify({
+      extends: '../../../tsconfig.json',
+      include: ['*/Page.brm', '../../../types.d.ts'],
+    }),
+  );
+}
+
+/** The codes of the type errors that one run of brumate-tsc reports, by folder of the block. */
+function typeErrors(): Map<string, string[]> {
+  writeBlocks();
+  let output = '';
+  try {
+    output = execFileSync('node', [TSC, '--noEmit', '-p', `${OUT}tsconfig.json`], {
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+  } catch (error) {
+    output = String((error as { stdout?: string }).stdout ?? '');
+    // A crash of the checker prints no error line, so it would pass every block.
+    if (!output.includes('error TS')) {
+      throw error;
+    }
+  }
+  const found = new Map<string, string[]>();
+  for (const [, folder, code] of output.matchAll(
+    /([^/\s]+)\/Page\.brm\(\d+,\d+\): error (TS\d+)/g,
+  )) {
+    found.set(folder!, [...(found.get(folder!) ?? []), code!]);
+  }
+  return found;
+}
+
 describe('the code blocks', () => {
   it('all have a known mark', () => {
     // Pieces of a file are only in errors.md, which is generated from the catalog.
     // A piece cannot compile on its own. Every block of the pages that people write is a file.
     const marks = all.filter((block) => !['', 'uses'].includes(block.info));
-    expect(marks.length).toBe(wrong.length);
+    expect(marks.length).toBe(wrong.length + typed.length);
   });
 
   it.each(right.map((block) => [`${block.file}:${block.line}`, block] as const))(
@@ -154,6 +216,22 @@ describe('the code blocks', () => {
       for (const name of names) {
         expect(block.source).not.toMatch(new RegExp(`\\b${name}\\.value\\b`));
       }
+    },
+  );
+
+  const checked = typeErrors();
+
+  it.each(right.map((block) => [`${block.file}:${block.line}`, block] as const))(
+    '%s type-checks',
+    (_name, block) => {
+      expect(checked.get(folderOf(block).split('/').at(-2)!) ?? []).toEqual([]);
+    },
+  );
+
+  it.each(typed.map((item) => [`${item.block.file}:${item.block.line}`, item] as const))(
+    '%s fails the type check with the error that it names',
+    (_name, { block, code }) => {
+      expect(checked.get(folderOf(block).split('/').at(-2)!)).toContain(code);
     },
   );
 

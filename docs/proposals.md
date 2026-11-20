@@ -513,6 +513,8 @@ The benchmarks measure renders and loads, but an app cannot see them.
 - In the browser, `onTrace` receives the time from an event to its handler, split into the parts it loaded and the run, so a slow first click shows where its time went.
 - The traces are off unless the option is set, and cost nothing then.
 
+Shipped in 0.9.0 as `onTrace` of `src/middleware.ts`, of `start` and `brumate/otel`, with `traceparent` between the browser and the server. See [Observability](../website/docs/observability.md) for the span names, the options and what it costs.
+
 Cost: about 1 week.
 
 ## Routing

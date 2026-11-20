@@ -177,20 +177,23 @@ Runs the bindings that the writes of the handler so far made waiting, so the cod
 ## `$effect`
 
 ```ts
-function $effect(callback: () => void | (() => void)): void;
+function $effect(callback: () => void | Cleanup | Promise<void | Cleanup>): void;
 ```
 
 Runs `callback` when the values that it reads change.
 
-- A statement at the top level of a script. The callback takes no parameters and cannot be `async`.
+- A statement at the top level of a script. The callback takes no parameters. It can be `async`, as [Async effects](./effects.md#async-effects) shows.
 - Server: never runs.
-- Client: never runs on page load. Its first run is after the first change of a value it reads. The returned function runs before the next run and when the scope is removed. A value that only the returned function reads is not a dependency.
+- Client: never runs on page load. Its first run is after the first change of a value it reads. The returned cleanup runs before the next run and when the scope is removed. It is a function, an async function, or an object with `[Symbol.dispose]` or `[Symbol.asyncDispose]` (`Cleanup`). A value that only the returned function reads is not a dependency.
 - Reads inside functions that the callback calls count too. Wrap a call in `$untrack` to read without depending on it.
 
 ## `$client`
 
 ```ts
-function $client(callback: () => void | (() => void), trigger?: 'visible' | 'idle' | 'load'): void;
+function $client(
+  callback: () => void | Cleanup | Promise<void | Cleanup>,
+  trigger?: 'visible' | 'idle' | 'load',
+): void;
 ```
 
 Runs `callback` in the browser once, when a trigger fires.
@@ -201,7 +204,7 @@ Runs `callback` in the browser once, when a trigger fires.
 | `'idle'`    | The browser is idle after the page loads.                                |
 | `'load'`    | The page loads. The compiler warns, because this runs before any event.  |
 
-- A statement at the top level of a script. The callback takes no parameters and cannot be `async`.
+- A statement at the top level of a script. The callback takes no parameters. It can be `async`.
 - Server: never runs.
 - Client: the returned function runs when the scope is removed.
 
@@ -224,7 +227,7 @@ Changes an object or array in a signal through a draft, and writes the signal wi
 - The first argument is a signal. The second is a function.
 - It is allowed where a signal can be written.
 - The new value shares the objects that the recipe did not change. If the recipe changes nothing, the signal keeps its value.
-- Only plain objects and arrays are drafted.
+- Plain objects, arrays, `Map`s and `Set`s are drafted. An instance of another class is used as it is, and the dev server warns when the recipe changes it and returns nothing.
 
 ## `$setContext`
 

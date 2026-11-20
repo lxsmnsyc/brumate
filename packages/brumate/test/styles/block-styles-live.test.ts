@@ -2,13 +2,15 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { compile } from '../../src/index.ts';
 import { render as renderParts } from '../../src/runtime/server.ts';
 
 const output = resolve(import.meta.dirname, '../.output/block-styles-live');
 const file = (name: string): string => pathToFileURL(join(output, name)).href;
 const modules = new Map<string, string>();
+/** Compiles as a build with linked stylesheets does: the CSS is not in the module. */
+let styleFiles = false;
 let stop: (() => void) | undefined;
 
 beforeAll(() => {
@@ -34,7 +36,11 @@ function build(name: string, source: string): void {
   const { server, client, parts, render, plan } = compile(source, {
     filename: name,
     path: join(output, name),
+    styleFiles,
   });
+  if (styleFiles) {
+    expect(server + client + render).not.toContain('$$css');
+  }
   for (const [part, code] of Object.entries(parts)) {
     writeFileSync(join(output, `${name}.client.${part}.ts`), toRender(code));
   }
@@ -363,5 +369,46 @@ describe('live style of a block', { timeout: 10000 }, () => {
     click(document.querySelector('.wide')!);
     await waitFor(() => expect(new Set(widths())).toEqual(new Set(['3px'])));
     expect(widths().length).toBeGreaterThan(0);
+  });
+});
+
+describe('live style of a block with linked stylesheets', { timeout: 10000 }, () => {
+  beforeAll(() => {
+    styleFiles = true;
+  });
+
+  afterAll(() => {
+    styleFiles = false;
+  });
+
+  it('changes the variable of one row after resume, not the others', async () => {
+    await resume('linkedSignal.brm', list);
+    expect(values()).toEqual(['none', 'none', 'none']);
+    click(document.querySelectorAll('.tag')[1]!);
+    await waitFor(() => expect(values()).toEqual(['none', '2px solid', 'none']));
+    expect(document.head.querySelector('style')).toBeNull();
+  });
+
+  it('keeps the value of each row when a keyed reorder moves it', async () => {
+    await resume('linkedReorder.brm', rows);
+    click(document.querySelectorAll('.tag')[0]!);
+    await waitFor(() => expect(rowVariables()[0]).toContain('1=2px solid'));
+    click(document.querySelector('.reverse')!);
+    await waitFor(() => expect(names()).toEqual(['c', 'b', 'a']));
+    expect(rowVariables()).toEqual([
+      ['0=blue', '1=none'],
+      ['0=green', '1=none'],
+      ['0=red', '1=2px solid'],
+    ]);
+  });
+
+  it('writes the variables of a row that the browser renders, and updates it', async () => {
+    await resume('linkedAdded.brm', rows);
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(names()).toEqual(['a', 'b', 'c', 'n']));
+    expect(rowVariables()[3]).toEqual(['0=gold', '1=none']);
+    click(document.querySelectorAll('.tag')[3]!);
+    await waitFor(() => expect(rowVariables()[3]).toEqual(['0=gold', '1=2px solid']));
+    expect(document.head.querySelector('style')).toBeNull();
   });
 });

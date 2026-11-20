@@ -62,6 +62,7 @@ import {
   failures,
   idempotentIds,
   isRedirect,
+  traceValue,
   runEntry,
   unwrap,
   withEvent,
@@ -74,7 +75,11 @@ import type {
   ServerErrorKind,
   TraceEntry,
 } from './request.ts';
+import { Tracer, startSpan, traceRequest } from './trace.ts';
+import type { EndSpan, TraceHandler } from './trace.ts';
 import type { Context as ContextValue } from './context.ts';
+// oxlint-disable-next-line import/no-cycle -- Route rendering and the render core call each other, and every call runs after both modules load.
+import { renderPage, renderRoute } from './route-render.ts';
 import { Store, findStored, isForeignStore, isStore, sentForeignStore } from './store.ts';
 
 /**
@@ -149,6 +154,7 @@ export type {
   ServerErrorInfo,
   ServerErrorKind,
 } from './request.ts';
+export type { TraceHandler, TraceName, TraceSpan } from './trace.ts';
 export { ValidationError, fieldErrors, parse, parseForm, safeParse } from './validate.ts';
 export { parseSubmission } from './submission.ts';
 export type {
@@ -463,6 +469,12 @@ export class Context {
   private inTarget = false;
   private readonly boundaries: Boundary[] = [];
   private readonly styles = new Set<string>();
+  /** The `<link>` elements of the stylesheets that components asked for, in render order. */
+  private readonly sheets: string[] = [];
+  /** The URLs of the stylesheets that the page links already. */
+  linked: Set<string> = new Set();
+  /** The bundles of the client build, for the stylesheet of each component. */
+  bundles: ClientBundles | undefined;
   /** Markup of `#portal` blocks, written at the end of the page. */
   readonly portals: string[] = [];
   /** Markup of `#head` blocks. */
@@ -502,6 +514,8 @@ export class Context {
   event: RequestEvent | undefined;
   /** The sink of the event, or of the `onError` option of a render without a request. */
   errors: ErrorSink | undefined;
+  /** The spans of a render without a request, when the app has an `onTrace`. */
+  tracer: Tracer | undefined;
   /** Results of server function calls in this render, so the same call runs once. */
   readonly calls: Map<string, unknown> = new Map();
 
@@ -525,8 +539,12 @@ export class Context {
   }
 
   /** Starts an entry of the trace of the request, in development. */
-  traced(kind: TraceEntry['kind'], label: string): ((failed?: boolean) => void) | undefined {
-    return this.root.event?.traced(kind, label);
+  traced(kind: TraceEntry['kind'], label: string): EndSpan | undefined {
+    const { event, tracer } = this.root;
+    if (event) {
+      return event.traced(kind, label);
+    }
+    return tracer && startSpan(this.root, `brumate.${kind}`, label);
   }
 
   /** Marks the request of the page as one that depends on the user, so the page is not cached for everyone. */
@@ -1208,15 +1226,73 @@ export class Context {
     return bound;
   }
 
-  /** Returns a component's stylesheet the first time the page renders the component. */
-  style(id: string, css: string): string {
-    const styles = this.root.styles;
+  /**
+   * Returns a component's stylesheet the first time the page renders the component. A build
+   * passes no `css`: the page gets the CSS of the component from the bundles, as an inline
+   * `<style>` in its head, or in place when the head has gone out. A component the bundles have
+   * no CSS for gets a link to its stylesheet asset.
+   */
+  style(id: string, css?: string): string {
+    const root = this.root;
+    const styles = root.styles;
     if (styles.has(id)) {
       return '';
     }
     styles.add(id);
     this.undo.push(() => styles.delete(id));
-    return styleElement(id, css, this.root.nonce);
+    if (css !== undefined) {
+      return styleElement(id, css, root.nonce);
+    }
+    // A build has the CSS of each component, so the page carries it inline and the first paint
+    // waits for no request. The stylesheets of the bundles load after the page.
+    const inline = root.bundles?.css?.[id];
+    if (inline !== undefined) {
+      const element = styleElement(id, inline, root.nonce);
+      if (root.sent || this.inTarget) {
+        return element;
+      }
+      root.sheets.push(element);
+      this.undo.push(() => removeLast(root.sheets, element));
+      return '';
+    }
+    const nonce = root.nonce === undefined ? '' : ` nonce="${escapeAttribute(root.nonce)}"`;
+    // The body of a `#defer` block arrives after the head, and the request for it does not know
+    // what the page linked, so its links go in its markup, whether or not the page has them.
+    const inPlace = root.sent || this.inTarget;
+    let html = '';
+    const added: string[] = [];
+    for (const url of root.bundles?.components?.[id] ?? []) {
+      if (this.inTarget || !root.linked.has(url)) {
+        if (!this.inTarget) {
+          root.linked.add(url);
+          added.push(url);
+        }
+        html += `<link rel="stylesheet"${nonce} href="${escapeAttribute(url)}">`;
+      }
+    }
+    this.undo.push(() => {
+      for (const url of added) {
+        root.linked.delete(url);
+      }
+    });
+    if (inPlace) {
+      return html;
+    }
+    if (html) {
+      root.sheets.push(html);
+      this.undo.push(() => removeLast(root.sheets, html));
+    }
+    return '';
+  }
+
+  /** The IDs of the components that the page wrote the CSS of. */
+  styledIds(): ReadonlySet<string> {
+    return this.root.styles;
+  }
+
+  /** The `<link>` elements of the stylesheets that the components of the page asked for. */
+  sheetHTML(): string {
+    return this.root.sheets.join('');
   }
 
   /** Adds the markup of a `#head` block. */
@@ -1370,7 +1446,7 @@ export class Context {
     const target = this.root.target;
     // A reader that runs no scripts never fires the trigger, so the body renders with the page.
     if (!target && this.root.inOrder) {
-      this.register(id, renderBody, false);
+      this.register(id, renderBody, false, false, '#defer');
       return;
     }
     if (!target || this.inTarget) {
@@ -1388,7 +1464,7 @@ export class Context {
       return;
     }
     target.status = 'found';
-    this.register(id, renderBody, true);
+    this.register(id, renderBody, true, false, '#defer');
   }
 
   private register(
@@ -1396,6 +1472,7 @@ export class Context {
     renderBody: (ctx: Context) => Promise<string>,
     inTarget: boolean,
     around = false,
+    block = '#loading',
   ): void {
     const child = new Context(this.root, undefined, 0, `${id}.`);
     child.inTarget = inTarget;
@@ -1403,7 +1480,7 @@ export class Context {
     child.outer = catchers;
     const group = this.reveal;
     group?.add(id);
-    const end = around ? undefined : this.traced('body', `#loading ${id}`);
+    const end = around ? undefined : this.traced('body', `${block} ${id}`);
     const boundary: Boundary = {
       id,
       render: renderBody(child).then(
@@ -1412,7 +1489,7 @@ export class Context {
           return { html, ctx: child };
         },
         (error: unknown) => {
-          end?.(true);
+          end?.(true, error);
           throw error;
         },
       ),
@@ -1517,13 +1594,14 @@ export function read(node: Memo): any {
     const end = node.ctx?.traced('memo', node.name ?? 'memo');
     node.load = Promise.resolve(value)
       .then(firstValue)
-      .finally(() => end?.())
       .then(
         (result) => {
+          end?.();
           node.state = 'done';
           node.value = result;
         },
         (error: unknown) => {
+          end?.(true, error);
           node.state = 'failed';
           node.error = error;
         },
@@ -2604,6 +2682,10 @@ export interface RenderResult {
   next: () => number;
   /** Markup for the document's head: the `$title` and the `#head` blocks. */
   head: string;
+  /** The `<link>` elements of the stylesheets of the components, which a build links. */
+  sheets: string;
+  /** The IDs of the components whose CSS the first render wrote, for the stylesheets of the bundles. */
+  styled: ReadonlySet<string>;
   /**
    * The event of the request. Its `signal` aborts when the reader of the
    * response goes away, which `streamParts` and `renderToStream` report.
@@ -2618,7 +2700,7 @@ export interface RenderResult {
 }
 
 /** The `pending` of a render that has nothing left to send. */
-const NOTHING_PENDING: AsyncIterable<string> = {
+export const NOTHING_PENDING: AsyncIterable<string> = {
   [Symbol.asyncIterator]: () => ({
     next: () => Promise.resolve({ done: true, value: undefined }),
   }),
@@ -2678,6 +2760,8 @@ function createQueue<T>(): Queue<T> {
 export interface RenderOptions {
   /** The `onError` of the app, which gets the errors of a render without a request event. */
   onError?: ServerErrorHandler;
+  /** The `onTrace` of the app, which gets the spans of a render. */
+  onTrace?: TraceHandler;
   /** The URL prefix of server function calls, for forms that post to one. Defaults to `/_brumate`. */
   rpc?: string;
   /** In development: the swaps of `#loading` bodies keep their fallbacks, for the devtools. */
@@ -2749,10 +2833,12 @@ export interface RenderOptions {
    * `setClientBundles`), so only a render that wants others passes them.
    */
   bundles?: ClientBundles;
+  /** The URLs of the stylesheets that the page links already, so a component does not link them again. */
+  linked?: Iterable<string>;
 }
 
 /** The bundles of the client build, for a render whose options name none. */
-let clientBundles: ClientBundles | undefined;
+export let clientBundles: ClientBundles | undefined;
 
 /**
  * Sets the bundles that a render names when its options name none. The Vite plugin calls it in
@@ -2769,6 +2855,12 @@ export interface ClientBundles {
   chunks: Record<string, string>;
   /** The URLs of the stylesheets that the modules of each bundle import. */
   styles?: Record<string, string[]>;
+  /** The URLs of the stylesheet that holds the CSS of each component, by component ID. */
+  components?: Record<string, string[]>;
+  /** The sheets of components only, by URL, and the components of each with global rules. */
+  deferred?: Record<string, string[]>;
+  /** The CSS of each component with CSS, which a page writes inline for the components it renders. */
+  css?: Record<string, string>;
   /** The IDs of the components whose code each bundle holds. */
   members: Record<string, string[]>;
   /** The roots whose bundles the browser has, such as those of a page that asks for a `#defer` body. */
@@ -2844,6 +2936,8 @@ export async function render<P>(
   }
   ctx.build = options.build;
   ctx.nonce = options.nonce;
+  ctx.bundles = options.bundles ?? clientBundles;
+  ctx.linked = new Set(options.linked);
   ctx.development = options.dev === true;
   if (options.defer) {
     ctx.target = { ...options.defer };
@@ -2860,6 +2954,7 @@ export async function render<P>(
           address: options.address,
           prerender: options.prerender,
           onError: options.onError,
+          onTrace: options.onTrace,
         })
       : undefined);
   // Components read the nonce of the render from the event, for the inline scripts they write.
@@ -2868,8 +2963,23 @@ export async function render<P>(
   }
   ctx.event = event;
   ctx.errors = event ? event.errors : errorSink(options.onError);
+  if (!event && options.onTrace) {
+    ctx.tracer = new Tracer(options.onTrace);
+  }
+  // `renderPage` starts the span of a render that has an event. Without one, the render does.
+  const tracing = options.event ? undefined : (event ?? ctx);
+  const endRender = tracing?.tracer
+    ? startSpan(tracing, 'brumate.render', options.route ?? 'render')
+    : undefined;
   // The first part of each component runs with the event, and so do memos, which the compiler gives `$$ctx`.
-  const rendered = (await ctx.run(() => Root(props, ctx))) as string;
+  let rendered: string;
+  try {
+    rendered = (await ctx.run(() => Root(props, ctx))) as string;
+  } catch (error) {
+    endRender?.(true, error);
+    throw error;
+  }
+  endRender?.();
   ctx.send();
   const html = beforeBodyEnd(rendered, ctx.portals.join(''));
   // The queue of `pending` is made only when something is pending, because it costs a lot for a small page.
@@ -3080,6 +3190,8 @@ export async function render<P>(
       status: event?.status ?? 200,
       next: () => ctx.next(),
       head: '',
+      sheets: '',
+      styled: new Set(),
       defer: ctx.target!.status ?? 'missing',
     };
   }
@@ -3183,6 +3295,8 @@ export async function render<P>(
     status: event?.status ?? 200,
     next: () => ctx.next(),
     head: ctx.headHTML(),
+    sheets: ctx.sheetHTML(),
+    styled: ctx.styledIds(),
     event,
   };
 }
@@ -3360,16 +3474,19 @@ function beforeBodyEnd(
 function firstRender(
   html: string,
   componentHead: string,
+  sheets: string,
   state: string,
   options: DocumentOptions,
 ): string {
-  const head = (options.head ?? '') + componentHead;
+  const head = (options.head ?? '') + sheets + componentHead;
   const tail = state + (options.scripts ?? '');
   const match = HTML.exec(html);
   if (!match) {
     const before =
       typeof options.start === 'function' ? options.start(head) : (options.start ?? '');
-    return before + html + tail + (options.end ?? '');
+    // The head has no place without `<html>`, so the stylesheets of the components come first.
+    const linked = typeof options.start === 'function' ? '' : sheets;
+    return before + linked + html + tail + (options.end ?? '');
   }
   // Markup before <html>, such as the stylesheet of the root component, belongs in the head.
   const headContent = html.slice(0, match.index) + head;
@@ -3457,7 +3574,7 @@ async function writeParts(
   controller: ReadableStreamDefaultController<string>,
   cancelled: () => boolean = () => false,
 ): Promise<void> {
-  controller.enqueue(firstRender(parts.html, parts.head, parts.state, options));
+  controller.enqueue(firstRender(parts.html, parts.head, parts.sheets, parts.state, options));
   if (parts.pending !== NOTHING_PENDING) {
     for await (const chunk of parts.pending) {
       if (cancelled()) {
@@ -3475,7 +3592,7 @@ async function writeParts(
  * The message and status that answer an error. A `ServerError` sends its
  * own. Any other error is logged, and sends `fallback` with status 500.
  */
-function errorAnswer(
+export function errorAnswer(
   error: unknown,
   fallback: string,
   kind: ServerErrorKind,
@@ -3495,7 +3612,7 @@ failures.report = (error, event) => logError(error, event.kind, event.errors, ev
  * what it wants. A `ServerError` is an answer, so the handler does not get it. A handler that
  * fails has its error logged with the first one.
  */
-function logError(
+export function logError(
   error: unknown,
   kind: ServerErrorKind,
   sink: ErrorSink | undefined,
@@ -3595,7 +3712,10 @@ function unknownAnswer(id: string): Response {
  * `set-cookie` from the headers that a response is made with, but keeps the
  * ones added after, so a page in `brumate/testing` keeps its cookies.
  */
-function respond(body: BodyInit | null, init: ResponseInit & { headers: Headers }): Response {
+export function respond(
+  body: BodyInit | null,
+  init: ResponseInit & { headers: Headers },
+): Response {
   const result = new Response(body, init);
   if (result.headers.getSetCookie().length === 0) {
     for (const cookie of init.headers.getSetCookie()) {
@@ -3663,6 +3783,30 @@ async function callWithForm(
     return { result: await invoke() };
   } catch (error) {
     return { answer: formFailure(error, headers, event, base) };
+  }
+}
+
+/** Runs a server function that the browser called, as a `brumate.call` span. */
+function tracedCall(
+  event: RequestEvent,
+  id: string,
+  // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
+  fn: (...args: any[]) => unknown,
+  args: unknown[],
+): unknown {
+  // Without `onTrace` or the dev trace, there is nothing to time.
+  if (!event.tracer && !event.trace) {
+    return withEvent(event, () => fn(...args));
+  }
+  const end = event.traced('call', id);
+  try {
+    return traceValue(
+      withEvent(event, () => fn(...args)),
+      end,
+    );
+  } catch (error) {
+    end(true, error);
+    throw error;
   }
 }
 
@@ -3749,6 +3893,11 @@ export interface RequestOptions {
    * a `ServerError`, in place of `console.error`. The Vite plugin passes it.
    */
   onError?: ServerErrorHandler;
+  /**
+   * The `onTrace` export of `src/middleware.ts`, which gets each span of the work of the server:
+   * requests, renders, memos, calls and `#loading` and `#defer` bodies. The Vite plugin passes it.
+   */
+  onTrace?: TraceHandler;
   /**
    * The middleware of each `'use server'` file, by the ID of each of its
    * functions. It runs before the function, after the middleware of the
@@ -3851,6 +4000,7 @@ export async function handleRequest(
     address: options.address,
     prerender: options.prerender,
     onError: options.onError,
+    onTrace: options.onTrace,
   });
   // The arguments are read before the middleware runs, so a check can depend on them. Arguments
   // that fail to read, such as a regular expression, answer as an error of the call.
@@ -3865,13 +4015,25 @@ export async function handleRequest(
   event.call = { id, args };
   // The function runs with its event, so `getEvent()` before its first await returns it.
   function invoke(): unknown {
-    return withEvent(event, () => fn(...args));
+    return tracedCall(event, id, fn, args);
   }
-  return runEntry(options.middleware, event, () =>
-    runEntry(options.fileMiddleware?.[id], event, () =>
-      posted ? handleForm(invoke, event) : answerCall(functions, event, async () => invoke()),
-    ),
-  );
+  function answer(): Promise<Response> {
+    return runEntry(options.middleware, event, () =>
+      runEntry(options.fileMiddleware?.[id], event, () =>
+        posted ? handleForm(invoke, event) : answerCall(functions, event, async () => invoke()),
+      ),
+    );
+  }
+  // Without `onTrace`, the request runs as before.
+  if (!event.tracer) {
+    return answer();
+  }
+  return traceRequest(
+    event,
+    `${prefix}/${id}`,
+    () => (posted ? 'form' : 'call'),
+    answer,
+  ) as Promise<Response>;
 }
 
 /**
@@ -3927,7 +4089,7 @@ function callFailure(error: unknown, headers: Headers, event: RequestEvent): Res
   return respond(JSON.stringify({ error: message }), { status, headers });
 }
 
-interface ResolvedView {
+export interface ResolvedView {
   key: string;
   component: Component;
   slots: Record<string, ResolvedView>;
@@ -3961,13 +4123,13 @@ interface KeptPage {
 }
 
 /** The key of a page in the store: its URL, and the base of a client navigation, by build. */
-function pageKey(url: URL, request: Request, build: string | undefined): string {
+export function pageKey(url: URL, request: Request, build: string | undefined): string {
   const base = request.headers.get('x-brumate-base') ?? '';
   return `brumate:page:${build ?? ''}:${base}:${url.pathname}${url.search}`;
 }
 
 /** The page that the store keeps for a key, when it is still fresh. */
-async function keptPage(key: string): Promise<Response | undefined> {
+export async function keptPage(key: string): Promise<Response | undefined> {
   const text = await cacheStore().get(key);
   if (!text) {
     return undefined;
@@ -3991,7 +4153,11 @@ async function keptPage(key: string): Promise<Response | undefined> {
 }
 
 /** Keeps a public page in the store until its `max-age` ends. */
-async function keepPage(key: string, response: Response, event: RequestEvent): Promise<void> {
+export async function keepPage(
+  key: string,
+  response: Response,
+  event: RequestEvent,
+): Promise<void> {
   const maxAge = Number(
     /max-age=(\d+)/.exec(response.headers.get('cache-control') ?? '')?.[1] ?? 0,
   );
@@ -4027,37 +4193,8 @@ async function keepPage(key: string, response: Response, event: RequestEvent): P
   await cacheStore().set(key, JSON.stringify(page), maxAge);
 }
 
-/** The `cache` of the page of a view: the nearest one along its `children`. */
-function pageCache(view: ResolvedView): PageCache | undefined {
-  const inner = view.slots.children;
-  return (inner && pageCache(inner)) ?? view.cache;
-}
-
-/**
- * The `cache-control` of a page with `cache`. It is public only when the
- * request did not read or set anything of the user, and the page is a
- * success without cookies.
- */
-function cacheControl(
-  cache: PageCache,
-  event: RequestEvent | undefined,
-  response: Response,
-): string {
-  if (event?.personal || response.status !== 200 || response.headers.getSetCookie().length > 0) {
-    return 'private, no-cache';
-  }
-  const parts = ['public', `max-age=${Math.max(0, Math.floor(cache.maxAge))}`];
-  if (cache.staleWhileRevalidate !== undefined) {
-    parts.push(`stale-while-revalidate=${Math.max(0, Math.floor(cache.staleWhileRevalidate))}`);
-  }
-  return parts.join(', ');
-}
-
-// Pages that `cache` made private in development, so each warns once.
-const warnedPrivate = new Set<string>();
-
 /** Imports every module of a matched route before it renders. */
-async function resolveView(view: RouteView): Promise<ResolvedView> {
+export async function resolveView(view: RouteView): Promise<ResolvedView> {
   const names = Object.keys(view.slots);
   const pending: Promise<ResolvedView>[] = [];
   for (const slot of Object.values(view.slots)) {
@@ -4078,55 +4215,6 @@ async function resolveView(view: RouteView): Promise<ResolvedView> {
     loading: loading?.default,
     cache: (module as { cache?: PageCache }).cache,
     slots: resolved,
-  };
-}
-
-/**
- * Renders a view where its layout inserts it. A view with a loading file
- * streams in after the rest of the page, as a `#loading` body does.
- */
-async function renderView(
-  view: ResolvedView,
-  props: Record<string, unknown>,
-  ctx: Context,
-  scope: ScopeId | undefined,
-): Promise<string> {
-  if (!view.loading) {
-    return component(viewComponent(view, props), {}, ctx, scope);
-  }
-  const id = ctx.boundary();
-  const fallback = await component(view.loading, props, ctx, scope);
-  ctx.defer(id, (child) => component(viewComponent(view, props), {}, child, scope));
-  return `<!--l${id}-->${fallback}<!--/l-->`;
-}
-
-/**
- * A component that renders a route, with its slots rendering where the
- * layout inserts them. `props` go to every view, such as `params`.
- */
-/** The component IDs of a view and of the views in its slots. */
-function viewIds(view: ResolvedView): string[] {
-  const id = (view.component as { brumateId?: string }).brumateId;
-  const ids: string[] = id === undefined ? [] : [id];
-  for (const slot of Object.values(view.slots)) {
-    ids.push(...viewIds(slot));
-  }
-  return ids;
-}
-
-function viewComponent(view: ResolvedView, props: Record<string, unknown>): Component {
-  return (_props, ctx) => {
-    const own: Record<string, unknown> = { ...props };
-    for (const [name, slot] of Object.entries(view.slots)) {
-      // Comments mark the slot, its layout's scope, the scope of its route and the route's key,
-      // so the client can replace only the routes that change.
-      own[name] = lazy(async (at, scope) => {
-        const root = at.peek();
-        const html = await renderView(slot, props, at, scope);
-        return `<!--R${scope ?? -1}:${name}:${root}:${encodeURIComponent(slot.key)}-->${html}<!--/R-->`;
-      });
-    }
-    return view.component(own, ctx);
   };
 }
 
@@ -4184,7 +4272,7 @@ export interface RouteOptions extends DocumentOptions, RequestOptions {
  * `handleRoute` adds the cookies of the event to that response, and no other
  * headers of the event.
  */
-async function runAction(
+export async function runAction(
   // oxlint-disable-next-line typescript/no-explicit-any -- Server functions take any arguments.
   fn: (...args: any[]) => unknown,
   event: RequestEvent,
@@ -4192,7 +4280,7 @@ async function runAction(
   const { request } = event;
   const args = event.call!.args;
   const outcome = await callWithForm(
-    () => withEvent(event, () => fn(...args)),
+    () => tracedCall(event, event.call!.id, fn, args),
     new Headers(),
     event,
     request.url,
@@ -4231,201 +4319,21 @@ async function readAction(
   return undefined;
 }
 
-/** Renders the page of a route tree, streamed, with the results of a form for `$action`. */
-async function renderPage(
-  view: ResolvedView,
-  props: Record<string, unknown>,
-  request: Request,
-  options: RouteOptions,
-  extra: { actions?: Map<unknown, unknown>; status?: number },
-): Promise<Response> {
-  // A page that the client loads in place of another starts above its IDs.
-  const base = Number(request.headers.get('x-brumate-base'));
-  const defer = deferTarget(request);
-  if (defer) {
-    return renderDeferred(view, props, request, options, defer, base);
-  }
-  // In development, the render records what it does and when, for the Server tab of the devtools.
-  const event = options.event;
-  if (options.dev && event) {
-    event.trace = [];
-    event.traceStart = performance.now();
-  }
-  const path = new URL(request.url).pathname;
-  const endRender = event?.traced('render', path) ?? (() => {});
-  // Client navigation has the loader and the core already. The stylesheets of the bundles of the
-  // views go in the head of every page, so a navigation keeps those of the next page.
-  const navigation = request.headers.has('x-brumate-base');
-  const wanted: string[] = navigation ? [] : [...(options.hints ?? [])];
-  const styles = new Set<string>();
-  for (const id of viewIds(view)) {
-    for (const url of options.bundleHints?.[id] ?? []) {
-      // A relative URL is relative to the page, which is wrong on a page deeper than the base,
-      // so the state records name those stylesheets for the loader instead.
-      if (url.endsWith('.css')) {
-        if (!url.startsWith('.')) {
-          styles.add(url);
-        }
-      } else if (!navigation) {
-        wanted.push(url);
-      }
-    }
-  }
-  const hints = [...new Set(wanted)];
-  // A page with a nonce, under a strict policy, loads only what carries the nonce. A `Link`
-  // header cannot, so the links are in the head only.
-  const nonce = options.nonce === undefined ? '' : ` nonce="${escapeAttribute(options.nonce)}"`;
-  const links: string[] = [];
-  if (!nonce) {
-    for (const url of hints) {
-      links.push(`<${url}>; rel=modulepreload`);
-    }
-  }
-  if (links.length > 0) {
-    options.earlyHints?.(links);
-  }
-  let preload = '';
-  for (const url of hints) {
-    preload += `<link rel="modulepreload"${nonce} href="${escapeAttribute(url)}">`;
-  }
-  for (const url of styles) {
-    preload += `<link rel="stylesheet"${nonce} href="${escapeAttribute(url)}">`;
-  }
-  const parts = await render(
-    viewComponent(view, props),
-    {},
-    {
-      ...options,
-      request,
-      actions: extra.actions,
-      route: view.key,
-      params: props.params as Record<string, string> | undefined,
-      base: Number.isSafeInteger(base) && base > 0 ? base : undefined,
-    },
-  );
-  endRender();
-  const endStream = event?.traced('stream', 'the rest of the page') ?? (() => {});
-  const headers = new Headers(parts.headers);
-  headers.set('content-type', 'text/html; charset=utf-8');
-  // The same URL answers the request for a `#defer` body with that body only, and a navigation,
-  // which sends `x-brumate-base`, without the links of the core.
-  headers.append('vary', 'x-brumate-defer');
-  headers.append('vary', 'x-brumate-base');
-  for (const link of links) {
-    headers.append('link', link);
-  }
-  let html = streamParts(parts, { ...options, head: preload + (options.head ?? '') });
-  if (event?.trace) {
-    // The trace goes last, once every body has streamed, as JSON that the devtools read.
-    const trace = event.trace;
-    html = html.pipeThrough(
-      new TransformStream<string, string>({
-        flush(controller) {
-          endStream();
-          const json = JSON.stringify({ route: path, entries: trace }).replace(/</g, '\\u003c');
-          controller.enqueue(`<script type="application/json" b-trace>${json}</script>`);
-        },
-      }),
-    );
-  }
-  const body = html.pipeThrough(new TextEncoderStream());
-  const cache = request.method === 'GET' || request.method === 'HEAD' ? pageCache(view) : undefined;
-  if (!cache) {
-    return respond(body, { status: extra.status ?? parts.status, headers });
-  }
-  // A page with `cache` renders in full before its headers go out, so a `#loading` body that
-  // reads the user makes it private too.
-  const response = respond(await new Response(body).arrayBuffer(), {
-    status: extra.status ?? parts.status,
-    headers,
-  });
-  const control = cacheControl(cache, options.event, response);
-  if (options.dev) {
-    // A browser would keep the page while the files change, so the dev server only says what
-    // the page would get.
-    response.headers.set('cache-control', 'no-cache');
-    response.headers.set('x-brumate-cache', control);
-    if (control.startsWith('private') && !warnedPrivate.has(view.key)) {
-      warnedPrivate.add(view.key);
-      console.warn(
-        `The page ${new URL(request.url).pathname} exports cache, but it read cookies or the authorization header, or set a cookie, so it is not cached for everyone. Move what reads the user into #defer.`,
-      );
-    }
-  } else {
-    response.headers.set('cache-control', control);
-  }
-  return response;
-}
-
 /**
  * The `#defer` block that a request asks for, from `x-brumate-defer:
  * <boundary> <scope>:<anchor>`, which the browser sends when the block's
  * trigger fires.
  */
-function deferTarget(request: Request): { boundary: ScopeId; at: string } | undefined {
+export function deferTarget(request: Request): { boundary: ScopeId; at: string } | undefined {
   const match = /^([\d.]+) (-?[\d.]+:\d+)$/.exec(request.headers.get('x-brumate-defer') ?? '');
   return match ? { boundary: parseId(match[1]!), at: match[2]! } : undefined;
-}
-
-/**
- * Renders the route again and answers with the body of one `#defer` block:
- * its markup in a `<template b-l>`, the script that swaps it in, and its
- * state. The page renders with the base it had, so its IDs come out the
- * same. When the block is not where the browser has it, such as after the
- * data of the page changed, the answer is 409 and the fallback stays.
- */
-async function renderDeferred(
-  view: ResolvedView,
-  props: Record<string, unknown>,
-  request: Request,
-  options: RouteOptions,
-  defer: { boundary: ScopeId; at: string },
-  base: number,
-): Promise<Response> {
-  const bundles = options.bundles ?? clientBundles;
-  const parts = await render(
-    viewComponent(view, props),
-    {},
-    {
-      ...options,
-      request,
-      route: view.key,
-      params: props.params as Record<string, string> | undefined,
-      base: Number.isSafeInteger(base) && base > 0 ? base : undefined,
-      defer,
-      // The page that asks for the body has the bundles of its views.
-      bundles: bundles && { ...bundles, loaded: viewIds(view) },
-    },
-  );
-  const headers = new Headers(parts.headers);
-  headers.append('vary', 'x-brumate-defer');
-  if (parts.defer !== 'found') {
-    return respond(null, { status: parts.defer === 'moved' ? 409 : 404, headers });
-  }
-  headers.set('content-type', 'text/html; charset=utf-8');
-  headers.set('x-brumate-defer', String(defer.boundary));
-  const body = new ReadableStream<string>({
-    async start(controller) {
-      try {
-        if (parts.pending !== NOTHING_PENDING) {
-          for await (const chunk of parts.pending) {
-            controller.enqueue(chunk);
-          }
-        }
-        controller.close();
-      } catch (error) {
-        controller.error(error);
-      }
-    },
-  }).pipeThrough(new TextEncoderStream());
-  return respond(body, { status: parts.status, headers });
 }
 
 /**
  * Renders the first `_error.brm` that renders, from the innermost. Its
  * component gets `error`, with the message and the status.
  */
-async function renderError(
+export async function renderError(
   views: RouteView[],
   error: { message: string; status: number },
   params: Record<string, string>,
@@ -4504,13 +4412,21 @@ export async function handleRoute(
       address: options.address,
       prerender: options.prerender,
       onError: options.onError,
+      onTrace: options.onTrace,
     });
   if (options.nonce !== undefined) {
     event.nonce = options.nonce;
   }
   // Rate limits count by the pattern of the route, so `/api/1` and `/api/2` share a count.
   event.route = match?.route;
-  const answer = await routeAnswer(tree, match, url, { ...options, event });
+  const answer = event.tracer
+    ? await traceRequest(
+        event,
+        match?.route ?? 'unmatched',
+        () => (event.call ? 'form' : event.kind),
+        () => routeAnswer(tree, match, url, { ...options, event }),
+      )
+    : await routeAnswer(tree, match, url, { ...options, event });
   return answer && withHeaders(answer, event.headers);
 }
 
@@ -4719,71 +4635,6 @@ async function answerRoute(
   return runEntry(call && options.fileMiddleware?.[call.id], event, () =>
     renderRoute(match, request, url, options),
   );
-}
-
-/** Runs the server function that a form posted to the page, if any, and renders the page. */
-async function renderRoute(
-  match: RouteMatch,
-  request: Request,
-  url: URL,
-  options: RouteOptions,
-): Promise<Response> {
-  let actions: Map<unknown, unknown> | undefined;
-  const event = options.event!;
-  if (event.call) {
-    const outcome = await runAction(options.functions![event.call.id]!, event);
-    if ('answer' in outcome) {
-      return outcome.answer;
-    }
-    actions = outcome.actions;
-  }
-  // A page that the server kept, for a request that has not read the user so far. Middleware
-  // ran before, so a check of access still runs.
-  const keep =
-    !event.call &&
-    !options.dev &&
-    options.pageCache !== false &&
-    event.kind === 'page' &&
-    (request.method === 'GET' || request.method === 'HEAD');
-  const key = keep ? pageKey(url, request, options.build) : undefined;
-  if (key && !event.personal) {
-    const kept = await keptPage(key);
-    if (kept) {
-      return kept;
-    }
-  }
-  try {
-    const view = await resolveView(match.view);
-    const response = await renderPage(view, { params: match.params }, request, options, {
-      actions,
-    });
-    if (key && /^\s*public\b/.test(response.headers.get('cache-control') ?? '')) {
-      await keepPage(key, response, event);
-    }
-    return response;
-  } catch (error) {
-    if (isRedirect(error)) {
-      return new Response(null, {
-        status: error.status,
-        headers: { location: new URL(error.location, url).href },
-      });
-    }
-    if (options.dev && !(error instanceof ServerError)) {
-      logError(error, options.event?.kind ?? 'page', options.event?.errors, options.event);
-      throw error;
-    }
-    const page = await renderError(
-      match.errors,
-      errorAnswer(error, 'Something went wrong', options.event?.kind ?? 'page', options.event),
-      match.params,
-      request,
-      options,
-    );
-    if (page) {
-      return page;
-    }
-    throw error;
-  }
 }
 
 /**

@@ -16,7 +16,7 @@ Without paths, inspects every .brm file under the current directory.
 
        brumate check [--json] [--no-types] [files or directories]
 
-Compiles every .brm file and type-checks the project with brumate-tsc.
+Compiles every .brm file and type-checks the project with @brumate/tsc.
 Prints each problem with its place, its code and a link to the docs.
 With --json, prints one JSON object per line. Exits with 1 on an error.
 

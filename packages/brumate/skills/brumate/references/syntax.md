@@ -24,7 +24,9 @@
 
 - `<script>` runs once for each instance, on the server. `<script module>` runs once per module, and its exports can be imported.
 - `<style>` is scoped to the component. `<style global>` is not: its rules apply to the whole page, such as `body` or `.toolbar button`, with no `:global(…)` around them. `lang="scss"` and `lang="less"` work in both. Both are allowed at the top level of the file and of a block body.
-- A file has at most one of each script. Markup can come before or after them.
+- Scoping adds no specificity. The scope is `:where([b-c-<hash>])`, so `.a .b` keeps (0,2,0), and a global or parent rule of the same specificity that comes later in the page overrides it.
+- In a build, the server writes the CSS of the components that a page renders into the page as `<style>` elements, so the first paint needs no request. The `.css` files of the bundles hold the same CSS for the rest of the visit, and are cached across pages.
+- A file has at most one `<script>` and one `<script module>`. Markup can come before or after them. `<script inline>` and `<script src>` are markup (see below).
 - Markup in a script, an expression or an attribute value is an error. Use a `#template`.
 
 ## Expressions and attributes
@@ -164,6 +166,7 @@ A file uses another component by importing it, and renders it with a capitalized
   <p>{people[0].name}</p>
 } #catch (error, reset) {
   <p>{String(error)}</p>
+  <button onClick=reset>Retry</button>
 }
 
 #portal {
@@ -218,21 +221,29 @@ A file uses another component by importing it, and renders it with a capitalized
 - `$id()` gives an ID that is the same on the server and in the browser: `const field = $id();`, then `<label for=field>` and `<input id=field>`.
 - `<script>` can export nothing. A value that other files import goes in `<script module>`.
 - `#head { <title>{title}</title> <meta name="description" content="…"> }` sets the head of the page. A `<title>` outside `#head` is an error.
-- A script in the head is HTML in a string, since `<script>` is not markup in a `.brm` file. Send it with `raw()` from `brumate/html`, and give it the nonce of the render, which is `undefined` without one: `getEvent().nonce` of `brumate/server`. A client navigation does not run a head script again. Add `data-rerun` to one that must run after each navigation.
+- `<script inline>` holds code of the file, as written: the compiler does not read it, so `<`, `{` and `}` stay. `<script src="…">` loads a file and has nothing inside. A client navigation does not run a head script again. Add `data-rerun` to one that must run after each navigation. The script gets the nonce of the page.
 
 ```brm
-<script>
-  import { getEvent } from 'brumate/server';
-  import { raw } from 'brumate/html';
-
-  const nonce = getEvent().nonce;
-  const attribute = nonce ? ` nonce="${nonce}"` : '';
-</script>
-
 #head {
-  {raw(`<script${attribute} data-rerun>document.documentElement.dataset.visits = '1'</script>`)}
+  <script inline data-rerun>
+    document.documentElement.dataset.visits = String(Number(localStorage.visits || 0) + 1);
+  </script>
 }
 ```
+
+- `trigger` says when a script loads: `idle`, `visible` (when the element after it comes into view, not in `#head`), `interaction` (the first `pointerdown`, `keydown`, `touchstart` or `scroll`) or `load`. Use it for scripts of other sites, such as analytics or a chat widget. It is a plain string, and does not go with `data-rerun`.
+
+```brm
+#head {
+  <script src="https://cdn.example.com/chat.js" trigger="idle"></script>
+}
+
+<script inline trigger="interaction">
+  window.dataLayer = window.dataLayer || [];
+</script>
+```
+
+- A page runs a script once, by its resolved `src` or by the text of an inline script. With JS off, only the scripts of `#head` without a trigger run.
 
 - A value that changes in a `<textarea>` or `<title>` must be its whole content: `<textarea>{text}</textarea>`.
 
@@ -265,6 +276,43 @@ export function counter(start: number) {
 
 - The function ends with `return { … }`, an object of plain keys, and returns nowhere else.
 - A component calls it at the top level of its script, and destructures the result with plain names.
+
+### Shared state at module level
+
+`$signal` and `$memo` also work at the top level of a `.brm.ts` module. They give one value for the module, which every component that imports it reads like its own signal.
+
+```ts module="cart.brm.ts"
+import { $memo, $signal } from 'brumate/signals';
+
+export let items: number[] = $signal<number[]>([]);
+export const total: number = $memo(items.reduce((sum, price) => sum + price, 0));
+
+export function add(price: number): void {
+  items = [...items, price];
+}
+```
+
+```brm uses
+<script>
+  import { add, items, total } from './cart.brm.ts';
+</script>
+
+<button onClick=(() => add(5))>Add</button>
+<p>{items.length} items, {total}</p>
+```
+
+```brm wrong: Cannot assign to module signal "items". Export a function from ./cart.brm.ts that writes it, and call that function
+<script>
+  import { items } from './cart.brm.ts';
+</script>
+
+<button onClick=(() => (items = []))>Clear</button>
+```
+
+- A component cannot write what it imports. Write it in a function that the module exports, such as `add`. The same forms work in `<script module>`, and the component writes a signal of its own `<script module>` in its script.
+- `$memo(await …)`, `$effect`, `$client` and the other compile-time functions cannot run at the top level of a module, nor can a destructuring write such as `[count] = values` (BRM211). Put them in a component, or in a module function.
+- A `.ts` file that imports a module signal gets its store, not its value (BRM208). Read the value in an exported function of the module.
+- A module signal is one value for the whole server process, shared by every request. Keep per-request data in a context.
 
 ## Parts of @brumate/ui
 

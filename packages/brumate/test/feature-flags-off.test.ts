@@ -21,13 +21,20 @@ const modules = new Map<string, string>();
 const features = new Map<string, Features>();
 const sources = new Map<string, string>();
 
-/** The five flags of this node, by the name of the global that the plugin replaces. */
+/** The flags that the tests turn off, by the name of the global that the plugin replaces. */
 const FLAGS = {
   tries: '__BRUMATE_HAS_TRIES__',
   fields: '__BRUMATE_HAS_FIELDS__',
   windows: '__BRUMATE_HAS_WINDOWS__',
   dynamic: '__BRUMATE_HAS_DYNAMIC__',
   routes: '__BRUMATE_HAS_ROUTES__',
+  rootWait: '__BRUMATE_HAS_ROOT_WAIT__',
+  clientHTML: '__BRUMATE_HAS_CLIENT_HTML__',
+  loading: '__BRUMATE_HAS_LOADING__',
+  lateMarkup: '__BRUMATE_HAS_LATE_MARKUP__',
+  children: '__BRUMATE_HAS_CHILDREN__',
+  templates: '__BRUMATE_HAS_TEMPLATES__',
+  bindings: '__BRUMATE_HAS_BINDINGS__',
 } as const;
 type Flag = keyof typeof FLAGS;
 
@@ -156,6 +163,13 @@ describe('the facts of the pages', () => {
       windows: false,
       dynamic: false,
       routes: false,
+      rootWait: false,
+      clientHTML: false,
+      loading: false,
+      lateMarkup: false,
+      children: false,
+      templates: false,
+      bindings: false,
     });
     expect(flagsOf('boom').tries).toBe(true);
     // The input gets its binding through a spread of a child, so only the parent's call shows it.
@@ -174,6 +188,13 @@ describe('a page with every flag off', () => {
       windows: false,
       dynamic: false,
       routes: false,
+      rootWait: false,
+      clientHTML: false,
+      loading: false,
+      lateMarkup: false,
+      children: false,
+      templates: false,
+      bindings: false,
     });
     await open('counter');
     await start();

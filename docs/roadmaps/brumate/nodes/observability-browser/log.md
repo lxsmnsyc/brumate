@@ -1,0 +1,13 @@
+# Log: observability-browser
+
+- The brief is not on `feat/observability`, only in the main checkout, so this folder holds `log.md` and `outcome.md` only.
+- Build flag: `__BRUMATE_TRACE__`, read in `runtime/trace-flag.ts` (`TRACE`, false without the plugin). The plugin replaces it in client code: `true` on the dev server, and in a build when a script under `src/` imports `brumate/loader` or `brumate/static-loader` and names `onTrace` (`src/browser-trace.ts`). A scan, not the order of the transforms, so a module that is built before the entry cannot see a wrong value.
+- Tests set the global with `vi.stubGlobal('__BRUMATE_TRACE__', true)` before they import the loader.
+- First design had `rpc.ts` and `navigate.ts` import functions from `trace-browser.ts`. A bundler kept `endRequest` and an empty `traceRequest` in the loader chunk, since the lazy chunks that import them are minified after the loader chunk is cut. Now the span of a call is made by the core (`handlers.ts`) and the one of a navigation by `loader.ts`; `rpc.ts` and `navigate.ts` get it as an argument and call its methods. They import only types and the flag.
+- Context of a call (changed in fix round 1): `current` in `trace-browser.ts` is the run span of the handler whose synchronous part runs. It is cleared when that part returns. The first design kept it until the promise of an async handler settled, and a call after an `await` of handler A joined the trace of an overlapping handler B. A call with no context is the root of a new trace (after an `await`, a memo, a form `$action`).
+- A navigation joins the context too, when the handler starts it before its first `await`; the span is made in `go` of the loader, before the import of `navigate.ts`. A click on a link is the root of its own trace.
+- `http.route` of a navigation is the path without query string and hash, with the values of `b-params` written as `[name]`. Spans of the browser roots have no `parentId` (the otel adapter exports a span with an unknown parent late).
+- `brumate.fetch` ends when the answer headers arrive, with the status. It does not wait for the body of a streamed result. A 5xx or a network failure is `error`; a `ServerError` below 500 is `ok`.
+- A prefetched page (link hover) has no `traceparent`: it is sent before the click. The navigation span still ends; its server span is a separate trace.
+- The e2e suite builds a new example, `examples/trace`, since no example passes `onTrace`. It adds an importer to `pnpm-lock.yaml` (edited by hand to only that block; a plain `pnpm install` also moved seroval 1.7.0 to 1.8.0).
+- The off-test builds a small app twice instead of the website home: the website takes minutes. The bytes against the base come from the todos bench.

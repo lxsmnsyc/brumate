@@ -103,3 +103,13 @@ describe('codes', () => {
     expect(error?.message).not.toContain('[BRM');
   });
 });
+
+describe('diagnostics of a warning with a code', () => {
+  it('gives the code of an effect that only copies a signal', () => {
+    const text = `<script>\n  import { $effect, $signal } from 'brumate/signals';\n  let count = $signal(0);\n  let message = $signal('');\n  $effect(() => {\n    message = \`Clicked \${count} times\`;\n  });\n</script>\n\n<button onClick=(() => count++)>{message}</button>\n`;
+    const [warning] = diagnose(document(text), '/App.brm');
+    expect(warning?.severity).toBe(2);
+    expect(warning?.code).toBe('BRM209');
+    expect(warning?.message).toContain('"message" is written only by this effect');
+  });
+});

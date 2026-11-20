@@ -1,0 +1,25 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { children } = $props();
+</script>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>View transitions</title>
+  </head>
+  <body>
+    <nav>
+      <a class="to-home" href="/">Home</a>
+      <a class="to-detail" href="/detail">Detail</a>
+    </nav>
+    <main>{children}</main>
+  </body>
+</html>
+
+<style global>
+  ::view-transition-group(*) {
+    animation-duration: 1500ms;
+  }
+</style>

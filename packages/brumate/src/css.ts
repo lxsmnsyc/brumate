@@ -119,7 +119,7 @@ function scopeTarget(compound: SelectorPart[]): ScopeTarget {
 type SelectorPart = Parameters<Parameters<selectorParser.Selector['each']>[0]>[0];
 
 /**
- * Adds the scope attribute to every compound selector, except inside
+ * Adds the scope attribute, inside `:where(…)` so it adds no specificity, to every compound selector, except inside
  * `:global(…)`. Each scoped compound goes into `targets`. With `unscoped`, no
  * compound is scoped, and `:global(…)` is only unwrapped.
  */
@@ -200,7 +200,10 @@ function scopeSelector(attribute: string, targets: ScopeTarget[], unscoped: bool
             break;
           }
         }
-        const scope = selectorParser.attribute({ attribute, value: undefined, raws: {} } as never);
+        // `:where(…)` has no specificity, so scoping keeps the specificity the rule was written with.
+        const inner = selectorParser.selector({ value: '' });
+        inner.append(selectorParser.attribute({ attribute, value: undefined, raws: {} } as never));
+        const scope = selectorParser.pseudo({ value: ':where', nodes: [inner] });
         if (last) {
           selector.insertAfter(last, scope);
         } else {

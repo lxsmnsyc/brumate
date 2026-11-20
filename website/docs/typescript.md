@@ -31,7 +31,7 @@ brumate check --no-types  # the compiler only
 brumate check src/App.brm # limit the compiler to these files or directories
 ```
 
-It compiles every `.brm` file under the current directory, and runs `brumate-tsc` when `@brumate/tsc` is installed and the directory has a `tsconfig.json`. It exits with 1 when there is an error. Warnings are printed and do not change the exit code.
+It compiles every `.brm` file under the current directory, and type-checks the project in the same process with `checkProject` of `@brumate/tsc`, when it is installed and the directory has a `tsconfig.json`. It exits with 1 when there is an error. Warnings are printed and do not change the exit code.
 
 With `--json`, each problem is one line:
 

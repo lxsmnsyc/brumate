@@ -96,7 +96,6 @@ export {
   descendants,
   makeId,
   removeScope,
-  getScope,
   setOwner,
   sink,
 } from './client/scopes.ts';
@@ -121,6 +120,7 @@ export {
   setSpread,
   template,
 } from './client/templates.ts';
+export { asyncEffect } from './client/async-effect.ts';
 export { gateValue } from './shared.ts';
 export { paramEffect, searchParam } from './client/search.ts';
 export { title } from './client/titles.ts';
@@ -166,3 +166,4 @@ export const loader: {
 };
 
 function noop(): void {}
+export type { TraceHandler, TraceName, TraceSpan } from './trace.ts';

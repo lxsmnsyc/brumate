@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { expect, it } from 'vitest';
+import { checkProject } from '../src/check.ts';
 
 const bin = fileURLToPath(new URL('../bin/brumate-tsc.js', import.meta.url));
 const project = fileURLToPath(new URL('./fixture/tsconfig.json', import.meta.url));
@@ -116,4 +117,28 @@ it('types a fallback of $getContext as T | F, and $store as taking a store only'
     "Has.brm(13,9): error TS2322: Type '{ count: number; } | undefined' is not assignable to type '{ count: number; }'.",
     "Has.brm(14,29): error TS2345: Argument of type 'Context<Store<number>>' is not assignable to parameter of type 'StoreLike<unknown>'.",
   ]);
+});
+
+it('checkProject returns the diagnostics without printing', () => {
+  const root = fileURLToPath(new URL('./fixture', import.meta.url));
+  const found = checkProject(root);
+  const first = found.find((item) => item.file === 'src/App.brm' && item.code === 'TS2322');
+  expect(first).toEqual({
+    file: 'src/App.brm',
+    range: { start: { line: 9, column: 19 }, end: { line: 9, column: 24 } },
+    severity: 'error',
+    message: "Type 'string' is not assignable to type 'number'.",
+    code: 'TS2322',
+  });
+  // Syntax errors of a `.brm` file come with their code.
+  expect(found.some((item) => item.code === 'BRM180')).toBe(true);
+});
+
+it('checkProject gives a diagnostic for a missing tsconfig file', () => {
+  const found = checkProject(fileURLToPath(new URL('./', import.meta.url)), {
+    project: 'nope.json',
+  });
+  expect(found).toHaveLength(1);
+  expect(found[0]!.file).toBeNull();
+  expect(found[0]!.code).toBe('TS5083');
 });

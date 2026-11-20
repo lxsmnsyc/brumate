@@ -1,7 +1,7 @@
 // Smoke tests in Chrome: builds the website and examples, serves each one,
 // and uses it as a person would. See README.md.
 //
-//   pnpm e2e [--only website,todos,tracker,nitro,kit,ui,browser-async] [--no-build] [--headed] [--install-browser]
+//   pnpm e2e [--only website,todos,tracker,nitro,kit,ui,browser-async,trace,scripts,transitions] [--no-build] [--headed] [--install-browser]
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { chromium } from 'playwright-core';
@@ -12,7 +12,10 @@ import { Runner, exec, indent, repo } from './lib.mjs';
 import * as browserAsync from './suites/browser-async/index.mjs';
 import * as kit from './suites/kit.mjs';
 import * as nitro from './suites/nitro.mjs';
+import * as scripts from './suites/scripts.mjs';
+import * as transitions from './suites/transitions.mjs';
 import * as todos from './suites/todos.mjs';
+import * as trace from './suites/trace.mjs';
 import * as tracker from './suites/tracker.mjs';
 import * as ui from './suites/ui.mjs';
 import * as website from './suites/website.mjs';
@@ -25,6 +28,9 @@ const SUITES = {
   kit,
   ui,
   'browser-async': browserAsync,
+  trace,
+  scripts,
+  transitions,
 };
 
 const { values } = parseArgs({
@@ -39,7 +45,7 @@ const { values } = parseArgs({
 
 if (values.help) {
   console.log(`pnpm e2e [options]
-  --only website,todos,tracker,nitro,kit,ui,browser-async  run these suites (default: all)
+  --only website,todos,tracker,nitro,kit,ui,browser-async,trace,scripts,transitions  run these suites (default: all)
   --no-build                              use the builds that are there
   --headed                                show the browser
   --install-browser                       download Playwright's Chromium when no Chrome is found`);

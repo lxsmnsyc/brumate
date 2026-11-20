@@ -215,7 +215,16 @@ export function generateRender(
 ): string {
   const model = plan.graph.model;
   const patch = new Patch(file.source);
-  addValueEdits(patch, file, model.sites, 'render', undefined, undefined, model.component.id);
+  addValueEdits(
+    patch,
+    file,
+    model.sites,
+    'render',
+    undefined,
+    undefined,
+    model.component.id,
+    !plan.hideNames,
+  );
 
   // The names that rendering reads, so server-only imports stay out.
   const names = componentNames(file.children);
@@ -310,7 +319,8 @@ export function generateRender(
       setup.push(statement);
     }
   }
-  if (plan.styles.css) {
+  // With `styleFiles`, the stylesheet is a CSS module that the bundles of the build import.
+  if (plan.styles.css && !plan.styleFiles) {
     // A build (`hideNames`) sends the stylesheet without comments and whitespace.
     const css = plan.hideNames ? minifyCSS(plan.styles.css) : plan.styles.css;
     moduleBody.push(`const $$css = ${JSON.stringify(css)};`);

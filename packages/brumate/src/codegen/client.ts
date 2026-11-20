@@ -82,6 +82,11 @@ export const DEFAULT_MERGE = 4096;
 const BROWSER_ONLY_SITES = new Set(['server-function', 'event', 'effect', 'client']);
 const DEFERRED_SITES = new Set(['function', 'server-function', 'event', 'effect', 'client']);
 
+/** The core function that runs an effect: an `async` callback needs `asyncEffect`. */
+function effectCall(callback: oxc.Node): 'effect' | 'asyncEffect' {
+  return (callback as oxc.Function).async ? 'asyncEffect' : 'effect';
+}
+
 /** Whether a scope is within any scope of the list. */
 function isWithinAny(scope: Scope, list: Scope[]): boolean {
   for (const item of list) {
@@ -146,7 +151,16 @@ class ClientGenerator {
     this.shared = shared;
     this.rewriter = new Rewriter(file, plan, this.diagnostics, shared);
     this.valuePatch = new Patch(file.source);
-    addValueEdits(this.valuePatch, file, plan.graph.model.sites, 'client');
+    addValueEdits(
+      this.valuePatch,
+      file,
+      plan.graph.model.sites,
+      'client',
+      undefined,
+      undefined,
+      undefined,
+      !plan.hideNames,
+    );
     for (const node of plan.graph.nodes) {
       if (node.kind !== 'source' && plan.graph.live.has(node)) {
         this.live.set(node.site, node);
@@ -1027,7 +1041,7 @@ class ClientGenerator {
       }
       if (site.kind === 'client') {
         this.emit(
-          `export function ${symbol}($$s) {\n  $$b.effect($$s, ${JSON.stringify(symbol)}, ${code}, 1);\n}`,
+          `export function ${symbol}($$s) {\n  $$b.${effectCall(site.node)}($$s, ${JSON.stringify(symbol)}, ${code}, 1);\n}`,
         );
       } else {
         this.emit(this.handlerExport(site, symbol, code, base));
@@ -1132,7 +1146,7 @@ class ClientGenerator {
         }
         case 'effect':
           this.emit(
-            `export function ${name('e')}($$s) {\n  $$b.effect($$s, ${JSON.stringify(`e${site.id}`)}, ${expression()});\n}`,
+            `export function ${name('e')}($$s) {\n  $$b.${effectCall(site.node)}($$s, ${JSON.stringify(`e${site.id}`)}, ${expression()});\n}`,
           );
           break;
         case 'binding':

@@ -2,6 +2,9 @@
 // and props, and the calls of server functions from forms and `rpc`.
 
 import { HAS_BINDINGS, HAS_CHILDREN, HAS_STORES, HAS_TEMPLATES } from '../features.ts';
+import { TRACE } from '../trace-flag.ts';
+import { traceContext, traceRequest } from '../trace-browser.ts';
+import type { EventTrace, RequestTrace, TraceContext } from '../trace-browser.ts';
 import { isStore } from '../store.ts';
 import {
   actionAttributes,
@@ -25,7 +28,7 @@ import { fail } from './errors.ts';
 import { track } from './guesses.ts';
 import { call, handlerReferences, resolve } from './references.ts';
 import { resolveScope } from './scopes.ts';
-import { DEV, build, devtools, hiding, rpcPrefix, scopes } from './state.ts';
+import { DEV, build, devtools, hiding, modules, rpcPrefix, scopes } from './state.ts';
 import type { Scope } from './state.ts';
 import { isThenable, memoSignal, pass, set } from './updates.ts';
 
@@ -181,6 +184,7 @@ export function handle(
   entry: string,
   event?: Event,
   typed?: { value: unknown },
+  trace?: EventTrace,
 ): Promise<unknown> {
   // A handler that a spread passed on, such as `Parent#h1@3`, runs in the scope of its owner.
   // A handler that `$handler` made has its arguments after another `@`.
@@ -231,14 +235,30 @@ export function handle(
   const children = childrenReady(scope);
   const code = codeReady();
   const loaded = Promise.all([resolve(ref), children, code]).then(([handler]) => handler);
+  if (TRACE && trace) {
+    // The code of the handler, its children or the page is not there yet: the event waits for a load.
+    trace.waits ||= !modules.has(ref.split('#')[0]!) || !!children || !!code;
+    loaded.then(
+      () => trace.ready(),
+      (error: unknown) => trace.ready(true, error),
+    );
+  }
   const started = lastHandler
     .then(() => loaded)
     .then((handler) => {
       if (!DEV) {
-        return { value: pass(() => handler(scope, ...args)) };
+        return {
+          value:
+            TRACE && trace
+              ? trace.run(() => pass(() => handler(scope, ...args)))
+              : pass(() => handler(scope, ...args)),
+        };
       }
       const ready = performance.now();
-      const value = pass(() => handler(scope, ...args));
+      const value =
+        TRACE && trace
+          ? trace.run(() => pass(() => handler(scope, ...args)))
+          : pass(() => handler(scope, ...args));
       devtools()?.handled?.({
         ref,
         element,
@@ -257,7 +277,22 @@ export function handle(
     .then((result) => result.value)
     .catch((error: unknown) => {
       fail(scope, error);
+      if (TRACE) {
+        trace?.fail(error);
+      }
     });
+}
+
+/** The span of a call of a server function. It has no argument, result or query string. */
+function traceCall(id: string, parent?: TraceContext): RequestTrace | undefined {
+  const route = `${rpcPrefix}/${id}`;
+  return traceRequest(
+    'brumate.fetch',
+    id,
+    route,
+    { 'http.method': 'POST', 'http.route': route },
+    parent,
+  );
 }
 
 /** Renders the attributes of a form or button that posts to a server function. */
@@ -270,14 +305,19 @@ export function action(name: string, id: string, method?: string, result?: strin
  * call loads, so the core holds only this.
  */
 export function submitAction(form: HTMLFormElement, submitter: HTMLElement | null): void {
-  void import('../rpc.ts').then((module) => module.sendAction(form, submitter));
+  const trace = TRACE ? traceCall(form.getAttribute('b-action')!) : undefined;
+  void import('../rpc.ts').then((module) => module.sendAction(form, submitter, trace));
 }
 
 /** Calls a server function. */
 export async function rpc(id: string, args: unknown[]): Promise<unknown> {
   // Read before the import, while the memo that calls it computes.
   const signal = memoSignal();
-  return track(import('../rpc.ts').then((module) => module.call(rpcPrefix, id, args, signal)));
+  // Read now, while the handler that made the call runs.
+  const trace = TRACE ? traceCall(id, traceContext()) : undefined;
+  return track(
+    import('../rpc.ts').then((module) => module.call(rpcPrefix, id, args, signal, trace)),
+  );
 }
 
 /** A function prop rendered on the client calls the parent's exported handler. */
