@@ -88,7 +88,7 @@ brumate.event    click App#press            browser
 
 A call or a navigation joins the trace of a handler only when the handler makes it before its first `await`. After an `await`, or from a memo or a form, it starts a trace of its own, so a span never joins the wrong handler. A link that was prefetched sends no header, as the request ran before the click.
 
-A request to another origin sends no `traceparent`, so the other site does not learn the trace. The server reads an incoming `traceparent` even when the browser does not trace: a valid one sets the `traceId` of the request and the `parentId` of its root span, and an invalid one is ignored.
+A page with `onTrace` does not load the page of a link early on hover or focus, since that request would carry no `traceparent`: each navigation requests its page when it starts. A request to another origin sends no `traceparent`, so the other site does not learn the trace. The server reads an incoming `traceparent` even when the browser does not trace: a valid one sets the `traceId` of the request and the `parentId` of its root span, and an invalid one is ignored.
 
 ## Spans
 
