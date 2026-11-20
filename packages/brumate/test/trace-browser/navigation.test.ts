@@ -166,3 +166,20 @@ it('leaves a navigation with no state of a route without a route', async () => {
   expect(span!.attributes['http.route']).toBeUndefined();
   expect(span!.label).toBe('GET');
 });
+
+it('sends traceparent on the request it uses, not a page that loaded early without it', async () => {
+  const headers: Headers[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (_url: string, init: RequestInit) => {
+      headers.push(new Headers(init.headers));
+      return answer();
+    }),
+  );
+  const { spans, go } = await prepare('/issues/42');
+  const { prefetch } = await import('../../src/runtime/navigate.ts');
+  prefetch('/issues/42');
+  await go();
+  const [span] = spans.named('brumate.navigation');
+  expect(headers.at(-1)!.get('traceparent')).toBe(`00-${span!.traceId}-${span!.spanId}-01`);
+});

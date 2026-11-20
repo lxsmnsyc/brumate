@@ -103,6 +103,18 @@ export async function run({ browser, url, runner }) {
     '/: a link gives brumate.navigation with the route, and the server joins it',
     async () => {
       await page.evaluate(() => (window.__samePage = true));
+      // Rest on the link past the 80 ms of an early load: a traced page must not load it early.
+      const early = [];
+      function listen(request) {
+        if (request.url().includes('/items/')) {
+          early.push(request.url());
+        }
+      }
+      page.on('request', listen);
+      await page.hover('a.item');
+      await page.waitForTimeout(300);
+      page.off('request', listen);
+      assert(early.length === 0, 'the traced page loaded the link early');
       await page.click('a.item');
       await page.waitForSelector('.item-page', { timeout: TIMEOUT });
       await waitForSpans(page, 'brumate.navigation', 1);
@@ -115,9 +127,18 @@ export async function run({ browser, url, runner }) {
       );
       assert(navigation.attributes['http.status_code'] === 200, 'the status is missing');
       assert(!JSON.stringify(navigation).includes('secret'), 'the query string is in the span');
-      const request = serverSpans('brumate.request').find(
-        (span) => span.parentId === navigation.spanId,
-      );
+      // The server ends its span when the response ends, which can be after the page showed it.
+      const deadline = Date.now() + TIMEOUT;
+      let request;
+      while (Date.now() < deadline) {
+        request = serverSpans('brumate.request').find(
+          (span) => span.parentId === navigation.spanId,
+        );
+        if (request) {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
       assert(
         request && request.traceId === navigation.traceId,
         'the server request is not in the trace of the navigation',

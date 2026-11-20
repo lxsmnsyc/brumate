@@ -841,7 +841,11 @@ async function load(visit: Visit, trace?: RequestTrace): Promise<void> {
   history.replaceState({ ...history.state, scroll: window.scrollY }, '');
   let response: Response;
   try {
-    const early = visit.init || visit.reload ? undefined : takePrefetched(visit.url, requested);
+    // A page that loaded early, before `onTrace` was set, has no `traceparent`: request it again.
+    const early =
+      visit.init || visit.reload || (TRACE && trace?.header)
+        ? undefined
+        : takePrefetched(visit.url, requested);
     const headers = new Headers(visit.init?.headers);
     headers.set('x-brumate-base', String(requested));
     if (TRACE && trace?.header) {

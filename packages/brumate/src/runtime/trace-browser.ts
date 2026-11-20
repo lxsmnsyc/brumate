@@ -57,6 +57,11 @@ export function setTraceHandler(next: TraceHandler | undefined): void {
   current = dispatch = undefined;
 }
 
+/** Whether the page has `onTrace`. */
+export function isTracing(): boolean {
+  return handler !== undefined;
+}
+
 /** The trace that a server function call or a navigation made now joins. */
 export function traceContext(): TraceContext | undefined {
   return handler ? current : undefined;
