@@ -1,0 +1,550 @@
+{
+  "round": 3,
+  "claims": {
+    "J1": {
+      "id": "J1",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "device",
+      "text": "8 GB RAM, 3.2 GB free, load 4.0 on 8 cores, 21.9 GB free disk; capacity.py recommends 1 parallel worktree (CPU-bound).",
+      "evidence": {
+        "type": "measured",
+        "source": "capacity.py --json",
+        "detail": "evidence/capacity.json"
+      }
+    },
+    "J2": {
+      "id": "J2",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Six Node examples (todos, hackernews, tracker, ui, kit-app, browser-async) each carry server.ts (33 lines, dev: createServer middlewareMode + ssrLoadModule('virtual:brumate/routes') + hand-written scripts), node.ts (33-34 lines, toRequest/send), server.prod.ts (59-84 lines, reads dist/client/.vite/manifest.json for 'src/client.ts' by hand, serves /assets, builds scripts) and src/server.ts (3 lines).",
+      "evidence": {
+        "type": "measured",
+        "source": "wc -l examples/*/node.ts examples/*/server*.ts examples/*/src/server.ts; examples/todos/server.prod.ts",
+        "detail": ""
+      }
+    },
+    "J3": {
+      "id": "J3",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "The '/@vite/client' tag is written by hand in the 6 example server.ts files, examples/nitro/src/entry-server.ts:14 (behind import.meta.env.DEV), website/docs/getting-started.md:110, website/docs/deploying.md:33, benchmarks/brumate/src/server.ts, benchmarks/brumate-0.3/src/server.ts and website/scripts/dev.ts.",
+      "evidence": {
+        "type": "measured",
+        "source": "grep -rn '@vite/client' examples website benchmarks",
+        "detail": ""
+      }
+    },
+    "J4": {
+      "id": "J4",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "The plugin already renders pages itself for its component preview: vite.ts:1659-1665 loads the component and brumate/server through server.ssrLoadModule and passes scripts '<script type=module src=/@vite/client>' plus the generated start module '/@id/__x00__<START>'. Its general dev middleware (vite.ts:2759) answers only RPC POSTs and error-source GETs, never routes.",
+      "evidence": {
+        "type": "measured",
+        "source": "packages/brumate/src/vite.ts:1640-1670, 2759-2790",
+        "detail": ""
+      }
+    },
+    "J5": {
+      "id": "J5",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Lab prior art, idlip (https://github.com/lxsmnsyc/idlip/blob/8248e3f447759eb162cfa7584d40c6aacac7fa53/packages/idlip/src/vite/plugin.ts#L329-L355, #L868-L893): plugin option entry; configureServer adds a middleware that renders GET text/html requests through server.environments.ssr.runner.import(entry) and passes the HTML through server.transformIndexHtml, which adds /@vite/client. It buffers the whole page (no streaming). Its README production entry still writes the loader script tag by hand.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "idlip 8248e3f packages/idlip/src/vite/plugin.ts; README.md",
+        "detail": ""
+      }
+    },
+    "J6": {
+      "id": "J6",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "SvelteKit (sveltejs/kit accf16ca32): the plugin serves pages in vite dev (exports/vite/dev/index.js returns a post middleware at :315). render.js imports client.start from the manifest, so apps never write script tags; respond_with_error.js:128-131 adds '/@vite/client' by string replace in dev.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "https://github.com/sveltejs/kit/blob/accf16ca32/packages/kit/src/runtime/server/page/respond_with_error.js#L128-L131",
+        "detail": ""
+      }
+    },
+    "J7": {
+      "id": "J7",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Astro (withastro/astro c302892e4a): vite-plugin-app/environment.ts:168-173 adds {type:'module', src:'/@vite/client'} to the scripts of every page in dev; apps never write it. @marko/run (marko-js/run 8960d94604): its adapter's configureServer owns the dev server (adapter/dev-server.ts:54-150).",
+      "evidence": {
+        "type": "prior-art",
+        "source": "https://github.com/withastro/astro/blob/c302892e4a/packages/astro/src/vite-plugin-app/environment.ts#L168-L173; https://github.com/marko-js/run/blob/8960d94604/packages/run/src/adapter/dev-server.ts",
+        "detail": ""
+      }
+    },
+    "J8": {
+      "id": "J8",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Project constraints: breaking changes are fine with no deprecation periods; size is recorded, not a gate. release/0.9 has only its release node left, so new work targets the next minor.",
+      "evidence": {
+        "type": "inferred",
+        "source": "docs/roadmaps/brumate/GOAL.md:82-89; docs/roadmaps/brumate (0.9 plan)",
+        "detail": "breaking the handle() options or example layout needs no migration period"
+      }
+    },
+    "J9": {
+      "id": "J9",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "tokens",
+      "text": "Files an implementer loads: packages/brumate/src/vite.ts is about 120 kB (about 30k tokens), plus getting-started.md (6 kB), deploying.md (17 kB) and the example glue (about 5 kB per example).",
+      "evidence": {
+        "type": "measured",
+        "source": "wc -c packages/brumate/src/vite.ts website/docs/*.md examples/todos/*.ts",
+        "detail": ""
+      }
+    },
+    "P1": {
+      "id": "P1",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "time",
+      "text": "Step 1 (dev), the core: when the caller passes no `scripts`, the generated virtual:brumate/routes module supplies a default. In dev it is the /@vite/client tag plus the loader tag for '/@id/__x00__virtual:brumate/start', exactly the pair the preview page already builds (vite.ts:1665); the tags are written once into firstRender's `tail` (server.ts:3367), after the first render and before </body>, as `async` module scripts, so streaming is unchanged: nothing is buffered and later #loading/#defer chunks still follow the tags. An explicit `scripts` string (including '') still wins, so custom servers and CSP nonce setups keep control. Fixes the plain-vite-dev and own-server dev cases in 6 examples, 3 docs pages, 2 benchmarks, website/scripts/dev.ts.",
+      "estimate": {
+        "value": 1,
+        "unit": "day, size S, one file in plugin + tests"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/vite.ts:1659-1665, 2462-2463; packages/brumate/src/runtime/server.ts:3296-3302, 3356-3367",
+        "detail": "routeTree() emits the routes module; DocumentOptions.scripts is plain optional markup placed after state"
+      }
+    },
+    "P2": {
+      "id": "P2",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "time",
+      "text": "Step 2 (production): the SSR build bakes the client entry URL into the routes module, so `server.route(request)` needs no `scripts`. buildStart of the SSR build already reads the client output for the build ID (.brumate/build.json) and the client hints (vite.ts:2270-2290), so reading `.vite/manifest.json` there for the client input and emitting `<script type=module async src=BASE+file>` is the same mechanism; prerender.ts:109 already builds this exact tag from the manifest entry. This deletes the manifest read, entry lookup and tag from every server.prod.ts (about 5 of 59-84 lines each) and the earlyHints stays an option. Streaming: the tag is the same async tail script as in P1.",
+      "estimate": {
+        "value": 2,
+        "unit": "days, size S-M (build-order edge cases, base path, manifest:true auto-set)"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/vite.ts:150-160, 2270-2290; packages/brumate/src/prerender.ts:100-110; examples/todos/server.prod.ts:10-12",
+        "detail": "server build already requires the client built first and warns when it is not; prerender writes the entry tag from the manifest"
+      }
+    },
+    "P3": {
+      "id": "P3",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "time",
+      "text": "Step 3: the plugin owns the client entry. With no src/client.ts, the client build input defaults to virtual:brumate/start and manifest:true is set by the plugin, so apps drop src/client.ts (one line today: `import 'virtual:brumate/start'`), the `build.manifest` and `rolldownOptions.input` config of examples/todos/vite.config.ts. A src/client.ts (or an option `client`) stays supported for apps with their own client code; P1/P2 use whichever is the input. Dev uses '/@id/__x00__virtual:brumate/start' either way.",
+      "estimate": {
+        "value": 1,
+        "unit": "day, size S"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "examples/todos/src/client.ts; examples/todos/vite.config.ts; packages/brumate/src/vite.ts:2397-2415",
+        "detail": "client.ts is one import of the START virtual module; the config exists only to name it and turn the manifest on"
+      }
+    },
+    "P4": {
+      "id": "P4",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "time",
+      "text": "Step 4: Nitro and other hosts. Under Nitro the entry file stops importing `?assets=client` and writing the DEV ternary (entry-server.ts:11-14); it is just `handle(request, {address})`. The default of P1/P2 is chosen by the plugin's isServe/isSsrBuild, not by import.meta.env, so it holds in Nitro's dev worker (Vite serves /@vite/client and the start module on the same dev origin) and its build. The open risk is where Nitro writes the client build (.output/public) versus where P2 looks; P2 should take the manifest path from the resolved client environment outDir, not a fixed dist/client. Needs one e2e on examples/nitro in dev and build.",
+      "estimate": {
+        "value": 1.5,
+        "unit": "days, size M (e2e of nitro dev+build, 1 worker given J1 recommends 1)"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "examples/nitro/src/entry-server.ts:9-14; website/docs/deploying.md:22-36",
+        "detail": "Nitro's own ?assets=client import is the only reason the Nitro entry knows the URL; the plugin can do the same"
+      }
+    },
+    "P5": {
+      "id": "P5",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "tokens",
+      "text": "Step 5, last: delete the hand-written tags and test the rule. Remove `scripts:` from the 6 server.ts, 6 server.prod.ts, examples/nitro, website/scripts/dev.ts, benchmarks/brumate(-0.3), and the snippets in getting-started.md:110 and deploying.md:33 (the doc then explains only that `scripts` overrides the default). Add a test that fails if '@vite/client' appears in examples/, website/docs or benchmarks outside the plugin, which enforces the goal. Breaking handle() options need no deprecation period.",
+      "estimate": {
+        "value": 0.5,
+        "unit": "day, size S, mostly deletions; tokens: edits touch about 5 kB per example"
+      },
+      "evidence": {
+        "type": "inferred",
+        "source": "docs/roadmaps/brumate/GOAL.md:82-89; ledger J3, J8",
+        "detail": "breaking changes and example cleanup are allowed at once; J3 lists the 10 places that write the tag"
+      }
+    },
+    "A1": {
+      "id": "A1",
+      "round": 1,
+      "by": "proponent",
+      "kind": "alternative",
+      "axis": "time",
+      "text": "Cheaper variant: do not change `handle` defaults; export one helper from brumate/vite, `clientScripts(vite?)`, that returns the string (dev pair from the server, prod tag from the manifest) and keep `scripts: clientScripts(vite)` in each server. The app no longer writes the tag, only calls the helper. Costs about half of P1-P3 (no default in the routes module, no build-order work) but leaves the server file glue, and the tag stays 'written by hand' in the sense of a wiring call in 12 files; does not meet 'never' for apps that skip the helper.",
+      "estimate": {
+        "value": 1.5,
+        "unit": "days, size S"
+      },
+      "evidence": {
+        "type": "prior-art",
+        "source": "Nitro ?assets=client import (node_modules/.pnpm/nitro@3.0.260903-beta) returns client.entry; examples/nitro/src/entry-server.ts:11",
+        "detail": "Nitro already hands the app a URL helper instead of a default; apps still write the tag"
+      }
+    },
+    "A2": {
+      "id": "A2",
+      "round": 1,
+      "by": "proponent",
+      "kind": "alternative",
+      "axis": "time",
+      "text": "Larger variant for the same goal: the plugin serves pages in vite dev itself (a post-middleware in configureServer that calls the routes module's handle with the default scripts), as SvelteKit does at exports/vite/dev/index.js:315, Astro in vite-plugin-app and idlip in plugin.ts:329-355. Plain `vite dev` then needs no server.ts at all, not only no tags. Costs: the error page, Node-to-Request conversion (node.ts in each example) and server-function POST routing move into the plugin, the HMR/ssrLoadModule path must keep working with Nitro (which owns dev), and it adds roughly a medium node on top of P1. Worth it only if the goal widens to 'no server.ts'; P1 is a prerequisite either way.",
+      "estimate": {
+        "value": 4,
+        "unit": "days, size M-L"
+      },
+      "evidence": {
+        "type": "prior-art",
+        "source": "https://github.com/sveltejs/kit/blob/accf16ca32/packages/kit/src/runtime/server/page/respond_with_error.js#L128-L131; https://github.com/lxsmnsyc/idlip/blob/8248e3f447759eb162cfa7584d40c6aacac7fa53/packages/idlip/src/vite/plugin.ts#L329-L355",
+        "detail": "all three own the dev page middleware and add /@vite/client themselves; idlip buffers, brumate would pipe the ReadableStream so streaming stays"
+      }
+    },
+    "O1": {
+      "id": "O1",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "answers": ["P2"],
+      "text": "Baking the entry at the SSR buildStart works only when the client is built first. examples/todos does that with two chained vite commands, but examples/nitro runs one `vite build` where Nitro orders the environments, and the existing code only warns when the client output is missing. A wrong order would then ship pages with no client script and no error, which is the failure the hand-written tag never had. P2 needs a hard error (not a warn) for the entry lookup, and one e2e per host for the order. Likelihood medium on Nitro, low on todos.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/vite.ts:2270-2292; examples/todos/package.json:7; examples/nitro/package.json:7",
+        "detail": "warn-only path today; todos chains two commands, nitro has one"
+      },
+      "severity": "medium"
+    },
+    "O2": {
+      "id": "O2",
+      "round": 1,
+      "by": "opponent",
+      "kind": "cost",
+      "axis": "time",
+      "answers": ["P3"],
+      "text": "P3 is not needed for the goal. src/client.ts is one import line, not a script tag, and the goal is about the tag and the entry script. P3 changes the client build input, auto-sets manifest, and must be reconciled with Nitro, whose vite.config.ts names src/client.ts as its client environment input for `?assets=client`. Dropping P3 saves about 1 day and one source of Nitro conflict. Keep P1+P2 reading whichever input the client environment has.",
+      "evidence": {
+        "type": "source",
+        "source": "examples/nitro/vite.config.ts; examples/todos/src/client.ts; docs/debates/vite-client-scripts/ledger.json P3",
+        "detail": "entry file exists only to name the START module; removing it is cleanup, not goal"
+      },
+      "severity": "medium",
+      "estimate": {
+        "value": -1,
+        "unit": "day if P3 is dropped"
+      }
+    },
+    "O3": {
+      "id": "O3",
+      "round": 1,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "axis": "time",
+      "answers": ["P5"],
+      "text": "P5 lists benchmarks/brumate-0.3/src/server.ts among files to clean, but that benchmark pins `brumate: npm:brumate@0.3.0`, which has no default scripts. Deleting its tag breaks the benchmark; the plugin change cannot reach it. Exclude it from P5 and from the grep test (a frozen baseline, not a Brumate app of this version). The grep test also must allow the docs page that explains the `scripts` override.",
+      "evidence": {
+        "type": "measured",
+        "source": "grep -n brumate benchmarks/brumate-0.3/package.json",
+        "detail": "line 11: \"brumate\": \"npm:brumate@0.3.0\""
+      },
+      "severity": "medium"
+    },
+    "O4": {
+      "id": "O4",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "answers": ["P1", "P4"],
+      "text": "The dev default is chosen by isServe in the plugin, but the routes module under Nitro runs in Nitro's own dev worker. Today the Nitro entry decides with import.meta.env.DEV, and nobody has shown the worker sees the plugin's isServe state or serves /@id/__x00__ ids on the page origin. P4 gives this one e2e, but it is the step with the most unknowns; it should run first as a proof (dev page loads HMR client and start module) before P1 is sized as one day.",
+      "evidence": {
+        "type": "source",
+        "source": "examples/nitro/src/entry-server.ts:11-14; packages/brumate/src/vite.ts:1665",
+        "detail": "preview page works through the plain Vite server only; Nitro dev is not covered by the evidence"
+      },
+      "severity": "medium"
+    },
+    "O5": {
+      "id": "O5",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "answers": ["P1"],
+      "text": "The dev default hard-codes Vite's private URL shape '/@id/__x00__<id>' into generated code. It already exists in the preview page, so one more copy raises the break surface across Vite upgrades. Export a single helper constant from vite.ts used by both places so a Vite change fixes one line.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/vite.ts:1665",
+        "detail": "literal string in the preview; P1 would add a second"
+      },
+      "severity": "low"
+    },
+    "O6": {
+      "id": "O6",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "device",
+      "answers": ["P2"],
+      "text": "Baking the entry URL and base into the server bundle ties the server build to one client build: rebuilding only the client leaves the server pointing at a stale hashed file, where today's runtime manifest read follows it. The build ID already warns on this skew, so reuse that check. This is a deploy-flow cost for apps with split client/server deploys, not a RAM or storage cost.",
+      "evidence": {
+        "type": "source",
+        "source": "examples/todos/server.prod.ts:10-12; packages/brumate/src/vite.ts:2270-2290",
+        "detail": "entry read at runtime from dist/client manifest today"
+      },
+      "severity": "low"
+    },
+    "O7": {
+      "id": "O7",
+      "round": 1,
+      "by": "opponent",
+      "kind": "alternative",
+      "axis": "time",
+      "answers": ["A2"],
+      "text": "Do P1+P2 only (no P3), and leave A2 out: A2 triples the cost and the goal is about tags, not server.ts. Total about 3.5 days instead of 5.5 plus A2 4 days. This is the cheaper structure that reaches the goal for plain vite dev, Nitro and own servers.",
+      "evidence": {
+        "type": "inferred",
+        "source": "goal text; ledger P1-P5, A2",
+        "detail": "goal names the tag and entry script only"
+      },
+      "estimate": {
+        "value": 3.5,
+        "unit": "days (P1 1 + P2 2 + P5 0.5)"
+      }
+    },
+    "J10": {
+      "id": "J10",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Nitro builds with one `vite build` through builder.buildApp (nitro dist/_build/vite.build.mjs:18), and examples/nitro/test/build.test.ts:39-45 already checks that the built page names /assets/client-*.js and not /@vite/client, so the client-before-server order already holds there.",
+      "evidence": {
+        "type": "measured",
+        "source": "grep buildApp nitro dist/_build; examples/nitro/test/build.test.ts:39-45"
+      }
+    },
+    "P6": {
+      "id": "P6",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "time",
+      "text": "Step 3 (replaces rejected P3; A2 folded in): configureServer returns a post-middleware that answers GET/HEAD page requests in vite dev by importing virtual:brumate/routes through the SSR environment, calling handle(Request) (default scripts from P1), and piping the web ReadableStream to the Node response, so streaming is kept (idlip buffers; brumate does not). It falls through with next() when handle returns undefined, so Vite's own files, /@vite/client and the RPC POSTs of vite.ts:2759 are untouched. (a) Own server: skip when `server.config.server.middlewareMode` is true, which is exactly the setup of every example server.ts (createServer({server:{middlewareMode:true}, appType:'custom'})); an app that wants its own handler therefore never gets a second answer, and an option `pages: false` turns the middleware off in normal mode. A post-middleware also runs only after the app's own pre-middleware had a chance to end the response. (b) Nitro: skip when `server.environments.nitro` exists, which Nitro's dev plugin reads at _build/vite.dev.mjs:76 and creates itself; Nitro's worker then renders with the P1 default, since the routes module is generated in the Vite process (O4 ruled). Both checks are plain config reads at configureServer time, no request-time guess.",
+      "estimate": {
+        "value": 3,
+        "unit": "days, size M (middleware, Node to Request conversion, three modes e2e)"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/vite.ts:2759-2790; examples/todos/server.ts:8; nitro@3.0.260903-beta dist/_build/vite.dev.mjs:76 and vite.env.mjs:143-152; https://github.com/lxsmnsyc/idlip/blob/8248e3f447759eb162cfa7584d40c6aacac7fa53/packages/idlip/src/vite/plugin.ts#L329-L355",
+        "detail": "middlewareMode is set by every custom server; Nitro registers an environment named nitro and a plugin named nitro-vite"
+      },
+      "answers": ["A2", "P1"]
+    },
+    "P7": {
+      "id": "P7",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "time",
+      "text": "Error pages in the dev middleware reuse what exists: a throw from the routes module or handle is caught and answered 500 text/html with errorPage(error, server) (dev-error.ts, already used by the preview page at vite.ts:1688 and exported as brumate/vite errorPage), so Vite's overlay and the devtools show compile errors as in the 6 hand servers. Rendering errors that handle itself turns into a 500 page stay the app's business. The same try/catch also calls server.ssrFixStacktrace(error). No new error UI.",
+      "estimate": {
+        "value": 0.5,
+        "unit": "day, included in P6 if done together; size S"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/vite.ts:1685-1690, 2871; packages/brumate/src/dev-error.ts; examples/todos/server.ts:21-25",
+        "detail": "the 6 server.ts files all end in the same catch with errorPage"
+      },
+      "answers": ["P6"]
+    },
+    "P8": {
+      "id": "P8",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "time",
+      "text": "Examples and node helper. After P6, plain `vite dev` runs every example, so server.ts, node.ts and the dev half of server.prod.ts are deleted in 5 of the 6 Node examples (package.json dev script becomes `vite`); one example, todos, keeps a middlewareMode server.ts as the documented own-server case and the e2e of P6(a). node.ts is byte-identical in the examples I compared (cmp: browser-async, hackernews, kit-app, ui match todos), plus 33-line server.ts and 59-84 line server.prod.ts per J2, so shipping `toRequest` and `send` as `brumate/node` is in scope: P6 needs the same conversion inside the plugin anyway, so exporting it costs about 0.5 day and removes 5 copies; it is optional and goes last, and it does not decide the goal. A production server generator (a `node dist/server` entry) stays out of scope: server.prod.ts shrinks to the manifest-free handle call plus static files, about 35 lines. Risk: e2e and tests that spawn server.ts must be repointed to `vite`.",
+      "estimate": {
+        "value": 1.5,
+        "unit": "days, size S-M (6 examples, scripts, e2e specs)"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "cmp examples/*/node.ts against examples/todos/node.ts; examples/todos/server.ts, server.prod.ts, node.ts; ledger J2",
+        "detail": "node.ts copies are identical; server.prod.ts without manifest read and scripts is about 35 lines"
+      },
+      "answers": ["P5", "A2"]
+    },
+    "P9": {
+      "id": "P9",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "time",
+      "text": "Amends P2 with O1 and O6. The SSR build reads the client manifest in buildStart and a missing manifest or missing client entry is an error (this.error), not the warning the build-ID check gives today; the client-first order already holds under Nitro's single `vite build` (J10) and under the two chained commands of the plain examples, and the error text says to build the client first. The baked entry carries the client build ID it read: when BRUMATE_BUILD or the build ID found by the existing readBuildId (vite.ts:2281) differs from the one in the manifest read, the existing skew warning is reused, no new check. P1's dev URL '/@id/__x00__virtual:brumate/start' becomes one exported constant used by the preview page (vite.ts:1665) and the routes default (O5).",
+      "estimate": {
+        "value": 2.5,
+        "unit": "days, size M (was 2, plus error path, build-ID reuse, constant)"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/vite.ts:2276-2289, 1665; ledger J10, O1, O5, O6",
+        "detail": "today it only warns; Nitro's order is tested at examples/nitro/test/build.test.ts:39-45"
+      },
+      "answers": ["P2"]
+    },
+    "P10": {
+      "id": "P10",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "time",
+      "text": "Ship order and total. 1) P1 default dev scripts plus shared constant (1 day). 2) P9 production default with error on missing manifest (2.5). 3) P6+P7 dev middleware, depends on 1 (3.5). 4) P4 Nitro e2e in dev and build, needs 1 and 2 (1.5). 5) P8 delete example glue, doc snippets, optional brumate/node, last (1.5). Total about 10 days of one worker, because J1 recommends 1 parallel worktree (CPU bound, 8 GB RAM); steps 1-2 are the 'never write a tag' result for own servers and Nitro (3.5 days), step 3 adds plain vite dev. Tokens: every step loads vite.ts (about 30k tokens, J9), so about 5 x 40k = 200k tokens. P5's guard test excludes benchmarks/brumate-0.3 (pins brumate 0.3.0, O3) and allows the docs sentence that explains the `scripts` override. P3 and A1 are dropped, as ruled.",
+      "estimate": {
+        "value": 10,
+        "unit": "days, one worker; about 200k tokens"
+      },
+      "evidence": {
+        "type": "estimate",
+        "source": "sum of P1, P9, P6+P7, P4, P8 estimates; J1, J9, J10",
+        "detail": "step sizes from the vite.ts mechanisms cited in P1, P2, P6; no build done"
+      },
+      "answers": ["P1", "P4", "P5", "P6", "P8", "P9"]
+    },
+    "O8": {
+      "id": "O8",
+      "round": 2,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "answers": ["P6"],
+      "text": "Vite's default appType is 'spa' (the plugin never sets appType), and in that mode htmlFallbackMiddleware rewrites req.url to /index.html for every GET/HEAD whose Accept is empty, text/html or */*, before postHooks run (node.js:25115-25116: fallback first, then postHooks). A post-middleware that builds its Request from req.url would match no route for any page. P6 must build the URL from req.originalUrl, or the plugin must set appType 'custom' in its config hook; the 6 examples avoid this today only because they pass appType 'custom'. Both options need a test in plain `vite dev` with the default appType.",
+      "evidence": {
+        "type": "measured",
+        "source": "packages/brumate/node_modules/vite/dist/node/chunks/node.js:17051-17090, 25115-25116; grep appType packages/brumate/src/vite.ts (no match)",
+        "detail": "spaFallback sets req.url = '/index.html' unconditionally; post hooks run after it"
+      },
+      "severity": "high"
+    },
+    "O9": {
+      "id": "O9",
+      "round": 2,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "answers": ["P6", "P8"],
+      "text": "P6 limits the middleware to GET and HEAD, but handleRoute serves every method: middleware, endpoints, a form's server function and the page share one event, and the hand-written servers pass every request that Vite did not consume to handle. A GET/HEAD-only plugin middleware would 404 POST/PUT route endpoints and no-JS form posts in plain `vite dev`, a regression once P8 deletes server.ts. Answer all methods the route tree matches and only call next() when handle returns undefined; this also changes the 'three modes e2e' scope of P6 to include a POST endpoint and a form post.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/server.ts:4482-4500; examples/todos/server.ts:14-19",
+        "detail": "hand server calls handle for any method; handleRoute matches endpoints and forms for all methods"
+      },
+      "severity": "medium"
+    },
+    "O10": {
+      "id": "O10",
+      "round": 2,
+      "by": "opponent",
+      "kind": "cost",
+      "axis": "time",
+      "answers": ["P10"],
+      "text": "The 10-day total looks high against history. The dev-error overlay feature (one middleware path, 11 files, +272 lines, test and docs) landed in one commit on 2026-10-21, as did the prerender plugin (9 files, +261/-88, deleting a website script). P6 (a middleware over an existing errorPage and a conversion that examples already carry as node.ts) is comparable to those, so 3 + 0.5 days is likely 1.5 to 2 days; the larger real cost is the e2e repointing in P8, not the plugin code. Estimate basis: two comparable commits, stated as a range, not a measured effort. The user still pays the same tokens (about 200k) if work splits into five steps, since each reloads vite.ts.",
+      "evidence": {
+        "type": "calibration",
+        "source": "git show --stat 781cf7f9; git show --stat 903555a1",
+        "detail": "both single-commit plugin features with tests and docs, same day 2026-10-21"
+      },
+      "severity": "low",
+      "estimate": {
+        "value": 6,
+        "unit": "days instead of 10, estimate"
+      }
+    },
+    "O11": {
+      "id": "O11",
+      "round": 2,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "axis": "time",
+      "answers": ["P6"],
+      "text": "Detection rules check out against the code, so I do not contest them: Nitro's dev plugin reads server.environments.nitro (nitro dist/_build/vite.dev.mjs:76), the existing RPC middleware already branches on server.environments.ssr being runnable (vite.ts:2759-2770), public/ files are served by servePublicMiddleware before any post hook, and middlewareMode is a plain config field. The one gap is the Accept check: Vite's own fallback skips requests whose Accept lacks text/html or */*, so P6 should not use req.url or rely on the fallback, only on handle's undefined result, to keep fetch/endpoint calls working (see O8, O9).",
+      "evidence": {
+        "type": "source",
+        "source": "node.js:25100-25116 (public, static, fallback order); packages/brumate/src/vite.ts:2759-2770; nitro dist/_build/vite.dev.mjs:76",
+        "detail": "public files are served before the post hook; the ssr-runnable branch exists already"
+      },
+      "severity": "low"
+    },
+    "J11": {
+      "id": "J11",
+      "round": 2,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "SvelteKit's plugin sets appType: 'custom' (packages/kit/src/exports/vite/index.js:376 at accf16ca32), so Vite's SPA html fallback never rewrites page requests before its own middleware; the brumate plugin sets no appType today.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "https://github.com/sveltejs/kit/blob/accf16ca32/packages/kit/src/exports/vite/index.js#L376",
+        "detail": "grep appType packages/brumate/src/vite.ts: no match"
+      }
+    },
+    "P11": {
+      "id": "P11",
+      "round": 3,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "time",
+      "answers": ["P6"],
+      "text": "Amends P6 with O8, O9, O11. The plugin sets `appType: 'custom'` in its config hook when the user left appType unset (as SvelteKit does, J11), so Vite's SPA html fallback never rewrites req.url to /index.html before the post-middleware and the routes see the real URL; the plugin never overrides an appType the user set. A user who set 'spa' or 'mpa' gets no pages middleware and a one-time dev warning that brumate pages need appType 'custom' (the same middlewareMode skip as P6(a), so no double answer). The middleware answers every method and every Accept: it calls handle(Request) and falls through with next() only when handle returns undefined, so POST server function calls, endpoints, fetch() requests and non-HTML routes reach the routes module and Vite's own files, /@vite/client and RPC still fall through. P6's other parts (Nitro skip via server.environments.nitro, errorPage, streaming pipe) stay.",
+      "estimate": {
+        "value": 0.5,
+        "unit": "day added to P6, size S; P10 total read as 6-10 days, e2e repointing of the examples is the main cost"
+      },
+      "evidence": {
+        "type": "prior-art",
+        "source": "ledger J11, O8, O9, O11; https://github.com/sveltejs/kit/blob/accf16ca32/packages/kit/src/exports/vite/index.js",
+        "detail": "SvelteKit sets appType custom and answers all methods from its dev middleware; I did not re-read the file this round, so the line is the judge's J11"
+      }
+    }
+  }
+}
