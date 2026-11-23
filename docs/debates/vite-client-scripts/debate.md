@@ -3,7 +3,7 @@ goal: Brumate apps never write the /@vite/client tag or the client entry script 
 date: 2026-11-23
 rounds: 3 of 3
 status: approved
-roadmap: none yet (next minor after 0.9.0)
+roadmap: docs/roadmaps/brumate (story client-scripts, 0.10.0)
 supersedes: none
 decision: docs/decisions.md (2026-11-23 entry)
 ---
