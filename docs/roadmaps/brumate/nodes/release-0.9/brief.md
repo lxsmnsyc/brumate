@@ -65,6 +65,12 @@ depends_on:
   - on: release-0.8.1
     kind: hard
     why: 0.9.0 carries the patch fixes
+  - on: module-signal-forms
+    kind: hard
+    why: the maintainer held 0.9.0 until module signals cover every value form (2026-11-24)
+  - on: module-async-memo
+    kind: hard
+    why: the maintainer held 0.9.0 until module signals cover every value form (2026-11-24)
 ---
 
 # Release brumate 0.9.0
