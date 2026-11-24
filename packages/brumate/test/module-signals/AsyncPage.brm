@@ -1,0 +1,7 @@
+<script>
+  import AsyncReader from './AsyncReader.brm';
+  import AsyncWriter from './AsyncWriter.brm';
+</script>
+
+<AsyncWriter />
+<AsyncReader />

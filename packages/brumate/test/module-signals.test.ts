@@ -19,7 +19,7 @@ import { findError } from '../src/error-catalog.ts';
 import { findSignalImports, transformModuleSignals } from '../src/module-signals.ts';
 import { resolveFromDisk } from '../src/modules.ts';
 import { render as renderParts } from '../src/runtime/server.ts';
-import { derived, gated, heldDerived, pendingOf, store, timed } from '../src/runtime/store.ts';
+import { derived, gated, memoStore, pendingOf, store, timed } from '../src/runtime/store.ts';
 
 const input = resolve(import.meta.dirname, 'module-signals');
 const output = resolve(import.meta.dirname, '.output/module-signals');
@@ -81,15 +81,35 @@ interface Cart {
   add(price: number): void;
 }
 
-/** Renders a page on the server, puts it in the document and starts the browser side. */
-async function resume(name: string): Promise<void> {
+/** Appends streamed markup and runs its inline scripts in order, as a browser does. */
+function appendChunk(html: string): void {
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  // A copy, because appending moves nodes out of the live list.
+  for (const node of Array.from(template.content.childNodes)) {
+    document.body.append(node);
+    if (node.nodeName === 'SCRIPT' && !(node as Element).hasAttribute('type')) {
+      run(node as Element);
+    }
+  }
+}
+
+/**
+ * Renders a page on the server, puts it in the document and starts the browser side. The bodies of
+ * `#loading` that stream arrive after the start, as in a browser. Returns the first markup.
+ */
+async function resume(name: string): Promise<string> {
   const server = await import(file(`${name}.ts`));
-  const { html, state } = await renderParts(server.default, {});
+  const { html, state, pending } = await renderParts(server.default, {});
   document.body.innerHTML = html + state;
   document.body.querySelectorAll('script[b-state]').forEach(run);
   vi.resetModules();
   const { start } = await import('../src/runtime/loader.ts');
   stop = start({ load: async (id) => import(modules.get(id)!) });
+  for await (const chunk of pending) {
+    appendChunk(chunk);
+  }
+  return html;
 }
 
 /** Renders on the server only. */
@@ -373,7 +393,6 @@ describe('errors', () => {
     const cases = [
       "import { $effect } from 'brumate/signals';\n$effect(() => {});",
       "import { $client } from 'brumate/signals';\nconst x = $client(() => 1);",
-      "import { $memo } from 'brumate/signals';\nexport const a = $memo(await load());",
       "import { $signal } from 'brumate/signals';\nexport let { a } = $signal(1);",
       "import { $signal } from 'brumate/signals';\nlet a = $signal(1), b = 2;",
       "import { $memo } from 'brumate/signals';\nlet a = $memo(1);",
@@ -576,6 +595,152 @@ describe('an error of a module value', () => {
   });
 });
 
+interface UserModule {
+  calls: { user: number; label: number; steps: number };
+  setId(next: number): void;
+}
+
+/** Waits for timers and the loads that they settle. */
+const sleep = (ms: number): Promise<void> => new Promise((done) => setTimeout(done, ms));
+
+/** A component that reads `user` of user.brm.ts in `#loading` only, and in a handler. */
+function reader(handler: string): string {
+  return `<script>\n  import { $isPending } from 'brumate/signals';\n  import { user } from './user.brm.ts';\n</script>\n\n#loading {\n  <p>{user.name}</p>\n} #else {\n  <p>wait</p>\n}\n<button onClick=${handler}>Log</button>\n`;
+}
+
+describe('an async memo of a module', () => {
+  it('renders on the server, outside and inside #loading, and resumes without a second load', async () => {
+    const onServer = (await import(file('user.brm.ts'))) as UserModule;
+    const html = await resume('AsyncPage.brm');
+    // The page waits for the memos that markup reads outside #loading, and `await label`.
+    expect(html).toMatch(/class="r-user"[^>]*>user 1<\/p>/);
+    expect(html).toMatch(/class="r-shout"[^>]*>USER 1<\/p>/);
+    expect(html).toMatch(/class="r-await"[^>]*>label 1<\/p>/);
+    // The stream inside #loading is not ready: the fallback goes out, and the body streams.
+    expect(html).toContain('class="r-wait"');
+    expect(onServer.calls).toEqual({ user: 1, label: 1, steps: 1 });
+    const browser = (await import(file('user.brm.ts'))) as UserModule;
+    await sleep(40);
+    expect(text('.r-user')).toBe('user 1');
+    expect(text('.r-shout')).toBe('USER 1');
+    expect(text('.r-label')).toBe('label 1');
+    expect(text('.r-steps')).toBe('step 1 of 1');
+    expect(text('.r-pending')).toBe('idle');
+    // The browser keeps what the server rendered: its sources are the same.
+    expect(browser.calls).toEqual({ user: 0, label: 0, steps: 0 });
+  });
+
+  it('loads again when a source changes in another component, and writes only the latest run', async () => {
+    await resume('AsyncPage.brm');
+    const browser = (await import(file('user.brm.ts'))) as UserModule;
+    // The load of 2 is slow, and 3 replaces it.
+    click('.w-two');
+    await vi.waitFor(() => expect(text('.r-pending')).toBe('loading'), { timeout: 2000 });
+    // The old value stays while the new one loads.
+    expect(text('.r-user')).toBe('user 1');
+    click('.w-three');
+    await vi.waitFor(() => expect(text('.r-user')).toBe('user 3'), { timeout: 2000 });
+    expect(text('.r-pending')).toBe('idle');
+    await vi.waitFor(() => expect(text('.r-shout')).toBe('USER 3'), { timeout: 2000 });
+    await vi.waitFor(() => expect(text('.r-label')).toBe('label 3'), { timeout: 2000 });
+    expect(text('.r-await')).toBe('label 3');
+    // A stream gives each of its values in turn.
+    await vi.waitFor(() => expect(text('.r-steps')).toBe('step 3 of 3'), { timeout: 2000 });
+    // The load of 2 ends after that of 3, and is dropped.
+    await sleep(150);
+    expect(text('.r-user')).toBe('user 3');
+    expect(text('.r-label')).toBe('label 3');
+    expect(browser.calls.user).toBe(2);
+  });
+
+  it('waits with $resolve in a handler of the reader', async () => {
+    await resume('AsyncPage.brm');
+    click('.w-two');
+    click('.r-resolve');
+    await vi.waitFor(() => expect(text('.r-resolved')).toBe('user 2'), { timeout: 2000 });
+  });
+
+  it('sends a rejected load to the #try of the reader, and the other memos update', async () => {
+    const errors: unknown[] = [];
+    const onError = (event: Event): void => {
+      errors.push(event);
+    };
+    window.addEventListener('error', onError);
+    try {
+      await resume('AsyncPage.brm');
+      click('.w-fail');
+      await vi.waitFor(() => expect(text('.r-caught')).toContain('thirteen'), { timeout: 2000 });
+      await vi.waitFor(() => expect(text('.r-label')).toBe('label 13'), { timeout: 2000 });
+      expect(text('.w-id')).toBe('13');
+      expect(errors).toEqual([]);
+    } finally {
+      window.removeEventListener('error', onError);
+    }
+  });
+
+  it('shares one load between server requests, until a source changes', async () => {
+    const onServer = (await import(file('user.brm.ts'))) as UserModule;
+    // Two requests while the load is out wait for the same load.
+    const [first, second] = await Promise.all([
+      serverHtml('AsyncReader.brm'),
+      serverHtml('AsyncReader.brm'),
+    ]);
+    expect(onServer.calls.user).toBe(1);
+    expect(first).toMatch(/class="r-user"[^>]*>user 1<\/p>/);
+    expect(second).toMatch(/class="r-user"[^>]*>user 1<\/p>/);
+    // A request after the loads settled renders the values without a load, #loading in place.
+    await sleep(40);
+    const third = await serverHtml('AsyncReader.brm');
+    expect(onServer.calls).toEqual({ user: 1, label: 1, steps: 1 });
+    expect(third).not.toContain('r-wait');
+    expect(third).toMatch(/class="r-steps"[^>]*>step 1 of 1<\/p>/);
+    // A change of a source on the server starts one new load at the next read.
+    onServer.setId(4);
+    const fourth = await serverHtml('AsyncReader.brm');
+    expect(fourth).toMatch(/class="r-user"[^>]*>user 4<\/p>/);
+    expect(onServer.calls.user).toBe(2);
+  });
+
+  it('compiles $memo(await …) at the top level, and a handler that reads it is BRM182', () => {
+    const code = transformModuleSignals(
+      module(
+        "import { $memo, $signal } from 'brumate/signals';\nexport let id = $signal(1);\nexport const user = $memo(await load(id));",
+      ),
+    );
+    expect(code).toContain('$$derived([id], async ([id]) => (await load(id)))');
+    const message = error(() =>
+      compile(reader('(() => console.log(user.name))'), {
+        filename: 'Log.brm',
+        path: join(input, 'Log.brm'),
+      }),
+    );
+    expect(findError(message)?.code).toBe('BRM182');
+    expect(message).toContain('The handler reads "user"');
+    // A guard makes the read fine, as for a memo of the component.
+    expect(() =>
+      compile(reader('(() => { if (!$isPending(user)) console.log(user.name); })'), {
+        filename: 'Log.brm',
+        path: join(input, 'Log.brm'),
+      }),
+    ).not.toThrow();
+  });
+
+  it('reads a memo that loads from a memo of the module, which waits for it', async () => {
+    const users = (await import(file('user.brm.ts'))) as UserModule & {
+      shout: { get(): string; subscribe(listener: (value: string) => void): () => void };
+    };
+    // No value yet: a read throws the error that names $resolve.
+    expect(() => users.shout.get()).toThrow('This value is still loading');
+    const seen: string[] = [];
+    const stopWatching = users.shout.subscribe((value) => seen.push(value));
+    await vi.waitFor(() => expect(users.shout.get()).toBe('USER 1'), { timeout: 2000 });
+    users.setId(3);
+    await vi.waitFor(() => expect(seen.at(-1)).toBe('USER 3'), { timeout: 2000 });
+    expect(users.calls.user).toBe(2);
+    stopWatching();
+  });
+});
+
 describe('the stores of the forms', () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -595,7 +760,7 @@ describe('the stores of the forms', () => {
 
   it('a held store notifies once when it recovers with the same value', () => {
     const a = store(1);
-    const held = heldDerived(a, (value) => {
+    const held = memoStore(a, (value) => {
       if (value === 2) {
         throw new Error('two');
       }

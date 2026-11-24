@@ -2272,7 +2272,7 @@ export const STEP = 1;
 
 ## BRM211: {name} cannot be compiled in a module{reason}. {fix}
 
-A module uses a form that its top-level values cannot compile: a compile-time function that needs a component, such as `$effect`, at the top level, a memo, gate or timed value that awaits or calls a function it cannot follow, a form with the wrong arguments, or a signal in a destructuring write.
+A module uses a form that its top-level values cannot compile: a compile-time function that needs a component, such as `$effect`, at the top level, a gate or timed value that awaits, a memo, gate or timed value that calls a function it cannot follow, a form with the wrong arguments, or a signal in a destructuring write.
 
 https://brumate-docs.vercel.app/docs/errors#brm211
 

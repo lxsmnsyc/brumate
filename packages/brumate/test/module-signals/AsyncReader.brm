@@ -1,0 +1,27 @@
+<script>
+  import { $isPending, $resolve, $signal } from 'brumate/signals';
+  import { label, shout, steps, user } from './user.brm.ts';
+
+  let resolved = $signal('none');
+
+  async function wait() {
+    resolved = (await $resolve(user)).name;
+  }
+</script>
+
+#try {
+  <p class="r-user">{user.name}</p>
+  <p class="r-shout">{shout}</p>
+} #catch (error) {
+  <p class="r-caught">{String(error)}</p>
+}
+#loading {
+  <p class="r-label">{label}</p>
+  <p class="r-steps">{steps}</p>
+} #else {
+  <p class="r-wait">wait</p>
+}
+<p class="r-await">{await label}</p>
+<p class="r-pending">{$isPending(user) ? 'loading' : 'idle'}</p>
+<p class="r-resolved">{resolved}</p>
+<button class="r-resolve" onClick=wait>Resolve</button>

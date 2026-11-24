@@ -90,7 +90,7 @@ Declares a read-only value computed from other values.
 - Assigning to it is a compile error.
 - Server: computed when first read. Markup outside every `#loading` body waits for a promise. A `#loading` body that reads it renders in place when it is ready, and after the rest of the page otherwise.
 - Client: computed again when the values it reads change. While a new promise loads, the memo keeps its old value. Only the latest run is written.
-- At the top level of a module: yes, with `const`, and without `await`. See [Shared state at module level](./reactive-modules.md#shared-state-at-module-level).
+- At the top level of a module: yes, with `const`. It loads once for every component that imports it, and each reads it as its own memo. See [A memo that loads](./reactive-modules.md#a-memo-that-loads).
 
 ## `$gate`
 
@@ -122,7 +122,7 @@ function $isPending(...memos: unknown[]): boolean;
 
 True while a new value of any of the memos loads in the browser, or a value that one of them reads loads.
 
-- Its arguments are the names of memos, one or more, or names that the component imports from a module, such as a debounced value or a memo over one. A read of each named memo counts as guarded in a handler.
+- Its arguments are the names of memos, one or more, also memos that the component imports from a module, or other names that it imports from a module, such as a debounced value. A read of each named memo counts as guarded in a handler.
 - Server: always `false`.
 - Client: `true` from the start of a load until its value is written.
 

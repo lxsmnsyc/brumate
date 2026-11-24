@@ -239,6 +239,38 @@ interface Computed {
 }
 
 /**
+ * Queues a derived store that a source told of a change. The store waits until the source has
+ * called all its listeners, so a store that reads this one and the source computes once, after
+ * this one.
+ */
+function enqueue(state: Computed, source: StoreLike<unknown>): void {
+  if (state.waits) {
+    return;
+  }
+  state.waits = true;
+  waiting.push(state);
+  if (flushing) {
+    return;
+  }
+  const listeners = (source as Partial<Store<unknown>>).l;
+  if (!listeners || armed.has(listeners)) {
+    if (!listeners) {
+      // A store of another library has no listeners to wait behind.
+      flushComputed();
+    }
+    return;
+  }
+  // A listener added now runs after the ones of the source, in the same send.
+  const trail = (): void => {
+    listeners.delete(trail);
+    armed.delete(listeners);
+    flushComputed();
+  };
+  armed.add(listeners);
+  listeners.add(trail as never);
+}
+
+/**
  * A store computed from `sources`. With a function of one parameter, the result is the value. With
  * two or three, the function calls `set` or `update`, and a function it returns runs before the
  * next call and when the last subscriber leaves. It follows its sources only while it has
@@ -269,18 +301,6 @@ export function derived<T>(
   initial?: T,
 ): StoreLike<T> {
   return build(sources, fn, initial, false);
-}
-
-/**
- * The derived store of a memo of a module: `derived` that holds an error. A throw after the first
- * run is kept, the readers hear of it and `get` throws it, and the stores of the same pass still
- * compute. The compiler calls it, so it has no docs of its own.
- */
-export function heldDerived<S extends Stores, T>(
-  sources: S,
-  fn: (values: StoresValues<S>) => T,
-): StoreLike<T> {
-  return build<T>(sources, fn as never, undefined, true);
 }
 
 /** The key of a store that holds the error of a run, which `$store` reads again on each notice. */
@@ -384,35 +404,11 @@ function build<T>(
     },
   };
 
-  /**
-   * Called by a source. The store waits until the source has called all its listeners, so a store
-   * that reads this one and the source computes once, after this one.
-   */
+  /** Called by a source. */
   const heard = (source: StoreLike<unknown>): void => {
-    if (!started || state.waits) {
-      return;
+    if (started) {
+      enqueue(state, source);
     }
-    state.waits = true;
-    waiting.push(state);
-    if (flushing) {
-      return;
-    }
-    const listeners = (source as Partial<Store<unknown>>).l;
-    if (!listeners || armed.has(listeners)) {
-      if (!listeners) {
-        // A store of another library has no listeners to wait behind.
-        flushComputed();
-      }
-      return;
-    }
-    // A listener added now runs after the ones of the source, in the same send.
-    const trail = (): void => {
-      listeners.delete(trail);
-      armed.delete(listeners);
-      flushComputed();
-    };
-    armed.add(listeners);
-    listeners.add(trail as never);
   };
 
   const start = (): void => {
@@ -747,6 +743,423 @@ export function timed<S extends Stores, T>(
       };
     },
     [PENDING]: waiting,
+    [HOLDS]: true,
+  };
+}
+
+// The memo of a module: the store that `$memo` compiles to at the top level of a module. Its value
+// can load, as the value of a memo of a component can: a promise, or an async iterable whose values
+// it takes in turn. One load serves every reader of the process. The compiler calls it, so it has
+// no docs of its own.
+
+/** Thrown by a read of a memo of a module whose first value still loads. It carries the load. */
+export class Waiting extends Error {
+  /** The load, which settles when the memo has its value or its error. */
+  readonly load: Promise<unknown>;
+
+  constructor(load: Promise<unknown>) {
+    super(
+      'This value is still loading. Wait for it with await $resolve(memo), or check $isPending(memo) first',
+    );
+    this.load = load;
+  }
+}
+
+/** The store of a memo of a module. */
+export interface MemoStore<T> extends StoreLike<T> {
+  /**
+   * The values of the sources, as a store that sends on each change of the memo. A memo that a
+   * component imports follows it: the page state carries these values, and the browser loads
+   * again only when its own sources differ.
+   */
+  i: StoreLike<unknown[]>;
+  /** The value, or a promise of it while the memo loads. Throws the error of the memo. */
+  p(): unknown;
+  /** Follows the sources without computing, for a memo that reads this one. */
+  f(listener: (value: T) => void): () => void;
+  /** An object that changes with each value or error, after the memo is up to date. */
+  t(): object;
+  /** The listeners of the value, so a store that reads this one computes after them. */
+  l: Set<(value: T) => void>;
+  /** The number of derived stores below it. */
+  d: number;
+  [PENDING]: Pendable;
+  [HOLDS]: true;
+}
+
+/** True for a store that `memoStore` made. */
+function isMemoStore(value: unknown): value is MemoStore<unknown> {
+  return (
+    typeof (value as { p?: unknown }).p === 'function' &&
+    isContract((value as MemoStore<unknown>).i)
+  );
+}
+
+/** True for a promise or an async iterable, which a memo loads. */
+function loads(value: unknown): value is PromiseLike<unknown> | AsyncIterable<unknown> {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    (typeof (value as { then?: unknown }).then === 'function' ||
+      typeof (value as { [Symbol.asyncIterator]?: unknown })[Symbol.asyncIterator] === 'function')
+  );
+}
+
+/** The value of a store, or the error that its `get` throws. */
+function peekStore(source: StoreLike<unknown>): unknown {
+  try {
+    return source.get();
+  } catch (error) {
+    return error;
+  }
+}
+
+/**
+ * The store of `$memo(expr)` at the top level of a module. It computes when it is read, and again
+ * when a source changes: while it has subscribers, at once, and otherwise at the next read, which
+ * compares the sources. A promise or an async iterable loads: a read gives the last value, and
+ * `p` the load, and only the latest run is written. A throw or a rejection is held until the memo
+ * computes again. A memo that reads one with no value yet waits for it.
+ */
+export function memoStore<S extends Stores, T>(
+  sources: S,
+  fn: (values: StoresValues<S>) => T | PromiseLike<T> | AsyncIterable<T>,
+): MemoStore<T> {
+  const single = !Array.isArray(sources);
+  const list: StoreLike<unknown>[] = single ? [sources as StoreLike<unknown>] : sources;
+  let level = 1;
+  for (const source of list) {
+    level = Math.max(level, ((source as { d?: number }).d ?? 0) + 1);
+  }
+  /** The value, which the listeners of the module hear. */
+  const out = new Store<T>(undefined as T);
+  /** The values of the sources, which the memos of importers follow. */
+  const inputs = new Store<unknown[]>([]);
+  const pend: Pendable = { q: new Set() };
+  let has = false;
+  let held: { error: unknown } | undefined;
+  /** Changes with each value or error. */
+  let token = {};
+  /** What the sources were at the last run: their values, or the tokens of memos. */
+  let seen: unknown[] | undefined;
+  /** The number of the latest run, so a load that a newer run replaced is dropped. */
+  let run = 0;
+  /** The run whose own load is out, or 0. */
+  let loading = 0;
+  /** While the memo loads: the promise that its readers wait for. */
+  let wait:
+    | { promise: Promise<T>; resolve: (value: T) => void; reject: (error: unknown) => void }
+    | undefined;
+  let stopStream: (() => void) | undefined;
+  /** The subscribers of the value and of the sources. */
+  let count = 0;
+  let stops: (() => void)[] = [];
+
+  /** The values of the sources, through the memos that it reads, without computing any. */
+  const peek = (): unknown[] => {
+    const values: unknown[] = [];
+    for (const source of list) {
+      values.push(isMemoStore(source) ? source.i.get() : peekStore(source));
+    }
+    return values;
+  };
+
+  /** What the sources are now: a memo is brought up to date and gives its token. */
+  const marks = (): unknown[] => {
+    const values: unknown[] = [];
+    for (const source of list) {
+      values.push(isMemoStore(source) ? source.t() : peekStore(source));
+    }
+    return values;
+  };
+
+  const changed = (): boolean => {
+    if (!seen) {
+      return true;
+    }
+    const now = marks();
+    for (const [index, value] of now.entries()) {
+      if (!Object.is(value, seen[index])) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  /** True while a source loads, such as a debounced value that waits. */
+  const sourcesPending = (): boolean => {
+    for (const source of list) {
+      if (pendingOf(source)?.n) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  /** The memos of importers compute again, with the values of the sources. */
+  const bump = (): void => {
+    if (inputs.l.size > 0) {
+      sendStore(inputs, peek(), true);
+    }
+  };
+
+  /** The memo loads: its readers get a promise, and it is pending. */
+  const enter = (): void => {
+    if (wait) {
+      return;
+    }
+    let resolve!: (value: T) => void;
+    let reject!: (error: unknown) => void;
+    const promise = new Promise<T>((done, fail) => {
+      resolve = done;
+      reject = fail;
+    });
+    // A rejection that no reader waits for is held, not reported.
+    promise.catch(() => {});
+    wait = { promise, resolve, reject };
+    setPending(pend, true);
+    bump();
+  };
+
+  /** The load ends: the readers that wait get the value or the error. */
+  const release = (): void => {
+    if (!wait || loading !== 0 || sourcesPending()) {
+      return;
+    }
+    if (!has && !held) {
+      compute();
+      return;
+    }
+    const done = wait;
+    wait = undefined;
+    setPending(pend, false);
+    if (held) {
+      done.reject(held.error);
+    } else {
+      done.resolve(out.v);
+    }
+  };
+
+  /** Writes the value or the error of a run, unless a newer run replaced it. */
+  const finish = (id: number, value: T | undefined, failure?: { error: unknown }): void => {
+    if (id !== run) {
+      return;
+    }
+    loading = 0;
+    const had = held;
+    const before = out.v;
+    held = failure;
+    token = {};
+    if (!failure) {
+      has = true;
+      out.v = value as T;
+    }
+    if (wait) {
+      release();
+    } else {
+      bump();
+    }
+    // The readers of the module hear of an error, and of the end of one, even with the same value.
+    if (failure || had || !Object.is(before, out.v)) {
+      sendStore(out, out.v, true);
+    }
+  };
+
+  /** Reads a stream: each value is the value, and the first one ends the load. */
+  const read = (id: number, stream: AsyncIterable<T>, server: boolean): void => {
+    const iterator = stream[Symbol.asyncIterator]();
+    stopStream = () => {
+      void iterator.return?.();
+    };
+    const step = (): void => {
+      iterator.next().then(
+        (result) => {
+          if (id !== run) {
+            return;
+          }
+          if (result.done) {
+            stopStream = undefined;
+            if (loading === id) {
+              finish(id, undefined);
+            }
+            return;
+          }
+          finish(id, result.value);
+          // The server renders the first value, as for a memo of a component.
+          if (server) {
+            stopStream?.();
+            stopStream = undefined;
+            return;
+          }
+          step();
+        },
+        (error: unknown) => finish(id, undefined, { error }),
+      );
+    };
+    step();
+  };
+
+  /** Runs the function over the values of the sources. */
+  const compute = (): void => {
+    const id = ++run;
+    stopStream?.();
+    stopStream = undefined;
+    loading = 0;
+    let result: unknown;
+    try {
+      seen = marks();
+      const values: unknown[] = [];
+      for (const source of list) {
+        values.push(source.get());
+      }
+      result = fn((single ? values[0] : values) as StoresValues<S>);
+    } catch (error) {
+      if (error instanceof Waiting) {
+        // A memo that it reads has no value yet: this one waits, and computes when it settles.
+        loading = id;
+        enter();
+        const again = (): void => {
+          if (id === run) {
+            loading = 0;
+            compute();
+          }
+        };
+        error.load.then(again, again);
+        return;
+      }
+      finish(id, undefined, { error });
+      return;
+    }
+    if (!loads(result)) {
+      finish(id, result as T);
+      return;
+    }
+    loading = id;
+    enter();
+    const server = onServer();
+    Promise.resolve(result).then(
+      (value) => {
+        if (id !== run) {
+          return;
+        }
+        if (loads(value)) {
+          read(id, value as AsyncIterable<T>, server);
+        } else {
+          finish(id, value as T);
+        }
+      },
+      (error: unknown) => finish(id, undefined, { error }),
+    );
+  };
+
+  /** Computes when the memo has no value, or, with no subscriber, when a source changed. */
+  const ensure = (): void => {
+    if (!has && !held && !wait) {
+      compute();
+    } else if (count === 0 && changed()) {
+      compute();
+    }
+  };
+
+  const state: Computed = {
+    level,
+    waits: false,
+    run() {
+      if (count > 0 && changed()) {
+        compute();
+      }
+    },
+  };
+
+  /** A subscriber starts to follow the sources; the last one to leave stops it. */
+  const follow = (): (() => void) => {
+    if (count++ === 0) {
+      for (const source of list) {
+        const heard = (): void => enqueue(state, source);
+        stops.push(isMemoStore(source) ? source.f(heard) : source.subscribe(heard));
+        const q = pendingOf(source)?.q;
+        if (q) {
+          const check = (): void => {
+            if (sourcesPending()) {
+              enter();
+            } else {
+              release();
+            }
+          };
+          q.add(check);
+          stops.push(() => q.delete(check));
+        }
+      }
+      if (sourcesPending()) {
+        enter();
+      }
+    }
+    let done = false;
+    return () => {
+      if (!done) {
+        done = true;
+        if (--count === 0) {
+          for (const end of stops) {
+            end();
+          }
+          stops = [];
+        }
+      }
+    };
+  };
+
+  /** A subscription of `target`, which also follows the sources. */
+  const listen = <V>(target: Store<V>, listener: (value: V) => void): (() => void) => {
+    const off = target.subscribe(listener);
+    const unfollow = follow();
+    return () => {
+      off();
+      unfollow();
+    };
+  };
+
+  return {
+    get(): T {
+      ensure();
+      if (held) {
+        throw held.error;
+      }
+      if (has) {
+        return out.v;
+      }
+      throw new Waiting(wait!.promise);
+    },
+    subscribe(listener: (value: T) => void): () => void {
+      // The value is there before the listener, which hears of changes only.
+      ensure();
+      return listen(out, listener);
+    },
+    p(): unknown {
+      ensure();
+      if (wait) {
+        return wait.promise;
+      }
+      if (held) {
+        throw held.error;
+      }
+      return out.v;
+    },
+    f(listener: (value: T) => void): () => void {
+      return listen(out, listener);
+    },
+    t(): object {
+      ensure();
+      return token;
+    },
+    i: {
+      get: peek,
+      subscribe(listener: (values: unknown[]) => void): () => void {
+        return listen(inputs, listener);
+      },
+    },
+    l: out.l,
+    d: level,
+    [PENDING]: pend,
     [HOLDS]: true,
   };
 }
