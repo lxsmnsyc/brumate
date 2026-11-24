@@ -147,7 +147,7 @@ export function add(price: number): void {
 }
 ```
 
-The module is compiled to the stores of `brumate/store`, so the feature adds no runtime. `let items = $signal(v)` becomes `store(v)`, and `$memo(expression)` becomes a `derived` store of the module signals that the expression reads. Code in the module reads a signal as `items.get()` and writes it as `items.set(…)`, and `$produce(items, recipe)` works as it does in a component.
+The module is compiled to the stores of `brumate/store`, so the feature adds no runtime. `let items = $signal(v)` becomes `store(v)`, and `$memo(expression)` becomes a store of the module signals that the expression reads, which works as `derived` does and also holds an error (see below). The `derived` of `brumate/store` that you call yourself does not hold errors. Code in the module reads a signal as `items.get()` and writes it as `items.set(…)`, and `$produce(items, recipe)` works as it does in a component.
 
 - A component reads an imported signal or memo like `$store(items)`. Reads render on the server, resume in the browser and update when the value changes.
 - A component cannot write what it imports, because an import is read-only. Write it in a function that the module exports, such as `add`. Assigning to `items` in the component is `Cannot assign to module signal "items"`, with that advice.

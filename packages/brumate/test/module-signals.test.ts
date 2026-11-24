@@ -19,7 +19,7 @@ import { findError } from '../src/error-catalog.ts';
 import { findSignalImports, transformModuleSignals } from '../src/module-signals.ts';
 import { resolveFromDisk } from '../src/modules.ts';
 import { render as renderParts } from '../src/runtime/server.ts';
-import { gated, pendingOf, store, timed } from '../src/runtime/store.ts';
+import { derived, gated, heldDerived, pendingOf, store, timed } from '../src/runtime/store.ts';
 
 const input = resolve(import.meta.dirname, 'module-signals');
 const output = resolve(import.meta.dirname, '.output/module-signals');
@@ -535,15 +535,18 @@ describe('an error of a module value', () => {
   it('is held by each store and read again after the next value', async () => {
     const errors = (await import(file('errors.brm.ts'))) as {
       set(value: number): void;
-      plain: { get(): number; subscribe(listener: () => void): () => void };
+      plain: { get(): number; subscribe(listener: (value: number) => void): () => void };
       gated: { get(): number; subscribe(listener: () => void): () => void };
       delayed: { get(): number; subscribe(listener: () => void): () => void };
       double: { get(): number; subscribe(listener: () => void): () => void };
     };
     vi.useFakeTimers();
     try {
+      const seen: number[] = [];
       const stops = [
-        errors.plain.subscribe(() => {}),
+        errors.plain.subscribe((value) => {
+          seen.push(value);
+        }),
         errors.gated.subscribe(() => {}),
         errors.delayed.subscribe(() => {}),
         errors.double.subscribe(() => {}),
@@ -551,11 +554,15 @@ describe('an error of a module value', () => {
       expect(() => errors.set(3)).not.toThrow();
       expect(() => errors.plain.get()).toThrow('three');
       expect(() => errors.gated.get()).toThrow('three');
+      // One notice for the error, with the value that the store held.
+      expect(seen).toEqual([0]);
       // The sibling computed in the same pass.
       expect(errors.double.get()).toBe(6);
       expect(() => vi.advanceTimersByTime(20)).not.toThrow();
       expect(() => errors.delayed.get()).toThrow('three');
       errors.set(4);
+      // The recovery with a new value is one notice.
+      expect(seen).toEqual([0, 4]);
       expect(errors.plain.get()).toBe(4);
       expect(errors.gated.get()).toBe(4);
       vi.advanceTimersByTime(20);
@@ -572,6 +579,36 @@ describe('an error of a module value', () => {
 describe('the stores of the forms', () => {
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('a derived store of a user still throws into the set that caused it', () => {
+    const a = store(1);
+    const risky = derived(a, (value) => {
+      if (value === 2) {
+        throw new Error('two');
+      }
+      return value;
+    });
+    risky.subscribe(() => {});
+    expect(() => a.set(2)).toThrow('two');
+  });
+
+  it('a held store notifies once when it recovers with the same value', () => {
+    const a = store(1);
+    const held = heldDerived(a, (value) => {
+      if (value === 2) {
+        throw new Error('two');
+      }
+      return value > 2 ? 1 : value;
+    });
+    const seen: number[] = [];
+    held.subscribe((value) => seen.push(value));
+    a.set(2);
+    expect(seen).toEqual([1]);
+    // The same value as before the error: the readers still hear that the error is gone.
+    a.set(3);
+    expect(seen).toEqual([1, 1]);
+    expect(held.get()).toBe(1);
   });
 
   it('reads the pending state of a store by its own key only', () => {

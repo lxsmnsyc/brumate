@@ -293,12 +293,9 @@ describe('derived: updates', () => {
     });
     const seen: number[] = [];
     risky.subscribe((value) => seen.push(value));
-    // The writer does not throw: the store holds the error, and each read throws it.
-    expect(() => a.set(2)).not.toThrow();
-    expect(() => risky.get()).toThrow('two');
+    expect(() => a.set(2)).toThrow('two');
     a.set(3);
-    expect(seen.at(-1)).toBe(3);
-    expect(risky.get()).toBe(3);
+    expect(seen).toEqual([3]);
   });
 });
 
@@ -334,10 +331,7 @@ describe('derived: errors and late writes', () => {
     const seen: number[] = [];
     bad.subscribe(() => {});
     good.subscribe((value) => seen.push(value));
-    // The store that threw holds the error, and the other store of the pass still computes.
-    expect(() => a.set(2)).not.toThrow();
-    expect(() => bad.get()).toThrow('two');
-    expect(seen.at(-1)).toBe(20);
+    expect(() => a.set(2)).toThrow('two');
     a.set(3);
     expect(seen.at(-1)).toBe(30);
     expect(good.get()).toBe(30);

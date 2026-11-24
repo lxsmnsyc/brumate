@@ -33,6 +33,8 @@ const STORE_MODULE = 'brumate/store';
 const CLIENT_MODULE = 'brumate/client';
 const STORE = '$$store';
 const DERIVED = '$$derived';
+/** The name that the store of a memo is imported under: `derived` that holds an error. */
+const HELD = 'heldDerived';
 const PRODUCE = '$$produce';
 const GATED = '$$gated';
 const TIMED = '$$timed';
@@ -903,7 +905,7 @@ function plan(
     names.push(`store as ${STORE}`);
   }
   if (usesDerived) {
-    names.push(`derived as ${DERIVED}`);
+    names.push(`${HELD} as ${DERIVED}`);
   }
   if (usesGated) {
     names.push(`gated as ${GATED}`);

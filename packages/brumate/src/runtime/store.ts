@@ -268,6 +268,34 @@ export function derived<T>(
   ) => unknown,
   initial?: T,
 ): StoreLike<T> {
+  return build(sources, fn, initial, false);
+}
+
+/**
+ * The derived store of a memo of a module: `derived` that holds an error. A throw after the first
+ * run is kept, the readers hear of it and `get` throws it, and the stores of the same pass still
+ * compute. The compiler calls it, so it has no docs of its own.
+ */
+export function heldDerived<S extends Stores, T>(
+  sources: S,
+  fn: (values: StoresValues<S>) => T,
+): StoreLike<T> {
+  return build<T>(sources, fn as never, undefined, true);
+}
+
+/** The key of a store that holds the error of a run, which `$store` reads again on each notice. */
+export const HOLDS: unique symbol = Symbol.for('brumate.holds') as never;
+
+function build<T>(
+  sources: Stores,
+  fn: (
+    values: unknown,
+    set: (value: T) => void,
+    update: (change: (value: T) => T) => void,
+  ) => unknown,
+  initial: T | undefined,
+  hold: boolean,
+): StoreLike<T> {
   const single = !Array.isArray(sources);
   const list: StoreLike<unknown>[] = single ? [sources] : sources;
   for (const source of list) {
@@ -334,13 +362,19 @@ export function derived<T>(
       if (!started) {
         return;
       }
+      if (!hold) {
+        compute(send);
+        return;
+      }
       // A throw is held: the readers hear of it and `get` throws it in their scope, and the other
       // stores of the pass still compute.
       const had = held;
+      const before = out.v;
       try {
         held = undefined;
         compute(send);
-        if (had) {
+        // The readers hold the error, so they need a notice even when the value is the same.
+        if (had && Object.is(before, out.v)) {
           sendStore(out, out.v, true);
         }
       } catch (error) {
@@ -487,6 +521,9 @@ export function derived<T>(
   if (pend.q) {
     Object.defineProperty(result, PENDING, { value: pend });
   }
+  if (hold) {
+    Object.defineProperty(result, HOLDS, { value: true });
+  }
   return result;
 }
 
@@ -544,9 +581,9 @@ export function gated<S extends Stores, T>(
   let has = false;
   let last: T;
   // A throw is held by `derived`, which reads it again with `get`.
-  const inner = derived(sources, (values: StoresValues<S>, set: (value: T) => void) => {
+  const compute = (values: unknown, set: (value: T) => void): void => {
     try {
-      const next = fn(values);
+      const next = fn(values as StoresValues<S>);
       if (
         next !== null &&
         typeof next === 'object' &&
@@ -569,7 +606,8 @@ export function gated<S extends Stores, T>(
       has = false;
       throw error;
     }
-  });
+  };
+  const inner = build<T>(sources, compute, undefined, true);
   const subscribe = inner.subscribe;
   return Object.assign(inner, {
     subscribe(listener: (value: T) => void): () => void {
@@ -604,7 +642,7 @@ export function timed<S extends Stores, T>(
   fn: (values: StoresValues<S>) => T,
   ms: number,
   throttle?: boolean,
-): StoreLike<T> & { [PENDING]: Pendable } {
+): StoreLike<T> & { [PENDING]: Pendable; [HOLDS]: true } {
   const single = !Array.isArray(sources);
   const list: StoreLike<unknown>[] = single ? [sources] : sources;
   const out = new Store<T>(undefined as T);
@@ -709,6 +747,7 @@ export function timed<S extends Stores, T>(
       };
     },
     [PENDING]: waiting,
+    [HOLDS]: true,
   };
 }
 

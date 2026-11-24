@@ -6,7 +6,7 @@ import { NAVIGATION_KEY, ROUTE_KEY, missingContext } from '../context.ts';
 import type { Context as ContextValue, Route } from '../context.ts';
 import { MemoError, madeStores } from '../shared.ts';
 import type { ScopeId, StoreRead } from '../shared.ts';
-import { Store, findStored, isBridged, pendingOf, sameData, sendStore } from '../store.ts';
+import { HOLDS, Store, findStored, isBridged, pendingOf, sameData, sendStore } from '../store.ts';
 import type { StoreLike } from '../store.ts';
 import { loadModule } from './code.ts';
 import { findRoot, resolveScope } from './scopes.ts';
@@ -130,18 +130,22 @@ function subscribeSlot(
   repair: boolean,
   write?: unknown,
 ): void {
-  // A store that holds an error, such as a derived store whose function threw, throws it from
-  // `get`. The slot holds the error, so each read throws it in the scope of the reader.
-  const read = (...passed: [] | [unknown]): unknown => {
+  // A store of a module that holds an error, such as a memo whose function threw, throws it from
+  // `get`. The slot holds the error, so each read throws it in the scope of the reader. Other
+  // stores are read as before.
+  const holds = (found as { [HOLDS]?: unknown })[HOLDS] === true;
+  const read = (): unknown => {
+    if (!holds) {
+      return found.get();
+    }
     try {
-      const current = found.get();
-      return passed.length > 0 ? passed[0] : current;
+      return found.get();
     } catch (error) {
       return new MemoError(error);
     }
   };
   const listener = (value: unknown): void => {
-    sendContext(() => writeSlot(scope, slot, read(value)));
+    sendContext(() => writeSlot(scope, slot, holds ? read() : value));
   };
   // A bridged store repairs the slot itself, against what the server sent, since its source
   // starts at the first subscriber.

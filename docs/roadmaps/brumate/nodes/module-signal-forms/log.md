@@ -24,3 +24,12 @@
 - Wrong-form errors: component messages, so component codes. One table test asserts code and text for 20 cases.
 - Pending state under a symbol key, with `instanceof Set` check.
 - Used `sed -i` for a few import line edits again; later edits used the Edit tool.
+
+## Review round 2 (head a405591f)
+
+- The maintainer ruled that `derived` of `brumate/store` keeps its main behavior. Holding moved to `heldDerived` (what a module memo compiles to), `gated` and `timed`. `derived.test.ts` and `context.md` are as on main. New tests: a user's derived throws into `set`, and a held store notifies once when it recovers.
+- Duplicate notice on recovery: a forced send only when the run did not already notify (same value). Exact sequences are asserted for `plain`.
+- `subscribeSlot` reads again only stores with the `Symbol.for('brumate.holds')` key.
+- Changeset rewritten to match `reactive-modules.md`.
+- Wording of BRM120 and BRM203 for modules not done: the pins in `test/error-codes.json` forbid changing a message of a code. Left for the maintainer.
+- One `sed -i` for the import line of the test file.
