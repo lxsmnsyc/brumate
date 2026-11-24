@@ -122,7 +122,7 @@ function $isPending(...memos: unknown[]): boolean;
 
 True while a new value of any of the memos loads in the browser, or a value that one of them reads loads.
 
-- Its arguments are the names of memos, one or more. A read of each named memo counts as guarded in a handler.
+- Its arguments are the names of memos, one or more, or names that the component imports from a module, such as a debounced value or a memo over one. A read of each named memo counts as guarded in a handler.
 - Server: always `false`.
 - Client: `true` from the start of a load until its value is written.
 

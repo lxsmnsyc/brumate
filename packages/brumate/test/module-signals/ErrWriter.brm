@@ -1,0 +1,7 @@
+<script>
+  import { double, set } from './errors.brm.ts';
+</script>
+
+<p class="w-double">{double}</p>
+<button class="w-three" onClick=(() => set(3))>Three</button>
+<button class="w-four" onClick=(() => set(4))>Four</button>

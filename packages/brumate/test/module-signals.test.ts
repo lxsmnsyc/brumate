@@ -19,6 +19,7 @@ import { findError } from '../src/error-catalog.ts';
 import { findSignalImports, transformModuleSignals } from '../src/module-signals.ts';
 import { resolveFromDisk } from '../src/modules.ts';
 import { render as renderParts } from '../src/runtime/server.ts';
+import { gated, pendingOf, store, timed } from '../src/runtime/store.ts';
 
 const input = resolve(import.meta.dirname, 'module-signals');
 const output = resolve(import.meta.dirname, '.output/module-signals');
@@ -427,7 +428,6 @@ interface Forms {
   typed: {
     get(): string;
     subscribe(listener: (value: string) => void): () => void;
-    n: boolean;
   };
   slow: { get(): string; subscribe(listener: (value: string) => void): () => void };
   label: { get(): string; subscribe(listener: (value: string) => void): () => void };
@@ -470,17 +470,18 @@ describe('$isPending, $resolve and $untrack of a component on an imported module
   it('reads the pending state, waits for it, and reads without tracking', async () => {
     await resume('FormsC.brm');
     expect(text('.c-pending')).toBe('idle');
-    expect(text('.c-length')).toBe('0');
+    expect(text('.c-keep')).toBe('0|');
     click('.c-type');
     click('.c-wait');
     await vi.waitFor(() => expect(text('.c-pending')).toBe('waiting'), { timeout: 2000 });
     expect(text('.c-both')).toBe('waiting');
-    // The untracked reads keep what they read at the start.
-    expect(text('.c-length')).toBe('0');
     await vi.waitFor(() => expect(text('.c-loud')).toBe('XYZ'), { timeout: 2000 });
     expect(text('.c-pending')).toBe('idle');
     await vi.waitFor(() => expect(text('.c-resolved')).toBe('xyz'), { timeout: 2000 });
-    expect(text('.c-seen')).toBe('');
+    // The imported value changed, and the memo that reads it untracked did not compute again.
+    expect(text('.c-keep')).toBe('0|');
+    click('.c-bump');
+    await vi.waitFor(() => expect(text('.c-keep')).toBe('1|xyz'), { timeout: 2000 });
   });
 });
 
@@ -515,9 +516,69 @@ interface Guarded {
   guess(value: number): void;
 }
 
+describe('an error of a module value', () => {
+  it('goes to the #try of the reader, not to the writer, and the other memos still update', async () => {
+    await resume('ErrPage.brm');
+    expect(text('.r-plain')).toBe('0');
+    expect(text('.w-double')).toBe('0');
+    // The click handler of the writer must not throw: the error would reach the window.
+    click('.w-three');
+    await vi.waitFor(() => expect(text('.w-double')).toBe('6'), { timeout: 2000 });
+    expect(text('.r-n')).toBe('3');
+    await vi.waitFor(() => expect(text('.r-plain-caught')).toContain('three'), { timeout: 2000 });
+    await vi.waitFor(() => expect(text('.r-gated-caught')).toContain('three'), { timeout: 2000 });
+    // The debounced value fails after its wait.
+    await vi.waitFor(() => expect(text('.r-delayed-caught')).toContain('three'), { timeout: 2000 });
+    expect(document.querySelector('.r-plain')).toBeNull();
+  });
+
+  it('is held by each store and read again after the next value', async () => {
+    const errors = (await import(file('errors.brm.ts'))) as {
+      set(value: number): void;
+      plain: { get(): number; subscribe(listener: () => void): () => void };
+      gated: { get(): number; subscribe(listener: () => void): () => void };
+      delayed: { get(): number; subscribe(listener: () => void): () => void };
+      double: { get(): number; subscribe(listener: () => void): () => void };
+    };
+    vi.useFakeTimers();
+    try {
+      const stops = [
+        errors.plain.subscribe(() => {}),
+        errors.gated.subscribe(() => {}),
+        errors.delayed.subscribe(() => {}),
+        errors.double.subscribe(() => {}),
+      ];
+      expect(() => errors.set(3)).not.toThrow();
+      expect(() => errors.plain.get()).toThrow('three');
+      expect(() => errors.gated.get()).toThrow('three');
+      // The sibling computed in the same pass.
+      expect(errors.double.get()).toBe(6);
+      expect(() => vi.advanceTimersByTime(20)).not.toThrow();
+      expect(() => errors.delayed.get()).toThrow('three');
+      errors.set(4);
+      expect(errors.plain.get()).toBe(4);
+      expect(errors.gated.get()).toBe(4);
+      vi.advanceTimersByTime(20);
+      expect(errors.delayed.get()).toBe(4);
+      for (const stop of stops) {
+        stop();
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe('the stores of the forms', () => {
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('reads the pending state of a store by its own key only', () => {
+    // A store of a user with a field `q` is no pending store.
+    expect(pendingOf({ q: new Set(), n: true })).toBeUndefined();
+    expect(pendingOf({ [Symbol.for('brumate.pending')]: { q: 1 } })).toBeUndefined();
+    expect(pendingOf(timed(store(1), (value) => value, 10))).toBeDefined();
   });
 
   it('$gate keeps its value when the guard says no, and runs no reader', async () => {
@@ -540,22 +601,31 @@ describe('the stores of the forms', () => {
     const seen: number[] = [];
     const stopWatching = guarded.rising.subscribe((value) => seen.push(value));
     guarded.setN(2);
-    expect(() => guarded.setN(5)).toThrow('five');
+    // The writer does not throw. The reader throws the error when it reads.
+    guarded.setN(5);
     expect(() => guarded.rising.get()).toThrow('five');
     // The first value after an error passes without the guard.
     guarded.setN(1);
     expect(guarded.rising.get()).toBe(1);
-    expect(seen).toEqual([2, 1]);
+    expect(seen.at(-1)).toBe(1);
     stopWatching();
   });
 
-  it('$gate refuses a promise', () => {
+  it('$gate refuses a promise when its value is computed', () => {
     const code = transformModuleSignals(
       module(
         "import { $gate, $signal } from 'brumate/signals';\nexport let a = $signal(1);\nexport const g = $gate(Promise.resolve(a), () => true);",
       ),
     );
     expect(code).toContain('$$gated([a], ([a]) => (Promise.resolve(a)), () => true)');
+    // The compiled call, run by hand: a source store and the function that the call gives.
+    const g = gated(
+      store(1),
+      (value) => Promise.resolve(value),
+      () => true,
+    );
+    expect(() => g.get()).toThrow('The value of $gate is a promise or a stream');
+    expect(() => g.subscribe(() => {})).toThrow('The value of $gate is a promise or a stream');
   });
 
   it('$debounced waits for the input to stop, and is pending meanwhile', async () => {
@@ -563,18 +633,18 @@ describe('the stores of the forms', () => {
     const forms = (await import(file('forms.brm.ts'))) as Forms;
     const seen: string[] = [];
     const stopWatching = forms.typed.subscribe((value) => seen.push(value));
-    expect(forms.typed.n).toBe(false);
+    expect(!!pendingOf(forms.typed)?.n).toBe(false);
     forms.type('a');
     vi.advanceTimersByTime(150);
     forms.type('ab');
-    expect(forms.typed.n).toBe(true);
+    expect(pendingOf(forms.typed)?.n).toBe(true);
     // The wait starts again at each change.
     vi.advanceTimersByTime(199);
     expect(seen).toEqual([]);
     expect(forms.typed.get()).toBe('');
     vi.advanceTimersByTime(1);
     expect(seen).toEqual(['ab']);
-    expect(forms.typed.n).toBe(false);
+    expect(!!pendingOf(forms.typed)?.n).toBe(false);
     stopWatching();
   });
 
@@ -655,23 +725,52 @@ describe('the stores of the forms', () => {
     }
   });
 
-  it('reports a form that is declared the wrong way as BRM211', () => {
+  it('reports a form that is declared the wrong way with the code of the component form', () => {
     const head =
-      "import { $debounced, $gate, $optimistic, $signal, $memo } from 'brumate/signals';\n";
-    const cases = [
-      'export let a = $signal(1);\nexport let g = $gate(a, () => true);',
-      'export let a = $signal(1);\nexport const g = $gate(a);',
-      'export let a = $signal(1);\nexport const g = $gate(a, 3);',
-      'export let a = $signal(1);\nexport const d = $debounced(a, 10 + 5);',
-      'export let a = $signal(1);\nexport const d = $debounced(a);',
-      'export let a = $signal(1);\nexport const m = $memo(a);\nexport const o = $optimistic(m);',
-      'export let a = $signal(1);\nexport let o = $optimistic(a);',
-      'export let a = $signal(1);\nexport let o = $optimistic(a + 1);',
-      'export let a = $signal(1);\nexport const d = $debounced(await a, 10);',
+      "import { $debounced, $gate, $optimistic, $signal, $memo, $throttled, $untrack } from 'brumate/signals';\nexport let a = $signal(1);\nexport const m = $memo(a);\n";
+    const other = {
+      path: '/m/b.brm.ts',
+      source: "import { $signal } from 'brumate/signals';\nexport let far = $signal(1);\n",
+    };
+    const resolve = (): typeof other => other;
+    const cases: [string, string, string][] = [
+      ['export let g = $gate(a, () => true);', 'BRM085', 'Declare $gate with const'],
+      ['export const g = $gate(a);', 'BRM202', '$gate takes a value and a function'],
+      ['export const g = $gate(a, 3);', 'BRM202', '$gate takes a value and a function'],
+      ['export const g = $gate(await a, () => true);', 'BRM203', 'takes a value that is ready'],
+      ['export const d = $debounced(a, 10 + 5);', 'BRM088', 'The wait of $debounced must be'],
+      ['export const d = $debounced(a);', 'BRM087', '$debounced takes a value and a wait'],
+      ['export let d = $throttled(a, 10);', 'BRM085', 'Declare $throttled with const'],
+      ['export const { x } = $debounced(a, 10);', 'BRM086', '$debounced cannot be destructured'],
+      ['export const o = $optimistic(m);', 'BRM089', 'Declare $optimistic with let'],
+      ['export let o = $optimistic(a);', 'BRM120', 'follows a memo, an action or a prop'],
+      ['export let o = $optimistic(a + 1);', 'BRM092', 'needs the name of a value'],
+      ['export let o = $optimistic();', 'BRM091', '$optimistic needs a value'],
+      ['export let o = $optimistic(m, m);', 'BRM090', '$optimistic takes one argument'],
+      ['const plain = 3;\nexport let o = $optimistic(plain);', 'BRM211', 'no memo of a module'],
+      [
+        'import { far } from "./b.brm.ts";\nexport let o = $optimistic(far);',
+        'BRM120',
+        'not a signal',
+      ],
+      [
+        'export let o = $optimistic(m);\nexport function up() { o++; }',
+        'BRM161',
+        'with = instead of ++',
+      ],
+      [
+        'export let o = $optimistic(m);\nexport function down() { --o; }',
+        'BRM161',
+        'with = instead of --',
+      ],
+      ['export const d = $debounced(await a, 10);', 'BRM211', 'with await'],
+      ['export const u = $memo($untrack());', 'BRM211', '$untrack cannot be compiled'],
+      ['export const u = $memo($untrack(a, a));', 'BRM211', 'with other than one expression'],
     ];
-    for (const text of cases) {
-      const message = error(() => transformModuleSignals(module(head + text)));
-      expect(`${findError(message)?.code}: ${text}`).toBe(`BRM211: ${text}`);
+    for (const [text, code, part] of cases) {
+      const message = error(() => transformModuleSignals(module(head + text), resolve));
+      expect(`${findError(message)?.code}: ${message}`).toContain(`${code}: `);
+      expect(`${text} => ${message}`).toContain(part);
     }
   });
 

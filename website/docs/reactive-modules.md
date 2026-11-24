@@ -188,9 +188,9 @@ export function type(text: string): void {
 }
 ```
 
-- The arguments and the errors are those of the component forms. `$gate` takes a value and a guard function, `$debounced` and `$throttled` take a number of milliseconds, `$optimistic` takes the name of a value, and none of them takes `await`. A value that a module cannot compile is BRM211.
+- The arguments are those of the component forms, and an error that a component form has keeps its code: BRM085 to BRM092 for the declaration and the arguments, BRM120 for a signal as the source of `$optimistic`, BRM161 for `++` and `--` on it, BRM202 and BRM203 for `$gate`. `$optimistic` follows a memo of a module. Anything else that a module cannot compile, such as `await` in a debounced value or a source that is no module memo, is BRM211.
 - A component that imports one of them reads it like `$store(x)`. `$isPending(typed)` is true while a debounced or throttled value waits, and so is the `$isPending` of a memo that reads it. `$resolve(typed)` waits for it, and `$untrack` reads it once.
-- The guard of `$gate` does not track what it reads and runs in the browser, on changes. Without a subscriber a gate has no history, so it gives the value, as the server renders it. A throw in the guard is held: `get` throws it until the next value passes.
+- The guard of `$gate` does not track what it reads and runs in the browser, on changes. Without a subscriber a gate has no history, so it gives the value, as the server renders it. A throw in the guard, in a memo, or in a debounced or throttled value is held as in a component: the write that caused it does not throw, the other values of the change still update, and each read of the store throws the error, which goes to the nearest `#try` of the component that reads it. The next value that computes without a throw replaces it. The gate lets that value pass without the guard.
 - `$optimistic` follows a memo, as in a component, and not a signal: write the signal from the exported function. Its guess is a browser state, so a write on the server does nothing.
 - `$effect` and `$client` stay BRM211 at the top level, since they need a component.
 

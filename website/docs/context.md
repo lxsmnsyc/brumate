@@ -258,6 +258,7 @@ export const label: StoreLike<string> = derived(
 - It follows its sources only while it has subscribers. `get()` without subscribers computes from the sources once.
 - Unlike Svelte, a result that is `Object.is` equal to the last one does not notify, and `subscribe` does not call the listener at once.
 - When a source and a derived store that reads it both change, `fn` runs once, after the derived store it reads. This holds for stores of `brumate/store` and derived stores. A store of another library has no end of its listeners to wait for, so `fn` runs at each of its notices, and two such sources that change together can run it twice.
+- A `fn` that throws after the first run is held: the `set` that caused it does not throw, the other stores of the change still compute, and `get()` throws the error until the next run succeeds. `$store` holds the error in its variable, so a read throws it to the nearest `#try`. A throw on the first subscribe goes to the caller of `subscribe`.
 - The result has no `set`, so `$store(total)` is one-way and `let x = $store(total)` throws a `TypeError`.
 - A derived store is not part of the page state. The server renders it from its sources, and the browser computes it again from them. It is a store of another library for the page state: read it from an import or `<script module>`, and do not put it in a provided value or a prop.
 

@@ -16,3 +16,11 @@
 - Gate: no history without a subscriber, so the server (which only pulls) renders the value. This matches the component form, which has no history on the server.
 - Tests: 12 new tests in `test/module-signals.test.ts` (31 in the file), fixtures `forms.brm.ts`, `guarded.brm.ts`, `Forms{A,B,C,Page}.brm`, `OwnForms.brm`.
 - Edits with `sed -i` and a heredoc were used by mistake a few times for small changes (rename, append of tests). Contents were checked by the formatter and tests afterwards.
+
+## Review round 1 (head 344eff14)
+
+- Held errors: probe showed the writer threw and `flushComputed` dropped the other stores. Fixed in `derived`, `gated` and `timed`. The slot write needed `MemoError` in `subscribeSlot`. The `#catch` body did not ship for a module memo until `tryCatchesClient` knew imported module memos (`Declaration.moduleMemo`). Tests: `ErrPage.brm`, `errors.brm.ts`, a store-level test.
+- `$untrack` importer test uses a memo and a signal now, and asserts "0|" then "1|xyz".
+- Wrong-form errors: component messages, so component codes. One table test asserts code and text for 20 cases.
+- Pending state under a symbol key, with `instanceof Set` check.
+- Used `sed -i` for a few import line edits again; later edits used the Edit tool.

@@ -1589,6 +1589,9 @@ class Analyzer {
       // store back: a write of the variable calls the `set` of the store.
       const declaration = this.addDeclaration(scope, id.name, 'context', id);
       declaration.guard = guard;
+      if (this.moduleSignals.get(id.name)?.memo) {
+        declaration.moduleMemo = true;
+      }
       if (calleeName(argument) === '$getContext') {
         // `$store($getContext(Context, fallback))`: the store of the provider, found again by the
         // key of the context, or the store that the fallback makes when no provider is above.
@@ -2422,6 +2425,11 @@ class Analyzer {
     }
   }
 
+  /** True for a name that reads a signal or a memo of a module. */
+  isModuleSignal(name: string): boolean {
+    return this.moduleSignals.has(name);
+  }
+
   /**
    * The advice for a write of a name that reads a module signal, or undefined for any other name.
    * A module cannot be written through an import, so the advice is a function that writes it.
@@ -3019,11 +3027,14 @@ class Resolver {
             }
             if (target?.type === 'Identifier' && reference) {
               this.analyzer.pendingCalls.push({ reference, at: range(node) });
-              // A store that can be pending, such as a debounced value of a module, is read like a memo.
+              // A signal or a memo of a module, such as a debounced value, is read like a memo.
               if (
                 reference.declaration.kind !== 'memo' &&
                 reference.declaration.kind !== 'async-memo' &&
-                !reference.declaration.store
+                !(
+                  reference.declaration.kind === 'context' &&
+                  this.analyzer.isModuleSignal(reference.declaration.name)
+                )
               ) {
                 this.analyzer.report(
                   'error',

@@ -24,8 +24,10 @@ Not an experiment node.
 - `$optimistic` follows a module memo or any store, and a module signal is BRM211 ("follows a signal"), as the component form refuses a signal. The brief said "signal-like source"; an identifier that is no module value is taken as a store.
 - A write to `$optimistic` on the server does nothing: the server holds no guess, and a module value is one for the process.
 - A guess written while no server call is out stays until its source changes, as in a component (same rule, no navigation reset).
-- A gate has no history without a subscriber, so `get` without a reader gives the value (the server renders it). With a reader, a throwing guard makes `get` throw the error until the next value passes.
-- A memo, gate or timed value that throws makes the write that caused it throw, as a module memo did before; the held error is read by `get` on a gate only.
+- A gate has no history without a subscriber, so `get` without a reader gives the value (the server renders it).
+- Review round 1: an error of a run is held, as in a component. `derived`, `gated` and `timed` catch it, notify the readers with a forced send and do not rethrow, so the writer does not throw and the rest of the pass computes. `get` throws it until a run succeeds, and `$store` (`subscribeSlot`) puts a `MemoError` in the slot, so the read throws into the nearest `#try`. This changes `derived` of `brumate/store` for every user (a throw after the first run no longer reaches the writer), and two tests of `test/stores/derived.test.ts` changed. `graph.ts` and `model.ts` treat an imported module memo as a memo that can throw, so the `#catch` body ships (`tryCatchesClient`).
+- Review round 1: the errors of the four forms use the messages, and so the codes, of the component forms (BRM085 to BRM092, BRM120, BRM161, BRM202, BRM203). `$optimistic` follows a memo of a module only: a plain value or a signal, own or imported, is refused, and `++` and `--` on it are BRM161. `$untrack` takes one expression. The pending state of a store sits under `Symbol.for('brumate.pending')`, and `$resolve` takes only the names of module signals and memos among `$store` names.
+- More files outside the lists in review round 1: `src/model.ts`, `src/graph.ts`, `test/stores/derived.test.ts`, `website/docs/context.md`.
 - Edits with `sed -i` and a heredoc were used for a few small changes (renames, test appends), against the worker rules. The formatter, linter and tests ran after them.
 
 ## Stubs left

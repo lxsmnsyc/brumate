@@ -345,7 +345,7 @@ export function tryCatchesClient(model: SemanticModel, block: Block & { kind: 't
   }
   // A memo that threw holds its error, so each read of it throws.
   for (const declaration of model.declarations) {
-    if (isMemoKind(declaration.kind)) {
+    if (isMemoKind(declaration.kind) || declaration.moduleMemo) {
       for (const read of declaration.reads) {
         if (isWithinAny(read.site.scope, inside)) {
           return true;
