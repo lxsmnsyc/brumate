@@ -4,15 +4,15 @@
 import { HAS_BRIDGES, HAS_ROUTES } from '../features.ts';
 import { NAVIGATION_KEY, ROUTE_KEY, missingContext } from '../context.ts';
 import type { Context as ContextValue, Route } from '../context.ts';
-import { madeStores } from '../shared.ts';
+import { MemoError, madeStores } from '../shared.ts';
 import type { ScopeId, StoreRead } from '../shared.ts';
-import { Store, findStored, isBridged, sameData, sendStore } from '../store.ts';
+import { HOLDS, Store, findStored, isBridged, pendingOf, sameData, sendStore } from '../store.ts';
 import type { StoreLike } from '../store.ts';
 import { loadModule } from './code.ts';
 import { findRoot, resolveScope } from './scopes.ts';
 import { DEV, scopes } from './state.ts';
 import type { Scope } from './state.ts';
-import { pass, sendContext, set, writeSlot } from './updates.ts';
+import { markPending, pass, sendContext, set, writeSlot } from './updates.ts';
 
 /** The scope that provides a context to `scope`: itself or the nearest one above it. */
 function findProvider(scope: Scope, key: string): Scope | undefined {
@@ -130,8 +130,22 @@ function subscribeSlot(
   repair: boolean,
   write?: unknown,
 ): void {
+  // A store of a module that holds an error, such as a memo whose function threw, throws it from
+  // `get`. The slot holds the error, so each read throws it in the scope of the reader. Other
+  // stores are read as before.
+  const holds = (found as { [HOLDS]?: unknown })[HOLDS] === true;
+  const read = (): unknown => {
+    if (!holds) {
+      return found.get();
+    }
+    try {
+      return found.get();
+    } catch (error) {
+      return new MemoError(error);
+    }
+  };
   const listener = (value: unknown): void => {
-    sendContext(() => writeSlot(scope, slot, value));
+    sendContext(() => writeSlot(scope, slot, holds ? read() : value));
   };
   // A bridged store repairs the slot itself, against what the server sent, since its source
   // starts at the first subscriber.
@@ -144,11 +158,24 @@ function subscribeSlot(
     stop = found.subscribe(listener);
   }
   (scope.stops ??= []).push(stop);
+  // A store that can be pending, such as a debounced value of a module, marks the slot loading.
+  const waits = pendingOf(found);
+  if (waits) {
+    const listener = (on: boolean): void => sendContext(() => markPending(scope, slot, on));
+    waits.q!.add(listener);
+    scope.stops.push(() => waits.q!.delete(listener));
+    if (waits.n) {
+      listener(true);
+    }
+  }
   if (write) {
     (scope.b ??= {})[slot] = (value: unknown) => found.set!(value);
   }
-  if (repair && !bridged && !sameData(found.get(), scope.s[slot])) {
-    sendContext(() => writeSlot(scope, slot, found.get()));
+  if (repair && !bridged) {
+    const current = read();
+    if (!sameData(current, scope.s[slot])) {
+      sendContext(() => writeSlot(scope, slot, current));
+    }
   }
 }
 

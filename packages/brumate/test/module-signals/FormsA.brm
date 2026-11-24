@@ -1,0 +1,14 @@
+<script>
+  import { $isPending } from 'brumate/signals';
+  import { guess, label, query, shown, slow, type, typed } from './forms.brm.ts';
+</script>
+
+<p class="a-query">{query}</p>
+<p class="a-typed">{typed}</p>
+<p class="a-slow">{slow}</p>
+<p class="a-label">{label}</p>
+<p class="a-shown">{shown}</p>
+<p class="a-pending">{$isPending(typed) ? 'waiting' : 'idle'}</p>
+<button class="a-type" onClick=(() => type('abc'))>Type</button>
+<button class="a-one" onClick=(() => type('a'))>One</button>
+<button class="a-guess" onClick=(() => guess('guess'))>Guess</button>

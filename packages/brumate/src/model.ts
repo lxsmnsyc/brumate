@@ -88,6 +88,11 @@ export interface Declaration {
    */
   optimistic?: Declaration;
   /**
+   * For a `$store` of an imported memo of a module, true: the memo can throw, and the slot then
+   * holds the error, so each read of it throws as a read of a memo does.
+   */
+  moduleMemo?: boolean;
+  /**
    * For `$debounced(value, ms)` and `$throttled(value, ms)`, how the browser
    * writes the memo: after the value stops changing for `ms`, or at most once every `ms`.
    */

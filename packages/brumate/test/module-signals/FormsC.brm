@@ -1,0 +1,21 @@
+<script>
+  import { $isPending, $resolve, $signal, $memo, $untrack } from 'brumate/signals';
+  import { input, loud, type, typed } from './forms.brm.ts';
+
+  let resolved = $signal('none');
+  let k = $signal(0);
+  const keep = $memo(`${k}|${$untrack(input)}`);
+
+  async function wait() {
+    resolved = await $resolve(typed);
+  }
+</script>
+
+<p class="c-loud">{loud}</p>
+<p class="c-pending">{$isPending(loud) ? 'waiting' : 'idle'}</p>
+<p class="c-both">{$isPending(typed, loud) ? 'waiting' : 'idle'}</p>
+<p class="c-keep">{keep}</p>
+<p class="c-resolved">{resolved}</p>
+<button class="c-type" onClick=(() => type('xyz'))>Type</button>
+<button class="c-bump" onClick=(() => k++)>Bump</button>
+<button class="c-wait" onClick=wait>Wait</button>

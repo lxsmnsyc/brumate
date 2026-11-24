@@ -1,0 +1,20 @@
+<script>
+  import { delayed, gated, n, plain } from './errors.brm.ts';
+</script>
+
+<p class="r-n">{n}</p>
+#try {
+  <p class="r-plain">{plain}</p>
+} #catch (error) {
+  <p class="r-plain-caught">{String(error)}</p>
+}
+#try {
+  <p class="r-gated">{gated}</p>
+} #catch (error) {
+  <p class="r-gated-caught">{String(error)}</p>
+}
+#try {
+  <p class="r-delayed">{delayed}</p>
+} #catch (error) {
+  <p class="r-delayed-caught">{String(error)}</p>
+}

@@ -33,7 +33,22 @@ const STORE_MODULE = 'brumate/store';
 const CLIENT_MODULE = 'brumate/client';
 const STORE = '$$store';
 const DERIVED = '$$derived';
+/** The name that the store of a memo is imported under: `derived` that holds an error. */
+const HELD = 'heldDerived';
 const PRODUCE = '$$produce';
+const GATED = '$$gated';
+const TIMED = '$$timed';
+const OPTIMISTIC = '$$optimistic';
+
+/** The compile-time functions that declare a value at the top level, and what each makes. */
+const FORMS: ReadonlyMap<string, 'signal' | 'memo'> = new Map([
+  ['$signal', 'signal'],
+  ['$memo', 'memo'],
+  ['$gate', 'memo'],
+  ['$debounced', 'memo'],
+  ['$throttled', 'memo'],
+  ['$optimistic', 'signal'],
+]);
 /** The prefix of the store of a signal of `<script module>`. */
 const PREFIX = '$$ms_';
 /** The `$store` that the importer side calls. */
@@ -42,6 +57,8 @@ const READ = '$$ms_read';
 /** A signal or a memo at the top level of a module. */
 export interface ModuleSignal {
   kind: 'signal' | 'memo';
+  /** True for the value of `$optimistic`, which is written with `=` only. */
+  optimistic?: boolean;
   /** The name of the binding that holds the store. */
   binding: string;
   /** The name that the module exports it as. */
@@ -129,6 +146,13 @@ function advice(macro: string): string {
       return 'Declare a signal on its own, as in "let count = $signal(0)"';
     case '$memo':
       return 'Declare a memo on its own, as in "const double = $memo(count * 2)"';
+    case '$gate':
+      return 'Declare a gated value on its own, as in "const query = $gate(input, (prev, next) => next.length >= 2)"';
+    case '$debounced':
+    case '$throttled':
+      return `Declare a timed value on its own, as in "const typed = ${macro}(input, 300)"`;
+    case '$optimistic':
+      return 'Declare an optimistic value on its own, as in "let shown = $optimistic(list)"';
     default:
       return `Call ${macro} in a component, or in a module function that a component calls with const { … } = name()`;
   }
@@ -362,10 +386,11 @@ function plan(
       return;
     }
     const macro = macroOf(node);
-    if (macro) {
+    // `$untrack` compiles away: its argument reads the signals without tracking them.
+    if (macro && macro !== '$untrack') {
       throw topLevelError(
         macro,
-        ' at the top level, except in a declaration of a signal or a memo',
+        ' at the top level, except in a declaration of a signal, a memo, a gate, a debounced or throttled value, or an optimistic value',
         advice(macro),
         node.start,
       );
@@ -376,8 +401,11 @@ function plan(
   }
 
   // The declarations first, so a memo knows the signals that it can read.
-  const declarations: { declaration: oxc.VariableDeclaration; exported: oxc.Node | undefined }[] =
-    [];
+  const declarations: {
+    declaration: oxc.VariableDeclaration;
+    exported: oxc.Node | undefined;
+    macro: string;
+  }[] = [];
   for (const statement of program.body) {
     const declaration =
       statement.type === 'ExportNamedDeclaration' && statement.declaration
@@ -394,15 +422,22 @@ function plan(
       continue;
     }
     let found = false;
+    let formMacro = '';
     for (const declarator of declaration.declarations) {
       const macro = macroOf(declarator.init);
-      if (macro !== '$signal' && macro !== '$memo') {
+      const made = macro === undefined ? undefined : FORMS.get(macro);
+      if (macro === undefined || made === undefined) {
         if (declarator.init) {
           reject(declarator.init);
         }
         continue;
       }
+      formMacro = macro;
       if (declarator.id.type !== 'Identifier') {
+        // The forms of a component keep the errors that they have there.
+        if (macro !== '$signal' && macro !== '$memo') {
+          throw new ModuleError(`${macro} cannot be destructured`, declarator.id.start);
+        }
         throw topLevelError(
           macro,
           ' at the top level with a pattern',
@@ -418,16 +453,22 @@ function plan(
           declaration.start,
         );
       }
-      if (macro === '$memo' && declaration.kind !== 'const') {
+      // A value that handlers write is declared with let, as in a component.
+      const expected = macro === '$optimistic' ? 'let' : 'const';
+      if (macro !== '$signal' && declaration.kind !== expected) {
+        if (macro !== '$memo') {
+          throw new ModuleError(`Declare ${macro} with ${expected}`, declaration.start);
+        }
         throw topLevelError(
-          '$memo',
+          macro,
           ` at the top level with ${declaration.kind}`,
-          advice('$memo'),
+          advice(macro),
           declaration.start,
         );
       }
       signals.set(declarator.id.name, {
-        kind: macro === '$signal' ? 'signal' : 'memo',
+        kind: made,
+        ...(macro === '$optimistic' ? { optimistic: true } : {}),
         binding: scriptModule ? `${PREFIX}${declarator.id.name}` : declarator.id.name,
         ...(statement === declaration ? {} : { exported: declarator.id.name }),
       });
@@ -437,6 +478,7 @@ function plan(
       declarations.push({
         declaration,
         exported: statement === declaration ? undefined : statement,
+        macro: formMacro,
       });
     }
   }
@@ -470,6 +512,9 @@ function plan(
   let usesStore = false;
   let usesDerived = false;
   let usesProduce = false;
+  let usesGated = false;
+  let usesTimed = false;
+  let usesOptimistic = false;
   /** The imports of signals of other modules, by module and name, shared by every memo. */
   const dependencies = new Map<string, { local: string; line: string }>();
   const functions = topLevelFunctions(program);
@@ -549,6 +594,9 @@ function plan(
     function walk(node: oxc.Node, context: Walk): void {
       forEachReference(node, (identifier) => {
         const name = identifier.name;
+        if (context === own && isUntracked(identifier)) {
+          return;
+        }
         if (context.signals.has(name)) {
           add(context, name, identifier.start);
           return;
@@ -586,9 +634,45 @@ function plan(
     }
     walk(argument, own);
   }
+  // `$untrack(expr)` reads without tracking: the call compiles to its argument, and the signals it
+  // reads are not sources of a memo.
+  const untracked: { start: number; end: number }[] = [];
+  function findUntracked(node: oxc.Node): void {
+    if (macroOf(node) === '$untrack') {
+      const call = node as oxc.CallExpression;
+      if (call.arguments.length !== 1 || call.arguments[0]!.type === 'SpreadElement') {
+        throw topLevelError(
+          '$untrack',
+          ' with other than one expression',
+          'Write one expression, as in "$untrack(input.length)"',
+          call.start,
+        );
+      }
+      untracked.push({ start: call.start, end: call.end });
+      edits.push({ start: call.callee.start, end: call.callee.end, text: '' });
+    }
+    for (const [, child] of children(node)) {
+      findUntracked(child);
+    }
+  }
+  for (const statement of program.body) {
+    if (statement.type !== 'ImportDeclaration') {
+      findUntracked(statement);
+    }
+  }
+  function isUntracked(node: oxc.Node): boolean {
+    for (const range of untracked) {
+      if (node.start >= range.start && node.end <= range.end) {
+        return true;
+      }
+    }
+    return false;
+  }
   // The arguments of memos, where parameters give the values and nothing else changes.
   const memoArguments: oxc.Node[] = [];
-  for (const { declaration, exported } of declarations) {
+  /** The names that each memo gets as parameters. */
+  const memoReads = new Map<oxc.Node, string[]>();
+  for (const { declaration, exported, macro } of declarations) {
     const declarator = declaration.declarations[0]!;
     const call = declarator.init as oxc.CallExpression;
     const name = (declarator.id as oxc.IdentifierName).name;
@@ -611,25 +695,95 @@ function plan(
         });
       }
     }
-    if (signal.kind === 'signal') {
+    if (macro === '$signal') {
       usesStore = true;
       edits.push({ start: call.callee.start, end: call.callee.end, text: STORE });
       continue;
     }
-    usesDerived = true;
-    const [argument] = call.arguments;
-    if (!argument || call.arguments.length !== 1 || argument.type === 'SpreadElement') {
-      throw topLevelError(
-        '$memo',
-        ' at the top level with other than one argument',
-        advice('$memo'),
-        call.start,
-      );
+    if (macro === '$optimistic') {
+      // `$optimistic(source)` follows the store of a module memo. The errors are those of a component.
+      const [source] = call.arguments;
+      if (!source) {
+        throw new ModuleError(`${macro} needs a value`, call.start);
+      }
+      if (call.arguments.length > 1) {
+        throw new ModuleError(`${macro} takes one argument`, call.start);
+      }
+      if (source.type !== 'Identifier') {
+        throw new ModuleError(
+          '$optimistic needs the name of a value, such as a memo',
+          source.start,
+        );
+      }
+      const followed = signals.get(source.name);
+      if (followed?.kind === 'signal') {
+        throw new ModuleError(
+          '$optimistic follows a memo, an action or a prop, not a signal',
+          source.start,
+        );
+      }
+      if (!followed) {
+        throw topLevelError(
+          '$optimistic',
+          ' with a source that is no memo of a module',
+          'Follow a memo that the module declares or imports, as in "let shown = $optimistic(list)"',
+          source.start,
+        );
+      }
+      usesOptimistic = true;
+      edits.push({ start: call.callee.start, end: call.callee.end, text: OPTIMISTIC });
+      // The store of the memo, not its value.
+      edits.push({ start: source.start, end: source.end, text: followed.binding });
+      memoArguments.push(source);
+      continue;
+    }
+    const [argument, extra] = call.arguments;
+    const count = macro === '$memo' ? 1 : 2;
+    // The forms of a component keep the errors that they have there, and so their codes.
+    if (macro === '$memo') {
+      if (!argument || call.arguments.length !== 1 || argument.type === 'SpreadElement') {
+        throw topLevelError(
+          macro,
+          ' at the top level with other than one argument',
+          advice(macro),
+          call.start,
+        );
+      }
+    } else if (macro === '$gate') {
+      if (
+        !argument ||
+        argument.type === 'SpreadElement' ||
+        call.arguments.length !== count ||
+        (extra?.type !== 'ArrowFunctionExpression' && extra?.type !== 'FunctionExpression')
+      ) {
+        throw new ModuleError(
+          '$gate takes a value and a function, as in $gate(value, (prev, next) => next > prev)',
+          call.start,
+        );
+      }
+    } else {
+      if (!argument || argument.type === 'SpreadElement' || call.arguments.length !== count) {
+        throw new ModuleError(`${macro} takes a value and a wait in milliseconds`, call.start);
+      }
+      const ms = extra?.type === 'Literal' && typeof extra.value === 'number' ? extra.value : NaN;
+      // A timer cannot wait longer than 2^31 - 1 ms, and fires at once for a longer wait.
+      if (!(ms >= 0 && ms <= 2147483647)) {
+        throw new ModuleError(
+          `The wait of ${macro} must be a number of milliseconds, such as 300`,
+          extra?.start ?? call.start,
+        );
+      }
     }
     function findAwait(node: oxc.Node): void {
       if (node.type === 'AwaitExpression') {
+        if (macro === '$gate') {
+          throw new ModuleError(
+            '$gate takes a value that is ready. Use $memo for a promise or a server function',
+            node.start,
+          );
+        }
         throw topLevelError(
-          '$memo',
+          macro,
           ' at the top level with await',
           'Keep the loaded value in a $signal, or read it in a component with $memo',
           node.start,
@@ -648,23 +802,46 @@ function plan(
     const reads: string[] = [];
     const stores: string[] = [];
     memoSources(argument, reads, stores);
+    memoReads.set(argument, reads);
     // The callee, the type arguments and the opening parenthesis become the sources and the
-    // function. The closing parenthesis of the function goes before that of the call.
+    // function. The closing parenthesis of the function goes before that of the call, or before
+    // the next argument.
     const typed = (call as { typeArguments?: oxc.Node }).typeArguments;
     const open = source.indexOf('(', typed?.end ?? call.callee.end);
+    let helper = TIMED;
+    if (macro === '$memo') {
+      helper = DERIVED;
+    } else if (macro === '$gate') {
+      helper = GATED;
+    }
+    usesGated ||= macro === '$gate';
+    usesTimed ||= macro === '$debounced' || macro === '$throttled';
+    usesDerived ||= macro === '$memo';
     edits.push({
       start: call.callee.start,
       end: open + 1,
-      text: `${DERIVED}([${stores.join(', ')}], ([${reads.join(', ')}]) => (`,
+      text: `${helper}([${stores.join(', ')}], ([${reads.join(', ')}]) => (`,
     });
-    edits.push({ start: call.end - 1, end: call.end - 1, text: ')' });
+    if (macro === '$memo') {
+      edits.push({ start: call.end - 1, end: call.end - 1, text: ')' });
+    } else {
+      edits.push({ start: argument.end, end: argument.end, text: ')' });
+      if (macro === '$throttled') {
+        edits.push({ start: extra!.end, end: extra!.end, text: ', true' });
+      }
+    }
   }
 
   // Reads and writes in the code of the module.
+  /** True where a parameter of the memo holds the value, so the name stays as it is. */
   function insideMemo(node: oxc.Node): boolean {
     for (const argument of memoArguments) {
       if (node.start >= argument.start && node.end <= argument.end) {
-        return true;
+        // An untracked read is not a parameter, unless the memo also reads the name as a source.
+        return (
+          !isUntracked(node) ||
+          !!memoReads.get(argument)?.includes((node as oxc.IdentifierName).name)
+        );
       }
     }
     return false;
@@ -683,6 +860,13 @@ function plan(
       );
     }
     const store = signal.binding;
+    const update = parents.get(identifier);
+    if (signal.optimistic && update?.type === 'UpdateExpression') {
+      throw new ModuleError(
+        `Assign to "${identifier.name}" with = instead of ${update.operator}`,
+        update.start,
+      );
+    }
     const written = rewriteWrite(identifier, store, { source, parents, macros }, edits);
     if (written !== undefined) {
       if (signal.from) {
@@ -721,13 +905,26 @@ function plan(
     names.push(`store as ${STORE}`);
   }
   if (usesDerived) {
-    names.push(`derived as ${DERIVED}`);
+    names.push(`${HELD} as ${DERIVED}`);
+  }
+  if (usesGated) {
+    names.push(`gated as ${GATED}`);
+  }
+  if (usesTimed) {
+    names.push(`timed as ${TIMED}`);
   }
   if (names.length > 0) {
     header.push(`import { ${names.join(', ')} } from '${STORE_MODULE}';`);
   }
+  const client: string[] = [];
   if (usesProduce) {
-    header.push(`import { produce as ${PRODUCE} } from '${CLIENT_MODULE}';`);
+    client.push(`produce as ${PRODUCE}`);
+  }
+  if (usesOptimistic) {
+    client.push(`optimisticStore as ${OPTIMISTIC}`);
+  }
+  if (client.length > 0) {
+    header.push(`import { ${client.join(', ')} } from '${CLIENT_MODULE}';`);
   }
   for (const { line } of dependencies.values()) {
     header.push(line);

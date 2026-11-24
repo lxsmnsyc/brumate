@@ -75,7 +75,7 @@ export {
   started,
   wait,
 } from './client/waits.ts';
-export { guess, track } from './client/guesses.ts';
+export { guess, optimisticStore, track } from './client/guesses.ts';
 export { action, handle, handlerProp, rpc, spread, submitAction } from './client/handlers.ts';
 export { attr, attrs, content, portalTo, restRef, text, writeText } from './client/inserts.ts';
 export { list, toList, windowList, windowStart } from './client/lists.ts';

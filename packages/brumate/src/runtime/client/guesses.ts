@@ -1,5 +1,7 @@
 // The guesses of `$optimistic` values, and the count of server calls that puts them back.
 
+import { Store, onServer, sendStore } from '../store.ts';
+import type { StoreLike } from '../store.ts';
 import { guesses, scopes, setGuesses } from './state.ts';
 import type { Scope } from './state.ts';
 import { pending, set } from './updates.ts';
@@ -77,4 +79,90 @@ function resetGuesses(): void {
       set(scope, slot, source[0].s[source[1]]);
     }
   }
+}
+
+/** The stores of `$optimistic` at the top level of a module that hold a guess. */
+const held = new Set<() => void>();
+/** The guesses that already put the stores of modules back, with the calls of the page. */
+const linked = new WeakSet<object>();
+
+/**
+ * The store of `$optimistic(source)` at the top level of a module: it follows the store `source`,
+ * and an exported function writes a guess with `set`. The guess goes back to the source when the
+ * source changes, or when every server call of the page finishes. On the server a write is
+ * dropped, as the server holds no guess.
+ */
+export function optimisticStore<T>(source: StoreLike<T>): StoreLike<T> {
+  const out = new Store<T>(undefined as T);
+  let count = 0;
+  let guessed = false;
+  let stop: (() => void) | undefined;
+
+  // Follows the source while a reader or a guess needs the value.
+  function follow(): void {
+    if (!stop) {
+      out.v = source.get();
+      stop = source.subscribe((value) => {
+        reset(value);
+      });
+    }
+  }
+  function unfollow(): void {
+    if (count === 0 && !guessed) {
+      stop?.();
+      stop = undefined;
+    }
+  }
+  function reset(value: T): void {
+    guessed = false;
+    held.delete(back);
+    sendStore(out, value);
+    unfollow();
+  }
+  function back(): void {
+    if (guessed) {
+      reset(source.get());
+    }
+  }
+
+  return {
+    get(): T {
+      return guessed || count > 0 ? out.v : source.get();
+    },
+    set(value: T): void {
+      if (onServer()) {
+        return;
+      }
+      follow();
+      guessed = true;
+      held.add(back);
+      // The first guess of the page makes the guesses, and the stores of modules go back with them.
+      const all = guesses ?? setGuesses({ map: new Map(), same: sameSource, reset: resetGuesses });
+      if (!linked.has(all)) {
+        linked.add(all);
+        const before = all.reset;
+        all.reset = () => {
+          before();
+          for (const undo of held) {
+            undo();
+          }
+        };
+      }
+      sendStore(out, value);
+    },
+    subscribe(listener: (value: T) => void): () => void {
+      const off = out.subscribe(listener);
+      count++;
+      follow();
+      let done = false;
+      return () => {
+        if (!done) {
+          done = true;
+          off();
+          count--;
+          unfollow();
+        }
+      };
+    },
+  } as StoreLike<T>;
 }
