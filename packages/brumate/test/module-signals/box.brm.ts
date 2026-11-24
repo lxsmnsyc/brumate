@@ -23,3 +23,7 @@ export function grow(): void {
 /** Many rows: a memo of their count sends the count only. */
 export let rows: { id: number }[] = $signal(Array.from({ length: 5000 }, (_, id) => ({ id })));
 export const count: number = $memo(rows.length);
+/** A long string, which the page state sends once. */
+export const long: string = $memo('x'.repeat(rows.length));
+/** A memo that loads over a class instance: the browser must check its source, which cannot go. */
+export const boxLoaded: number = $memo(await Promise.resolve(box.n));

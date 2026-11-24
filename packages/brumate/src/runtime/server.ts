@@ -2081,6 +2081,19 @@ function holds(value: unknown, target: unknown, seen = new Set<unknown>()): bool
   return false;
 }
 
+/** The name of the source of a memo of a module that holds `target`, in the values of its sources. */
+function sourceHolding(sources: unknown, target: unknown): string | undefined {
+  if (typeof sources !== 'object' || sources === null) {
+    return undefined;
+  }
+  for (const [name, value] of Object.entries(sources)) {
+    if (holds(value, target)) {
+      return name;
+    }
+  }
+  return undefined;
+}
+
 /**
  * The error of a value in the state of a page that cannot be sent to the
  * browser, which names the value and its component.
@@ -2116,6 +2129,17 @@ function unsendable(error: unknown, ctx: Context): Error {
       );
     }
     const kind = (target as object)?.constructor?.name ?? typeof target;
+    // A memo of a module that loaded sends the values of its sources, by name.
+    if (name.startsWith('$$ms_in_')) {
+      const sources = (record.s![index] as unknown[])[1];
+      const signal = sourceHolding(sources, target);
+      if (signal !== undefined) {
+        return new Error(
+          `The source "${signal}" of the module memo "${name.slice('$$ms_in_'.length)}" in ${owner?.m ?? 'a component'} holds a ${kind}, which cannot be sent to the browser, and the browser checks it to tell whether to load the memo again. Use it in a server function, or create it in the browser, such as in $client.`,
+          { cause: error },
+        );
+      }
+    }
     return new Error(
       `The value of "${name}" in ${owner?.m ?? 'a component'} holds a ${kind}, which cannot be sent to the browser, and code that runs in the browser reads it. Use it in a server function, or create it in the browser, such as in $client.`,
       { cause: error },

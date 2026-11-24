@@ -847,8 +847,20 @@ function plan(
       end: open + 1,
       text: `${DERIVED}([${stores.join(', ')}], ${awaits ? 'async ' : ''}([${reads.join(', ')}]) => (`,
     });
+    // The names of the sources, which an error of the page state names.
+    const named: string[] = [];
+    for (const read of reads) {
+      named.push(
+        read.startsWith('$$dep_') ? read.slice('$$dep_'.length, read.lastIndexOf('_')) : read,
+      );
+    }
+    const sourceNames = JSON.stringify(named);
     if (macro === '$memo') {
-      edits.push({ start: call.end - 1, end: call.end - 1, text: ')' });
+      edits.push({
+        start: call.end - 1,
+        end: call.end - 1,
+        text: `), { n: ${sourceNames} }`,
+      });
     } else {
       // The second argument becomes an option: the guard of a gate, or the wait of a timed value.
       edits.push({ start: argument.end, end: argument.end, text: ')' });
@@ -857,7 +869,7 @@ function plan(
       edits.push({
         start: extra!.end,
         end: extra!.end,
-        text: macro === '$throttled' ? ', t: true }' : ' }',
+        text: `${macro === '$throttled' ? ', t: true' : ''}, n: ${sourceNames} }`,
       });
     }
   }

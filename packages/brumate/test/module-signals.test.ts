@@ -707,7 +707,7 @@ describe('an async memo of a module', () => {
         "import { $memo, $signal } from 'brumate/signals';\nexport let id = $signal(1);\nexport const user = $memo(await load(id));",
       ),
     );
-    expect(code).toContain('$$derived([id], async ([id]) => (await load(id)))');
+    expect(code).toContain('$$derived([id], async ([id]) => (await load(id)), { n: ["id"] })');
     const message = error(() =>
       compile(reader('(() => console.log(user.name))'), {
         filename: 'Log.brm',
@@ -836,6 +836,45 @@ describe('the page state of an imported module memo', () => {
     expect(state).toContain('5000');
     expect(state.length).toBeLessThan(600);
   });
+
+  it('sends a long string once, and the browser keeps it', async () => {
+    const state = await pageState('LongView.brm');
+    expect(state.split('x'.repeat(5000))).toHaveLength(2);
+    await resume('LongView.brm');
+    expect(text('.long')).toBe('5000');
+    expect(text('.text')).toHaveLength(5000);
+  });
+
+  it('names the source of a memo that loaded, when the source cannot be sent', async () => {
+    const server = await import(file('BoxLoadedView.brm.ts'));
+    let message = '';
+    try {
+      const { pending } = await renderParts(server.default, {});
+      for await (const chunk of pending) {
+        expect(chunk).toBeDefined();
+      }
+    } catch (caught) {
+      message = (caught as Error).message;
+    }
+    expect(message).toContain('The source "box" of the module memo "boxLoaded"');
+    expect(message).toContain('holds a Box, which cannot be sent to the browser');
+  });
+});
+
+describe('a module memo that loaded on the server with other sources', () => {
+  it('loads once in the browser, with its own sources, and keeps the old value meanwhile', async () => {
+    const onServer = (await import(file('user.brm.ts'))) as UserModule;
+    // A server function wrote the signal on the server: the page renders user 4.
+    onServer.setId(4);
+    const html = await resume('AsyncPage.brm');
+    expect(html).toMatch(/class="r-user"[^>]*>user 4<\/p>/);
+    const browser = (await import(file('user.brm.ts'))) as UserModule;
+    // The browser's own id is 1: the signal is repaired, and the memo loads for it.
+    await vi.waitFor(() => expect(text('.w-id')).toBe('1'), { timeout: 2000 });
+    await vi.waitFor(() => expect(text('.r-user')).toBe('user 1'), { timeout: 2000 });
+    await sleep(30);
+    expect(browser.calls.user).toBe(1);
+  });
 });
 
 describe('a failed load of a module memo on the server', () => {
@@ -853,6 +892,40 @@ describe('a failed load of a module memo on the server', () => {
     // The value is kept: a third request loads nothing.
     await serverHtml('ConfigPage.brm');
     expect(config.calls.config).toBe(2);
+  });
+
+  it('keeps the error for the rest of the render that read it, while a later render loads again', async () => {
+    const RENDER = Symbol.for('brumate.render');
+    const global = globalThis as Record<symbol, unknown>;
+    let loads = 0;
+    const memo = memoStore(store(1), async () => {
+      loads++;
+      await sleep(5);
+      if (loads === 1) {
+        throw new Error('down');
+      }
+      return 'up';
+    });
+    const first = {};
+    const later = {};
+    /** Reads the memo as a render of the server does. */
+    function readIn(render: object): unknown {
+      global[RENDER] = render;
+      try {
+        return memo.p();
+      } catch (caught) {
+        return caught;
+      } finally {
+        delete global[RENDER];
+      }
+    }
+    await expect(readIn(first)).rejects.toThrow('down');
+    // A later render loads again, and gets the value.
+    expect(await readIn(later)).toBe('up');
+    expect(loads).toBe(2);
+    // The first render, still streaming, reads its own error, not the later load.
+    expect(readIn(first)).toEqual(new Error('down'));
+    expect(loads).toBe(2);
   });
 });
 
@@ -934,7 +1007,9 @@ describe('the stores of the forms', () => {
         "import { $gate, $signal } from 'brumate/signals';\nexport let a = $signal(1);\nexport const g = $gate(Promise.resolve(a), () => true);",
       ),
     );
-    expect(code).toContain('$$derived([a], ([a]) => (Promise.resolve(a)), { g: () => true })');
+    expect(code).toContain(
+      '$$derived([a], ([a]) => (Promise.resolve(a)), { g: () => true, n: ["a"] })',
+    );
     // The compiled call, run by hand: a source store and the function that the call gives. The
     // error is held, as any error of the store, so the reader's #try gets it.
     const g = memoStore(store(1), (value) => Promise.resolve(value), { g: () => true });

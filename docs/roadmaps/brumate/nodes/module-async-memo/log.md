@@ -35,3 +35,11 @@
 - Fixed: module code that reads the memo after resume gets the server value, with no load.
 - Fixed: a failed load on the server is shared by the renders that read its run; `brumate.render` (the call results of a render) tells the renders apart. It is set with `??=` because the test loads a second copy of the server runtime.
 - `onServer()` is false after an `await` of a render in happy-dom, so `i.get` tells server from browser by whether the store has a subscriber.
+
+### Review round 2 (a1ab4db6)
+
+- A value that loaded now goes as `[promise, sources]`, the sources by name (the compiler passes `n`). The browser compares them with its own (`sameData`) and loads once when they differ. A plain array keeps the promise a promise in the browser, so the prop-promise wrapper is gone.
+- A value that computed at once goes as `0`, or as itself when it is an object (shared by reference with the memo slot); the browser recomputes it, and a marker makes the importer's memo compute once (`fresh`).
+- A source of a loaded memo that cannot be sent: `unsendable` in `server.ts` names the source and the memo.
+- `brumate.render` is now the calls map itself, which `withEvent` writes and restores on `globalThis`, so every copy agrees.
+- A failed run is kept per render (`failed`, a WeakMap); a render that read it gets its error for the rest of the render, also after a later render loaded again.
