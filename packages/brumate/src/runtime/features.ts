@@ -22,6 +22,7 @@ declare const __BRUMATE_HAS_ROOT_WAIT__: boolean | undefined;
 declare const __BRUMATE_HAS_SEARCH_PARAMS__: boolean | undefined;
 declare const __BRUMATE_HAS_STORES__: boolean | undefined;
 declare const __BRUMATE_HAS_BRIDGES__: boolean | undefined;
+declare const __BRUMATE_HAS_MODULE_MEMOS__: boolean | undefined;
 declare const __BRUMATE_HAS_SCRIPTS__: boolean | undefined;
 declare const __BRUMATE_HAS_VIEW_TRANSITIONS__: boolean | undefined;
 
@@ -110,6 +111,10 @@ export const HAS_STORES: boolean =
 /** Stores of `bridge()`, which the page state holds. */
 export const HAS_BRIDGES: boolean =
   typeof __BRUMATE_HAS_BRIDGES__ === 'undefined' || __BRUMATE_HAS_BRIDGES__;
+
+/** Memos of a module that a component imports, which take the value of the server on resume. */
+export const HAS_MODULE_MEMOS: boolean =
+  typeof __BRUMATE_HAS_MODULE_MEMOS__ === 'undefined' || __BRUMATE_HAS_MODULE_MEMOS__;
 
 /** `<script>` elements in markup, which the loader starts on their trigger. */
 export const HAS_SCRIPTS: boolean =

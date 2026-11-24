@@ -337,6 +337,12 @@ let currentCalls: Map<string, unknown> | undefined;
 (globalThis as Record<symbol, unknown>)[Symbol.for('brumate.inRequest')] = (): boolean =>
   current !== undefined || currentCalls !== undefined;
 
+// A memo of a module shares a failed load with the render that read it, and loads again for
+// another render. The call results of a render are one object for the render. The first copy of
+// the runtime that loads keeps the name, as a test that loads the server again renders with it.
+(globalThis as Record<symbol, unknown>)[Symbol.for('brumate.render')] ??= (): object | undefined =>
+  currentCalls;
+
 /**
  * Runs a callback with an event, so `getEvent()` in its code before its first
  * `await` returns it. Returns what the callback returns, such as its promise.

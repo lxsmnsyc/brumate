@@ -90,7 +90,7 @@ Declares a read-only value computed from other values.
 - Assigning to it is a compile error.
 - Server: computed when first read. Markup outside every `#loading` body waits for a promise. A `#loading` body that reads it renders in place when it is ready, and after the rest of the page otherwise.
 - Client: computed again when the values it reads change. While a new promise loads, the memo keeps its old value. Only the latest run is written.
-- At the top level of a module: yes, with `const`. It loads once for every component that imports it, and each reads it as its own memo. See [A memo that loads](./reactive-modules.md#a-memo-that-loads).
+- At the top level of a module: yes, with `const`. It loads once for every component that imports it, and each reads it as its own memo. The page state sends its value, and the browser loads again when a source changes. See [A memo that loads](./reactive-modules.md#a-memo-that-loads).
 
 ## `$gate`
 
@@ -112,7 +112,7 @@ const items = $gate(list.filter(done), (prev, next) => !sameItems(prev, next));
 - A guard that throws makes the memo hold the error, as a memo whose value throws does. Each read throws it, and the error goes to the nearest `#try`.
 - The next value after a held error passes without the guard.
 - The value cannot be a promise. `await` and a call of a server function are a compile error (BRM203), and any other promise or stream throws when the value is computed, on the server and in the browser. Use `$memo` for loading.
-- At the top level of a module: yes, with `const`. It is a `derived` store that keeps its value when the guard says no. See [Shared state at module level](./reactive-modules.md#shared-state-at-module-level).
+- At the top level of a module: yes, with `const`. It is a store that keeps its value when the guard says no, and a component that imports it reads it as its own memo. See [Shared state at module level](./reactive-modules.md#shared-state-at-module-level).
 
 ## `$isPending`
 
@@ -398,7 +398,7 @@ Memos of `value` that the browser writes after a wait.
 - `$throttled` takes it at most once every `ms` milliseconds: the first change at once, and the last one after the wait.
 - Server: the value itself. Client: pending while it waits.
 - `ms` is a number literal. Any other value is a compile error.
-- At the top level of a module: yes, with `const`. The store is pending while it waits, so `$isPending` and `$resolve` of an importer see it. See [Shared state at module level](./reactive-modules.md#shared-state-at-module-level).
+- At the top level of a module: yes, with `const`. The store is pending while it waits, and a component that imports it reads it as its own memo, so `$isPending` and `$resolve` see it. See [Shared state at module level](./reactive-modules.md#shared-state-at-module-level).
 
 ## Not supported
 

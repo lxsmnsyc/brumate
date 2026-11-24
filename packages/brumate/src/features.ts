@@ -42,6 +42,8 @@ export interface Features {
   stores: boolean;
   /** Stores of `bridge()`, which the page state holds and the browser makes again. */
   bridges: boolean;
+  /** Memos of a module that a component imports, which take the value of the server on resume. */
+  moduleMemos: boolean;
   /** `<script>` elements in markup, which the loader starts on their trigger. */
   scripts: boolean;
   /** `viewTransition` and `viewTransitionName` attributes, named while a transition runs. */
@@ -70,6 +72,7 @@ export function noFeatures(): Features {
     searchParams: false,
     stores: false,
     bridges: false,
+    moduleMemos: false,
     scripts: false,
     viewTransitions: false,
   };
@@ -120,6 +123,8 @@ export function getFeatures(result: CompileResult): Features {
     // A bridge of `<script module>` is named in the compiled component. A bridge in a script
     // file is found by the Vite plugin.
     bridges: /\$\$nameBridge\(/.test(all),
+    // A component that imports a memo of a module reads `.i` of its store with `$store`.
+    moduleMemos: /\$\$ms_\w+\.i\b/.test(all),
     // Set where the emit finds a `<script src>` or `<script inline>` in markup.
     scripts: result.plan.scripts,
     viewTransitions: result.plan.viewTransitions,
@@ -149,6 +154,7 @@ export function joinFeatures(all: Features[]): Features {
     joined.searchParams ||= features.searchParams;
     joined.stores ||= features.stores;
     joined.bridges ||= features.bridges;
+    joined.moduleMemos ||= features.moduleMemos;
     joined.scripts ||= features.scripts;
     joined.viewTransitions ||= features.viewTransitions;
   }
@@ -176,6 +182,7 @@ const GLOBALS: Record<keyof Features, string> = {
   searchParams: '__BRUMATE_HAS_SEARCH_PARAMS__',
   stores: '__BRUMATE_HAS_STORES__',
   bridges: '__BRUMATE_HAS_BRIDGES__',
+  moduleMemos: '__BRUMATE_HAS_MODULE_MEMOS__',
   scripts: '__BRUMATE_HAS_SCRIPTS__',
   viewTransitions: '__BRUMATE_HAS_VIEW_TRANSITIONS__',
 };

@@ -1,0 +1,7 @@
+<script>
+  import AsyncForms from './AsyncForms.brm';
+  import AsyncWriter from './AsyncWriter.brm';
+</script>
+
+<AsyncWriter />
+<AsyncForms />

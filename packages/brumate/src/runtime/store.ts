@@ -300,22 +300,6 @@ export function derived<T>(
   ) => unknown,
   initial?: T,
 ): StoreLike<T> {
-  return build(sources, fn, initial, false);
-}
-
-/** The key of a store that holds the error of a run, which `$store` reads again on each notice. */
-export const HOLDS: unique symbol = Symbol.for('brumate.holds') as never;
-
-function build<T>(
-  sources: Stores,
-  fn: (
-    values: unknown,
-    set: (value: T) => void,
-    update: (change: (value: T) => T) => void,
-  ) => unknown,
-  initial: T | undefined,
-  hold: boolean,
-): StoreLike<T> {
   const single = !Array.isArray(sources);
   const list: StoreLike<unknown>[] = single ? [sources] : sources;
   for (const source of list) {
@@ -341,8 +325,6 @@ function build<T>(
   let started = false;
   let starting = false;
   let stops: (() => void)[] = [];
-  /** The error of the last run while a subscriber holds the store, which `get` throws. */
-  let held: { error: unknown } | undefined;
 
   /** Runs `fn` over the current values of the sources. */
   const compute = (write: (value: T) => void): void => {
@@ -379,27 +361,8 @@ function build<T>(
     level,
     waits: false,
     run() {
-      if (!started) {
-        return;
-      }
-      if (!hold) {
+      if (started) {
         compute(send);
-        return;
-      }
-      // A throw is held: the readers hear of it and `get` throws it in their scope, and the other
-      // stores of the pass still compute.
-      const had = held;
-      const before = out.v;
-      try {
-        held = undefined;
-        compute(send);
-        // The readers hold the error, so they need a notice even when the value is the same.
-        if (had && Object.is(before, out.v)) {
-          sendStore(out, out.v, true);
-        }
-      } catch (error) {
-        held = { error };
-        sendStore(out, out.v, true);
       }
     },
   };
@@ -454,7 +417,6 @@ function build<T>(
 
   const stop = (): void => {
     started = false;
-    held = undefined;
     for (const end of stops) {
       end();
     }
@@ -471,9 +433,6 @@ function build<T>(
     {
       get(): T {
         if (started) {
-          if (held) {
-            throw held.error;
-          }
           return out.v;
         }
         // No subscriber: compute once from the sources and stop. The async form keeps the
@@ -517,14 +476,11 @@ function build<T>(
   if (pend.q) {
     Object.defineProperty(result, PENDING, { value: pend });
   }
-  if (hold) {
-    Object.defineProperty(result, HOLDS, { value: true });
-  }
   return result;
 }
 
-// Forms of a module: the stores that `$gate`, `$debounced` and `$throttled` compile to at the top
-// level of a module. The compiler calls them, so they have no docs of their own.
+/** The key of a store that holds the error of a run, which `$store` reads again on each notice. */
+export const HOLDS: unique symbol = Symbol.for('brumate.holds') as never;
 
 /**
  * The key of the pending state of a store, which a store of a module can hold, as a memo that
@@ -562,195 +518,10 @@ export function onServer(): boolean {
   return typeof document === 'undefined' || inRequest?.() === true;
 }
 
-/**
- * The store of `$gate(value, guard)`: a derived store that takes a new value only when
- * `guard(prev, next)` returns true. Otherwise it keeps its value and its readers do not run. The
- * first value passes, and so does the first one after an error. Without a subscriber there is no
- * history, so `get` gives the value, as the server renders it. A promise or a stream is an error.
- */
-export function gated<S extends Stores, T>(
-  sources: S,
-  fn: (values: StoresValues<S>) => T,
-  guard: (prev: T, next: T) => boolean,
-): StoreLike<T> {
-  let live = 0;
-  let has = false;
-  let last: T;
-  // A throw is held by `derived`, which reads it again with `get`.
-  const compute = (values: unknown, set: (value: T) => void): void => {
-    try {
-      const next = fn(values as StoresValues<S>);
-      if (
-        next !== null &&
-        typeof next === 'object' &&
-        (typeof (next as { then?: unknown }).then === 'function' ||
-          typeof (next as { [Symbol.asyncIterator]?: unknown })[Symbol.asyncIterator] ===
-            'function')
-      ) {
-        throw new TypeError(
-          'The value of $gate is a promise or a stream. Use $memo for a value that loads',
-        );
-      }
-      if (live === 0 || !has || guard(last, next)) {
-        if (live > 0) {
-          has = true;
-          last = next;
-        }
-        set(next);
-      }
-    } catch (error) {
-      has = false;
-      throw error;
-    }
-  };
-  const inner = build<T>(sources, compute, undefined, true);
-  const subscribe = inner.subscribe;
-  return Object.assign(inner, {
-    subscribe(listener: (value: T) => void): () => void {
-      live++;
-      let stop: (() => void) | undefined;
-      try {
-        stop = subscribe(listener);
-      } catch (error) {
-        live--;
-        throw error;
-      }
-      return () => {
-        if (stop) {
-          stop();
-          stop = undefined;
-          if (--live === 0) {
-            has = false;
-          }
-        }
-      };
-    },
-  });
-}
-
-/**
- * The store of `$debounced(value, ms)` and `$throttled(value, ms)`. The browser takes the value
- * after `ms` once the sources stop changing, or at most once every `ms` with `throttle`, and is
- * pending while it waits. On the server, and without a subscriber, it is the value itself.
- */
-export function timed<S extends Stores, T>(
-  sources: S,
-  fn: (values: StoresValues<S>) => T,
-  ms: number,
-  throttle?: boolean,
-): StoreLike<T> & { [PENDING]: Pendable; [HOLDS]: true } {
-  const single = !Array.isArray(sources);
-  const list: StoreLike<unknown>[] = single ? [sources] : sources;
-  const out = new Store<T>(undefined as T);
-  const waiting: Pendable = { q: new Set() };
-  let count = 0;
-  let stops: (() => void)[] = [];
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  let last = -Infinity;
-  /** The error of the last run while a subscriber holds the store, which `get` throws. */
-  let held: { error: unknown } | undefined;
-
-  const read = (): T => {
-    const values: unknown[] = [];
-    for (const source of list) {
-      values.push(source.get());
-    }
-    return fn((single ? values[0] : values) as StoresValues<S>);
-  };
-
-  /** Takes the value of the sources. A throw is held, and the readers hear of it. */
-  const apply = (): void => {
-    const had = held;
-    try {
-      held = undefined;
-      sendStore(out, read(), !!had);
-    } catch (error) {
-      held = { error };
-      sendStore(out, out.v, true);
-    }
-  };
-
-  const fire = (): void => {
-    timer = undefined;
-    last = Date.now();
-    apply();
-    setPending(waiting, false);
-  };
-
-  const heard = (): void => {
-    if (onServer()) {
-      apply();
-      return;
-    }
-    const since = Date.now() - last;
-    if (throttle && timer === undefined && since >= ms) {
-      fire();
-      return;
-    }
-    if (!throttle) {
-      clearTimeout(timer);
-      timer = undefined;
-    }
-    timer ??= setTimeout(fire, throttle ? ms - since : ms);
-    setPending(waiting, true);
-  };
-
-  const stop = (): void => {
-    for (const end of stops) {
-      end();
-    }
-    stops = [];
-    clearTimeout(timer);
-    timer = undefined;
-    waiting.n = false;
-    held = undefined;
-  };
-
-  return {
-    get(): T {
-      if (count > 0) {
-        if (held) {
-          throw held.error;
-        }
-        return out.v;
-      }
-      return read();
-    },
-    subscribe(listener: (value: T) => void): () => void {
-      const off = out.subscribe(listener);
-      if (count++ === 0) {
-        try {
-          out.v = read();
-          for (const source of list) {
-            stops.push(source.subscribe(heard));
-          }
-        } catch (error) {
-          count--;
-          stop();
-          off();
-          throw error;
-        }
-      }
-      let done = false;
-      return () => {
-        if (!done) {
-          done = true;
-          off();
-          if (--count === 0) {
-            stop();
-          }
-        }
-      };
-    },
-    [PENDING]: waiting,
-    [HOLDS]: true,
-  };
-}
-
-// The memo of a module: the store that `$memo` compiles to at the top level of a module. Its value
-// can load, as the value of a memo of a component can: a promise, or an async iterable whose values
-// it takes in turn. One load serves every reader of the process. The compiler calls it, so it has
-// no docs of its own.
+// The forms of a module: `$memo`, `$gate`, `$debounced` and `$throttled` at the top level of a
+// module compile to `memoStore`. Its value can load, as the value of a memo of a component can: a
+// promise, or an async iterable whose values it takes in turn. One load serves every reader of the
+// process. The compiler calls it, so it has no docs of its own.
 
 /** Thrown by a read of a memo of a module whose first value still loads. It carries the load. */
 export class Waiting extends Error {
@@ -765,20 +536,40 @@ export class Waiting extends Error {
   }
 }
 
+/** The store that a component that imports a memo of a module reads with `$store`. */
+export interface MemoFace extends StoreLike<unknown> {
+  /** The value that the server rendered, which the browser takes on resume. */
+  s(value: unknown): void;
+  [HOLDS]: true;
+}
+
+/** The options of the forms other than `$memo`. */
+export interface MemoOptions<T> {
+  /** `$gate`: keeps the value while a subscriber holds the store and this returns false. */
+  g?: (prev: T, next: T) => boolean;
+  /** `$debounced` and `$throttled`: the wait in milliseconds, in the browser. */
+  m?: number;
+  /** `$throttled`: at most one value per wait, in place of the value after the last change. */
+  t?: boolean;
+}
+
 /** The store of a memo of a module. */
 export interface MemoStore<T> extends StoreLike<T> {
   /**
-   * The values of the sources, as a store that sends on each change of the memo. A memo that a
-   * component imports follows it: the page state carries these values, and the browser loads
-   * again only when its own sources differ.
+   * The store that a component that imports the memo reads with `$store`. On the server it gives
+   * the value, or a promise of it when the value loads, which the page state sends. In the browser
+   * it takes that value on resume, and sends on each change, so the memo of the importer computes
+   * again.
    */
-  i: StoreLike<unknown[]>;
+  i: MemoFace;
   /** The value, or a promise of it while the memo loads. Throws the error of the memo. */
   p(): unknown;
   /** Follows the sources without computing, for a memo that reads this one. */
   f(listener: (value: T) => void): () => void;
-  /** An object that changes with each value or error, after the memo is up to date. */
-  t(): object;
+  /** An object that changes with each value or error; brought up to date first, unless `raw`. */
+  t(raw?: boolean): object;
+  /** True when the value loads, or a memo that it reads loads. */
+  a(): boolean;
   /** The listeners of the value, so a store that reads this one computes after them. */
   l: Set<(value: T) => void>;
   /** The number of derived stores below it. */
@@ -815,15 +606,38 @@ function peekStore(source: StoreLike<unknown>): unknown {
 }
 
 /**
- * The store of `$memo(expr)` at the top level of a module. It computes when it is read, and again
- * when a source changes: while it has subscribers, at once, and otherwise at the next read, which
- * compares the sources. A promise or an async iterable loads: a read gives the last value, and
- * `p` the load, and only the latest run is written. A throw or a rejection is held until the memo
- * computes again. A memo that reads one with no value yet waits for it.
+ * A promise that the page state sends with the mark of a promise prop (`PropPromise` of
+ * `shared.ts`), so the browser keeps it a promise in the slot and does not put its value there.
+ */
+class SentPromise {
+  readonly promise: Promise<unknown>;
+
+  constructor(promise: Promise<unknown>) {
+    this.promise = promise;
+    (this as Record<symbol, unknown>)[Symbol.for('brumate.propWrapper')] = true;
+  }
+}
+
+/** The render of the server that runs now, so a failed load is shared within it only. */
+function currentRender(): object | undefined {
+  return (globalThis as Record<symbol, (() => object | undefined) | undefined>)[
+    Symbol.for('brumate.render')
+  ]?.();
+}
+
+/**
+ * The store of `$memo(expr)` at the top level of a module, and of `$gate`, `$debounced` and
+ * `$throttled` with `options`. It computes when it is read, and again when a source changes: while
+ * it has subscribers, at once, and otherwise at the next read, which compares the sources. A
+ * promise or an async iterable loads: a read gives the last value, and `p` the load, and only the
+ * latest run is written. A throw or a rejection is held until the memo computes again; on the
+ * server only for the renders that read that run. A memo that reads one with no value yet waits for
+ * it.
  */
 export function memoStore<S extends Stores, T>(
   sources: S,
   fn: (values: StoresValues<S>) => T | PromiseLike<T> | AsyncIterable<T>,
+  options?: MemoOptions<T>,
 ): MemoStore<T> {
   const single = !Array.isArray(sources);
   const list: StoreLike<unknown>[] = single ? [sources as StoreLike<unknown>] : sources;
@@ -833,9 +647,18 @@ export function memoStore<S extends Stores, T>(
   }
   /** The value, which the listeners of the module hear. */
   const out = new Store<T>(undefined as T);
-  /** The values of the sources, which the memos of importers follow. */
-  const inputs = new Store<unknown[]>([]);
+  /** What the memos of importers follow: the value, or an object that is new for each change. */
+  const face = new Store<unknown>(undefined);
   const pend: Pendable = { q: new Set() };
+  /** True when the latest run loaded, or waited for a memo that loads. */
+  let loaded = false;
+  /** On the server: the renders that read the latest run, which share its error. */
+  let readers: WeakSet<object> | undefined;
+  /** On the server: the promise of a value that loaded, which the page state sends. */
+  let sent: Promise<T> | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  /** When the last throttled value was taken. */
+  let last = -Infinity;
   let has = false;
   let held: { error: unknown } | undefined;
   /** Changes with each value or error. */
@@ -855,29 +678,20 @@ export function memoStore<S extends Stores, T>(
   let count = 0;
   let stops: (() => void)[] = [];
 
-  /** The values of the sources, through the memos that it reads, without computing any. */
-  const peek = (): unknown[] => {
+  /** What the sources are now: a memo gives its token, brought up to date unless `raw`. */
+  const marks = (raw?: boolean): unknown[] => {
     const values: unknown[] = [];
     for (const source of list) {
-      values.push(isMemoStore(source) ? source.i.get() : peekStore(source));
+      values.push(isMemoStore(source) ? source.t(raw) : peekStore(source));
     }
     return values;
   };
 
-  /** What the sources are now: a memo is brought up to date and gives its token. */
-  const marks = (): unknown[] => {
-    const values: unknown[] = [];
-    for (const source of list) {
-      values.push(isMemoStore(source) ? source.t() : peekStore(source));
-    }
-    return values;
-  };
-
-  const changed = (): boolean => {
+  const changed = (raw?: boolean): boolean => {
     if (!seen) {
       return true;
     }
-    const now = marks();
+    const now = marks(raw);
     for (const [index, value] of now.entries()) {
       if (!Object.is(value, seen[index])) {
         return true;
@@ -896,10 +710,24 @@ export function memoStore<S extends Stores, T>(
     return false;
   };
 
-  /** The memos of importers compute again, with the values of the sources. */
+  /** What a component that imports the memo reads now. In the browser it is new for a load. */
+  const show = (): unknown => {
+    if (held) {
+      throw held.error;
+    }
+    return wait ? face.v : out.v;
+  };
+
+  /**
+   * The memos of importers compute again. The reader of the slot reads `show` again, as for any
+   * store that holds an error, so what goes out is a notice only.
+   */
   const bump = (): void => {
-    if (inputs.l.size > 0) {
-      sendStore(inputs, peek(), true);
+    if (wait) {
+      face.v = {};
+    }
+    if (face.l.size > 0) {
+      sendStore(face, face.v, true);
     }
   };
 
@@ -948,19 +776,25 @@ export function memoStore<S extends Stores, T>(
     loading = 0;
     const had = held;
     const before = out.v;
+    const first = !has;
     held = failure;
-    token = {};
+    sent = undefined;
     if (!failure) {
       has = true;
       out.v = value as T;
     }
+    // The readers hear of an error, and of the end of one, even with the same value. A value that
+    // did not change, such as one that a gate kept, runs no reader.
+    const news = !!failure || !!had || first || !Object.is(before, out.v);
+    if (news) {
+      token = {};
+    }
     if (wait) {
       release();
-    } else {
+    } else if (news) {
       bump();
     }
-    // The readers of the module hear of an error, and of the end of one, even with the same value.
-    if (failure || had || !Object.is(before, out.v)) {
+    if (news) {
       sendStore(out, out.v, true);
     }
   };
@@ -999,13 +833,10 @@ export function memoStore<S extends Stores, T>(
     step();
   };
 
-  /** Runs the function over the values of the sources. */
-  const compute = (): void => {
-    const id = ++run;
-    stopStream?.();
-    stopStream = undefined;
-    loading = 0;
+  /** Runs the function over the values of the sources, for the run `id`. */
+  const evaluate = (id: number): void => {
     let result: unknown;
+    loaded = false;
     try {
       seen = marks();
       const values: unknown[] = [];
@@ -1016,12 +847,13 @@ export function memoStore<S extends Stores, T>(
     } catch (error) {
       if (error instanceof Waiting) {
         // A memo that it reads has no value yet: this one waits, and computes when it settles.
+        loaded = true;
         loading = id;
         enter();
         const again = (): void => {
           if (id === run) {
             loading = 0;
-            compute();
+            evaluate(id);
           }
         };
         error.load.then(again, again);
@@ -1030,10 +862,33 @@ export function memoStore<S extends Stores, T>(
       finish(id, undefined, { error });
       return;
     }
+    const guard = options?.g;
+    if (guard) {
+      if (loads(result)) {
+        finish(id, undefined, {
+          error: new TypeError(
+            'The value of $gate is a promise or a stream. Use $memo for a value that loads',
+          ),
+        });
+        return;
+      }
+      // A gate keeps no history without a subscriber, and the first value after an error passes.
+      if (count > 0 && has && !held) {
+        try {
+          if (!guard(out.v, result as T)) {
+            result = out.v;
+          }
+        } catch (error) {
+          finish(id, undefined, { error });
+          return;
+        }
+      }
+    }
     if (!loads(result)) {
       finish(id, result as T);
       return;
     }
+    loaded = true;
     loading = id;
     enter();
     const server = onServer();
@@ -1052,12 +907,67 @@ export function memoStore<S extends Stores, T>(
     );
   };
 
-  /** Computes when the memo has no value, or, with no subscriber, when a source changed. */
-  const ensure = (): void => {
+  /** Fires the wait of a debounced or throttled value: the latest run takes the value. */
+  const fire = (): void => {
+    timer = undefined;
+    last = Date.now();
+    loading = 0;
+    evaluate(run);
+  };
+
+  /**
+   * Starts a run. A debounced or throttled value that a subscriber holds in the browser waits:
+   * it takes the value after `m` once the sources stop changing, or at most once every `m`.
+   */
+  const compute = (): void => {
+    const id = ++run;
+    stopStream?.();
+    stopStream = undefined;
+    loading = 0;
+    readers = undefined;
+    const ms = options?.m;
+    if (ms === undefined || count === 0 || onServer()) {
+      evaluate(id);
+      return;
+    }
+    const since = Date.now() - last;
+    if (options!.t && timer === undefined && since >= ms) {
+      last = Date.now();
+      evaluate(id);
+      return;
+    }
+    if (!options!.t) {
+      clearTimeout(timer);
+      timer = undefined;
+    }
+    loading = id;
+    enter();
+    timer ??= setTimeout(fire, options!.t ? ms - since : ms);
+  };
+
+  /**
+   * Computes when the memo has no value, or, with no subscriber, when a source changed. With
+   * `retry`, on the server, a held error is read again only by the renders that read its run: a
+   * later render loads again.
+   */
+  const ensure = (retry?: boolean): void => {
     if (!has && !held && !wait) {
       compute();
     } else if (count === 0 && changed()) {
       compute();
+    } else if (retry && held && !wait) {
+      const render = currentRender();
+      if (render && !readers?.has(render)) {
+        compute();
+      }
+    }
+  };
+
+  /** Notes the render of the server that reads the latest run. */
+  const note = (): void => {
+    const render = currentRender();
+    if (render) {
+      (readers ??= new WeakSet()).add(render);
     }
   };
 
@@ -1093,6 +1003,13 @@ export function memoStore<S extends Stores, T>(
       if (sourcesPending()) {
         enter();
       }
+      // A source that changed while nothing followed computes it again. A memo that never ran,
+      // such as one that the browser took from the server, waits for a change.
+      // The memos that it reads checked their own sources as it followed them, so their tokens
+      // are up to date.
+      if (seen && changed(true)) {
+        compute();
+      }
     }
     let done = false;
     return () => {
@@ -1103,6 +1020,11 @@ export function memoStore<S extends Stores, T>(
             end();
           }
           stops = [];
+          // A wait that nothing follows ends: the value is the value, as without a subscriber.
+          if (timer !== undefined) {
+            clearTimeout(timer);
+            fire();
+          }
         }
       }
     };
@@ -1118,7 +1040,7 @@ export function memoStore<S extends Stores, T>(
     };
   };
 
-  return {
+  const memo: MemoStore<T> = {
     get(): T {
       ensure();
       if (held) {
@@ -1135,7 +1057,8 @@ export function memoStore<S extends Stores, T>(
       return listen(out, listener);
     },
     p(): unknown {
-      ensure();
+      ensure(true);
+      note();
       if (wait) {
         return wait.promise;
       }
@@ -1147,21 +1070,83 @@ export function memoStore<S extends Stores, T>(
     f(listener: (value: T) => void): () => void {
       return listen(out, listener);
     },
-    t(): object {
-      ensure();
+    t(raw?: boolean): object {
+      if (!raw) {
+        ensure();
+      }
       return token;
     },
+    a(): boolean {
+      if (loaded) {
+        return true;
+      }
+      for (const source of list) {
+        if (isMemoStore(source) && source.a()) {
+          return true;
+        }
+      }
+      return false;
+    },
     i: {
-      get: peek,
-      subscribe(listener: (values: unknown[]) => void): () => void {
-        return listen(inputs, listener);
+      get(): unknown {
+        // The browser subscribes the slot before it reads it. The server only reads.
+        if (count > 0) {
+          return show();
+        }
+        // The page state sends the value. One that loads goes as a promise, so the browser takes
+        // it without computing; one that computes at once goes as it is, and the browser computes
+        // it again to check its own sources.
+        ensure(true);
+        note();
+        if (held && !wait) {
+          return undefined;
+        }
+        if (!wait && !memo.a()) {
+          return out.v;
+        }
+        // The wrapper keeps it a promise in the browser, which does not put its value in the slot.
+        // The memo of the importer sends the error itself, so this one is generic.
+        return new SentPromise(
+          (wait ? wait.promise : (sent ??= Promise.resolve(out.v))).catch(() => {
+            throw new Error('The page could not compute a value');
+          }),
+        );
       },
+      subscribe(listener: (value: unknown) => void): () => void {
+        return listen(face, listener);
+      },
+      s(value: unknown): void {
+        // Only a memo that has not run takes the value of the server.
+        if (has || held || wait || seen || value === undefined) {
+          return;
+        }
+        if (!loads(value)) {
+          // It computed at once on the server, so it does here, and a value that differs, such as
+          // one of other sources, is written to the page.
+          compute();
+          return;
+        }
+        // A value that loaded: the browser takes it, and loads again when a source changes.
+        const id = ++run;
+        loaded = true;
+        loading = id;
+        enter();
+        face.v = value;
+        seen = marks(true);
+        (value as PromiseLike<T>).then(
+          (settled) => finish(id, settled),
+          (error: unknown) => finish(id, undefined, { error }),
+        );
+      },
+      // `$store` reads it again on each notice, and a read that throws puts the error in the slot.
+      [HOLDS]: true,
     },
     l: out.l,
     d: level,
     [PENDING]: pend,
     [HOLDS]: true,
   };
+  return memo;
 }
 
 // Bridges: a store of another library that can cross the page state. `bridge()` names how to make

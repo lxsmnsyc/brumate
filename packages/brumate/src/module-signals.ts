@@ -38,8 +38,6 @@ const DERIVED = '$$derived';
 /** The store of a memo: it holds an error, and its value can load. */
 const HELD = 'memoStore';
 const PRODUCE = '$$produce';
-const GATED = '$$gated';
-const TIMED = '$$timed';
 const OPTIMISTIC = '$$optimistic';
 
 /** The compile-time functions that declare a value at the top level, and what each makes. */
@@ -61,13 +59,14 @@ const MEMO = '$$ms_memo';
 const INPUTS = '$$ms_in_';
 
 /**
- * The declaration that reads a module value in a component. A signal and the forms other than
- * `$memo` read the store with `$store`. A memo is a memo of the component over the load of the
- * store, which computes again when the values of its sources change, so `#loading`, `await`,
- * `$isPending` and `$resolve` work on it as on a memo of the component.
+ * The declaration that reads a module value in a component. A signal and an optimistic value read
+ * the store with `$store`. A memo, a gate and a timed value are memos of the component over the
+ * load of the store, which compute again on each notice of `store.i`, so `#loading`, `await`,
+ * `$isPending` and `$resolve` work on them as on a memo of the component. The slot of `store.i`
+ * holds the value that the server rendered, which the store of the browser takes on resume.
  */
 function readSignal(name: string, store: string, signal: ModuleSignal, own: boolean): string {
-  if (signal.form === '$memo') {
+  if (signal.kind === 'memo') {
     const inputs = `${INPUTS}${name}`;
     return `const ${inputs} = ${READ}(${store}.i);\nconst ${name} = ${MEMO}(${signal.awaits ? 'await ' : ''}${store}.p(${inputs}));`;
   }
@@ -539,8 +538,6 @@ function plan(
   let usesStore = false;
   let usesDerived = false;
   let usesProduce = false;
-  let usesGated = false;
-  let usesTimed = false;
   let usesOptimistic = false;
   /** The imports of signals of other modules, by module and name, shared by every memo. */
   const dependencies = new Map<string, { local: string; line: string }>();
@@ -841,30 +838,27 @@ function plan(
     // the next argument.
     const typed = (call as { typeArguments?: oxc.Node }).typeArguments;
     const open = source.indexOf('(', typed?.end ?? call.callee.end);
-    let helper = TIMED;
-    if (macro === '$memo') {
-      helper = DERIVED;
-    } else if (macro === '$gate') {
-      helper = GATED;
-    }
-    usesGated ||= macro === '$gate';
-    usesTimed ||= macro === '$debounced' || macro === '$throttled';
-    usesDerived ||= macro === '$memo';
+    usesDerived = true;
     if (awaits) {
       signal.awaits = true;
     }
     edits.push({
       start: call.callee.start,
       end: open + 1,
-      text: `${helper}([${stores.join(', ')}], ${awaits ? 'async ' : ''}([${reads.join(', ')}]) => (`,
+      text: `${DERIVED}([${stores.join(', ')}], ${awaits ? 'async ' : ''}([${reads.join(', ')}]) => (`,
     });
     if (macro === '$memo') {
       edits.push({ start: call.end - 1, end: call.end - 1, text: ')' });
     } else {
+      // The second argument becomes an option: the guard of a gate, or the wait of a timed value.
       edits.push({ start: argument.end, end: argument.end, text: ')' });
-      if (macro === '$throttled') {
-        edits.push({ start: extra!.end, end: extra!.end, text: ', true' });
-      }
+      const key = macro === '$gate' ? 'g' : 'm';
+      edits.push({ start: extra!.start, end: extra!.start, text: `{ ${key}: ` });
+      edits.push({
+        start: extra!.end,
+        end: extra!.end,
+        text: macro === '$throttled' ? ', t: true }' : ' }',
+      });
     }
   }
 
@@ -942,12 +936,6 @@ function plan(
   }
   if (usesDerived) {
     names.push(`${HELD} as ${DERIVED}`);
-  }
-  if (usesGated) {
-    names.push(`gated as ${GATED}`);
-  }
-  if (usesTimed) {
-    names.push(`timed as ${TIMED}`);
   }
   if (names.length > 0) {
     header.push(`import { ${names.join(', ')} } from '${STORE_MODULE}';`);

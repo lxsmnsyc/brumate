@@ -1,7 +1,7 @@
 // Contexts that components provide and read, and the values that the runtime provides to the
 // whole page.
 
-import { HAS_BRIDGES, HAS_ROUTES } from '../features.ts';
+import { HAS_BRIDGES, HAS_MODULE_MEMOS, HAS_ROUTES } from '../features.ts';
 import { NAVIGATION_KEY, ROUTE_KEY, missingContext } from '../context.ts';
 import type { Context as ContextValue, Route } from '../context.ts';
 import { MemoError, madeStores } from '../shared.ts';
@@ -147,6 +147,11 @@ function subscribeSlot(
   const listener = (value: unknown): void => {
     sendContext(() => writeSlot(scope, slot, holds ? read() : value));
   };
+  // A memo of a module takes the value that the server sent, so the browser loads nothing on
+  // resume. One that computes at once checks it against its own sources.
+  if (HAS_MODULE_MEMOS && repair && holds) {
+    (found as { s?: (value: unknown) => void }).s?.(scope.s[slot]);
+  }
   // A bridged store repairs the slot itself, against what the server sent, since its source
   // starts at the first subscriber.
   let bridged = false;

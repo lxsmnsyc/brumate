@@ -1,0 +1,13 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { peeked, peekThenBump } from './parity.brm.ts';
+  import ParityView from './ParityView.brm';
+
+  let open = $signal(false);
+</script>
+
+<button class="show" onClick=(() => (peekThenBump(), (open = true)))>Show</button>
+<p class="peeked">{peeked}</p>
+#if (open) {
+  <ParityView />
+}

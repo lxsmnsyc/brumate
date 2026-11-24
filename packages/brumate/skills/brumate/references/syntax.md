@@ -311,7 +311,7 @@ export function add(price: number): void {
 
 - A component cannot write what it imports. Write it in a function that the module exports, such as `add`. The same forms work in `<script module>`, and the component writes a signal of its own `<script module>` in its script.
 - `$effect`, `$client` and the other compile-time functions cannot run at the top level of a module, nor can a destructuring write such as `[count] = values` (BRM211). Put them in a component, or in a module function.
-- A module memo can load, as `$memo(await fetchUser(id))`: it loads once for every importer, and a component reads it as its own memo, with `#loading`, `$isPending` and `$resolve`.
+- A module memo can load, as `$memo(await fetchUser(id))`: it loads once for every importer, for the latest values of its signals, and a component reads it as its own memo, with `#loading`, `$isPending` and `$resolve`. A gate or timed value of a module over it waits for it.
 - A `.ts` file that imports a module signal gets its store, not its value (BRM208). Read the value in an exported function of the module.
 - A module signal is one value for the whole server process, shared by every request. Keep per-request data in a context.
 

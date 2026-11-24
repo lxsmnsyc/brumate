@@ -5,4 +5,5 @@
 <p class="w-id">{id}</p>
 <button class="w-two" onClick=(() => setId(2))>Two</button>
 <button class="w-three" onClick=(() => setId(3))>Three</button>
+<button class="w-four" onClick=(() => setId(4))>Four</button>
 <button class="w-fail" onClick=(() => setId(13))>Fail</button>

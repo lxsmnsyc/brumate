@@ -1,0 +1,9 @@
+<script>
+  import { config } from './config.brm.ts';
+</script>
+
+#try {
+  <p class="theme">{config.theme}</p>
+} #catch (error) {
+  <p class="down">{String(error)}</p>
+}

@@ -1,4 +1,4 @@
-import { $memo, $signal } from 'brumate/signals';
+import { $debounced, $gate, $memo, $signal, $throttled } from 'brumate/signals';
 
 /** The loads that each memo started, in this instance of the module. */
 export const calls: { user: number; label: number; steps: number } = {
@@ -46,6 +46,16 @@ export const steps: string = $memo(countTo(id));
 /** A memo of the module that reads a memo that loads. */
 export const shout: string = $memo(user.name.toUpperCase());
 
+/** The forms over a memo that loads. The gate refuses user 4. */
+export const gatedName: string = $gate(user.name, (_, next) => next !== 'user 4');
+export const slowName: string = $debounced(user.name, 20);
+export const steadyName: string = $throttled(user.name, 20);
+
 export function setId(next: number): void {
   id = next;
+}
+
+/** Module code that reads the memo, as a handler calls it. */
+export function logName(): string {
+  return user.name;
 }

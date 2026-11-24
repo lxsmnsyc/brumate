@@ -26,3 +26,12 @@
 - Shared-load rule chosen: one load per set of source values for the process, shared while out and after; a failed load is held until a source changes. A retry on the server after a failure was dropped: two components of one request would each start a load.
 - Not built: seeding the browser store from the slot of an importer, so module code that reads the memo in the browser loads it once. Noted in the docs and the outcome.
 - `heldDerived` removed: nothing calls it now; its unit test runs on `memoStore`.
+
+### Review of #531 (head 746969be)
+
+- Fixed: a sync memo kept a stale value when a component followed it after a source changed (follow at 0 -> 1 checks the sources once it has run).
+- Fixed: the page state no longer carries source values. The `$store` slot holds the value, and the browser store takes it on resume through `subscribeSlot` (feature `moduleMemos`), as a bridged store does. A value that loaded goes as a promise in the prop-promise wrapper, since the browser replaces a plain promise in a slot with its value, and a sync value is computed again in the browser to repair a value of other sources (the #530 repair test).
+- Fixed: `$gate`, `$debounced` and `$throttled` compile to `memoStore` with options, so they wait for a memo that loads, and the importer reads them as memos. `gated`, `timed` and the `hold` path of `build` removed.
+- Fixed: module code that reads the memo after resume gets the server value, with no load.
+- Fixed: a failed load on the server is shared by the renders that read its run; `brumate.render` (the call results of a render) tells the renders apart. It is set with `??=` because the test loads a second copy of the server runtime.
+- `onServer()` is false after an `await` of a render in happy-dom, so `i.get` tells server from browser by whether the store has a subscriber.

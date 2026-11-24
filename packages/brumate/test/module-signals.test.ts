@@ -19,7 +19,7 @@ import { findError } from '../src/error-catalog.ts';
 import { findSignalImports, transformModuleSignals } from '../src/module-signals.ts';
 import { resolveFromDisk } from '../src/modules.ts';
 import { render as renderParts } from '../src/runtime/server.ts';
-import { derived, gated, memoStore, pendingOf, store, timed } from '../src/runtime/store.ts';
+import { derived, memoStore, pendingOf, store } from '../src/runtime/store.ts';
 
 const input = resolve(import.meta.dirname, 'module-signals');
 const output = resolve(import.meta.dirname, '.output/module-signals');
@@ -741,6 +741,121 @@ describe('an async memo of a module', () => {
   });
 });
 
+describe('a module memo that the browser reads after resume', () => {
+  it('runs module code that reads it, with no load and no throw', async () => {
+    await resume('AsyncPage.brm');
+    const browser = (await import(file('user.brm.ts'))) as UserModule & { logName(): string };
+    // The components have resumed and given the module the values of the server.
+    await sleep(20);
+    expect(browser.logName()).toBe('user 1');
+    await sleep(30);
+    expect(browser.calls.user).toBe(0);
+  });
+
+  it('runs a gate, a debounced and a throttled value over a memo that loads', async () => {
+    const onServer = (await import(file('user.brm.ts'))) as UserModule;
+    const html = await resume('AsyncFormsPage.brm');
+    // The page waits for the gate, and #loading streams the timed values.
+    expect(html).toMatch(/class="f-gated"[^>]*>user 1<\/p>/);
+    expect(onServer.calls.user).toBe(1);
+    expect(text('.f-slow')).toBe('user 1');
+    expect(text('.f-steady')).toBe('user 1');
+    const browser = (await import(file('user.brm.ts'))) as UserModule;
+    await sleep(30);
+    expect(browser.calls.user).toBe(0);
+    // A change loads once, and each form takes the value: the debounced one after its wait.
+    click('.w-three');
+    await vi.waitFor(() => expect(text('.f-gated')).toBe('user 3'), { timeout: 2000 });
+    await vi.waitFor(() => expect(text('.f-slow')).toBe('user 3'), { timeout: 2000 });
+    await vi.waitFor(() => expect(text('.f-steady')).toBe('user 3'), { timeout: 2000 });
+    expect(browser.calls.user).toBe(1);
+    // The gate refuses user 4 and keeps its value, the others take it.
+    click('.w-four');
+    await vi.waitFor(() => expect(text('.f-slow')).toBe('user 4'), { timeout: 2000 });
+    expect(text('.f-gated')).toBe('user 3');
+  });
+
+  it('renders the forms over a memo that loads on the server, also after it settled', async () => {
+    await serverHtml('AsyncForms.brm');
+    await sleep(30);
+    const html = await serverHtml('AsyncForms.brm');
+    expect(html).toMatch(/class="f-gated"[^>]*>user 1<\/p>/);
+    expect(html).toMatch(/class="f-slow"[^>]*>user 1<\/p>/);
+    expect(html).not.toContain('f-wait');
+  });
+});
+
+describe('a sync module memo that a component reads late', () => {
+  it('computes again after a source changed while nothing followed it', () => {
+    const tick = store(0);
+    const parity = memoStore([tick], ([value]) => (value % 2 ? 'odd' : 'even'));
+    expect(parity.get()).toBe('even');
+    tick.set(1);
+    const stopFace = parity.i.subscribe(() => {});
+    expect(parity.p()).toBe('odd');
+    stopFace();
+    tick.set(2);
+    const stopFollow = parity.f(() => {});
+    expect(parity.get()).toBe('even');
+    stopFollow();
+  });
+
+  it('gives the current value to a component that a block opens', async () => {
+    for (const round of [1, 2]) {
+      stop?.();
+      document.body.innerHTML = '';
+      vi.resetModules();
+      // oxlint-disable-next-line no-await-in-loop -- Each round resumes the page again.
+      await resume('ParityPage.brm');
+      click('.show');
+      // oxlint-disable-next-line no-await-in-loop -- The block opens after the click.
+      await vi.waitFor(() => expect(text('.parity')).toBe('odd'), { timeout: 2000 });
+      expect(`${round}: ${text('.peeked')}`).toBe(`${round}: even`);
+    }
+  });
+});
+
+/** The page state of a render. */
+async function pageState(name: string): Promise<string> {
+  const server = await import(file(`${name}.ts`));
+  return (await renderParts(server.default, {})).state;
+}
+
+describe('the page state of an imported module memo', () => {
+  it('sends the value, not the sources: a class instance in a source renders and resumes', async () => {
+    const html = await serverHtml('BoxView.brm');
+    expect(html).toMatch(/class="boxed"[^>]*>6<\/p>/);
+    await resume('BoxView.brm');
+    expect(text('.boxed')).toBe('6');
+    click('.grow');
+    await vi.waitFor(() => expect(text('.boxed')).toBe('8'), { timeout: 2000 });
+  });
+
+  it('does not grow with the sources of the memo', async () => {
+    const state = await pageState('RowsView.brm');
+    expect(state).toContain('5000');
+    expect(state.length).toBeLessThan(600);
+  });
+});
+
+describe('a failed load of a module memo on the server', () => {
+  it('goes to the requests that read it, and a later request loads again', async () => {
+    const config = (await import(file('config.brm.ts'))) as {
+      calls: { config: number; failures: number };
+    };
+    const first = await serverHtml('ConfigPage.brm');
+    // Two readers of one render share the load and its error.
+    expect(config.calls.config).toBe(1);
+    expect(first.match(/class="down"/g)).toHaveLength(2);
+    const second = await serverHtml('ConfigPage.brm');
+    expect(config.calls.config).toBe(2);
+    expect(second.match(/class="theme"[^>]*>dark</g)).toHaveLength(2);
+    // The value is kept: a third request loads nothing.
+    await serverHtml('ConfigPage.brm');
+    expect(config.calls.config).toBe(2);
+  });
+});
+
 describe('the stores of the forms', () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -780,7 +895,7 @@ describe('the stores of the forms', () => {
     // A store of a user with a field `q` is no pending store.
     expect(pendingOf({ q: new Set(), n: true })).toBeUndefined();
     expect(pendingOf({ [Symbol.for('brumate.pending')]: { q: 1 } })).toBeUndefined();
-    expect(pendingOf(timed(store(1), (value) => value, 10))).toBeDefined();
+    expect(pendingOf(memoStore(store(1), (value) => value, { m: 10 }))).toBeDefined();
   });
 
   it('$gate keeps its value when the guard says no, and runs no reader', async () => {
@@ -819,15 +934,14 @@ describe('the stores of the forms', () => {
         "import { $gate, $signal } from 'brumate/signals';\nexport let a = $signal(1);\nexport const g = $gate(Promise.resolve(a), () => true);",
       ),
     );
-    expect(code).toContain('$$gated([a], ([a]) => (Promise.resolve(a)), () => true)');
-    // The compiled call, run by hand: a source store and the function that the call gives.
-    const g = gated(
-      store(1),
-      (value) => Promise.resolve(value),
-      () => true,
-    );
+    expect(code).toContain('$$derived([a], ([a]) => (Promise.resolve(a)), { g: () => true })');
+    // The compiled call, run by hand: a source store and the function that the call gives. The
+    // error is held, as any error of the store, so the reader's #try gets it.
+    const g = memoStore(store(1), (value) => Promise.resolve(value), { g: () => true });
     expect(() => g.get()).toThrow('The value of $gate is a promise or a stream');
-    expect(() => g.subscribe(() => {})).toThrow('The value of $gate is a promise or a stream');
+    const stopWatching = g.subscribe(() => {});
+    expect(() => g.get()).toThrow('The value of $gate is a promise or a stream');
+    stopWatching();
   });
 
   it('$debounced waits for the input to stop, and is pending meanwhile', async () => {
