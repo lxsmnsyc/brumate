@@ -1,7 +1,7 @@
 ---
 id: module-signal-forms
 title: $gate, $debounced, $throttled, $optimistic and $untrack at the top level of a module
-status: active
+status: done
 priority: must
 type: feature
 story:
