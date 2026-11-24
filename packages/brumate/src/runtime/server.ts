@@ -2131,7 +2131,7 @@ function unsendable(error: unknown, ctx: Context): Error {
     const kind = (target as object)?.constructor?.name ?? typeof target;
     // A memo of a module that loaded sends the values of its sources, by name.
     if (name.startsWith('$$ms_in_')) {
-      const sources = (record.s![index] as unknown[])[1];
+      const sources = (record.s![index] as { s?: unknown } | undefined)?.s;
       const signal = sourceHolding(sources, target);
       if (signal !== undefined) {
         return new Error(

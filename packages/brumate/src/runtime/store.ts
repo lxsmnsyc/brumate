@@ -574,6 +574,8 @@ export interface MemoStore<T> extends StoreLike<T> {
   a(): boolean;
   /** The values of the sources by name, through the memos that it reads, without computing. */
   r(): Record<string, unknown>;
+  /** The number of renders of the server that the store holds, which a test reads. */
+  h(): number;
   /** The listeners of the value, so a store that reads this one computes after them. */
   l: Set<(value: T) => void>;
   /** The number of derived stores below it. */
@@ -609,9 +611,66 @@ function peekStore(source: StoreLike<unknown>): unknown {
   }
 }
 
+/**
+ * The key of what the server sends in the slot of `.i` in place of a value: `0` for a value that
+ * the importer's memo sends, or the promise of a value that loaded, with its sources in `s`. A
+ * value of a memo never has the key, and a promise in an object stays a promise in the browser.
+ */
+const FACE = '$$ms';
+
 /** True for what the server sends for a value that loaded: its promise and its sources. */
-function isLoadedFace(value: unknown): value is [Promise<unknown>, Record<string, unknown>] {
-  return Array.isArray(value) && value.length === 2 && value[0] instanceof Promise;
+function isLoadedFace(
+  value: unknown,
+): value is { [FACE]: Promise<unknown>; s: Record<string, unknown> } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    (value as { [FACE]?: unknown })[FACE] instanceof Promise
+  );
+}
+
+/**
+ * True when two values of sources hold the same data, as the page state sends them: plain objects
+ * and arrays item by item, a date by its time, a map and a set by their entries, a regular
+ * expression by its source and flags, a typed array by its items, anything else by `Object.is`.
+ */
+function sameSource(a: unknown, b: unknown, open = new Set<object>()): boolean {
+  if (Object.is(a, b)) {
+    return true;
+  }
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) {
+    return false;
+  }
+  if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) {
+    return false;
+  }
+  // A value already under compare is a cycle, which counts as the same.
+  if (open.has(a)) {
+    return true;
+  }
+  open.add(a);
+  if (a instanceof Date) {
+    return Object.is(a.getTime(), (b as Date).getTime());
+  }
+  if (a instanceof RegExp) {
+    return a.source === (b as RegExp).source && a.flags === (b as RegExp).flags;
+  }
+  if (a instanceof Map || a instanceof Set || (ArrayBuffer.isView(a) && !(a instanceof DataView))) {
+    return sameSource([...(a as Iterable<unknown>)], [...(b as Iterable<unknown>)], open);
+  }
+  const left = Object.keys(a);
+  if (left.length !== Object.keys(b).length) {
+    return false;
+  }
+  for (const key of left) {
+    if (
+      !(key in b) ||
+      !sameSource((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key], open)
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /** The render of the server that runs now, so a failed load is shared within it only. */
@@ -650,8 +709,6 @@ export function memoStore<S extends Stores, T>(
   let readers: Set<object> | undefined;
   /** On the server: the error of a run that failed, for each render that read it. */
   const failed = new WeakMap<object, { error: unknown }>();
-  /** In the browser: the slot of an importer holds no value, so its memo computes again once. */
-  let fresh = false;
   /** On the server: the promise of a value that loaded, which the page state sends. */
   let sent: Promise<T> | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -712,10 +769,6 @@ export function memoStore<S extends Stores, T>(
   const show = (): unknown => {
     if (held) {
       throw held.error;
-    }
-    if (fresh) {
-      fresh = false;
-      return {};
     }
     return wait ? face.v : out.v;
   };
@@ -792,12 +845,14 @@ export function memoStore<S extends Stores, T>(
     const first = !has;
     held = failure;
     sent = undefined;
-    // The renders that read this run keep its error for the rest of their render.
+    // The renders that read this run keep its error for the rest of their render. The store keeps
+    // no render once the load ended.
     if (failure) {
       for (const render of readers ?? []) {
         failed.set(render, failure);
       }
     }
+    readers = undefined;
     if (!failure) {
       has = true;
       out.v = value as T;
@@ -983,8 +1038,10 @@ export function memoStore<S extends Stores, T>(
   };
 
   /**
-   * Notes the render of the server that reads the latest run. Returns the error that the render
-   * read before, which it keeps, though a later render loaded again.
+   * Notes the render of the server that reads the latest run: while it loads, so its error goes to
+   * the render, and once it failed, as the render's own error. Returns the error that the render
+   * read before, which it keeps, though a later render loaded again. A render that reads a value
+   * is not kept.
    */
   const note = (): { error: unknown } | undefined => {
     const render = currentRender();
@@ -992,10 +1049,15 @@ export function memoStore<S extends Stores, T>(
       return undefined;
     }
     const kept = failed.get(render);
-    if (!kept) {
-      (readers ??= new Set()).add(render);
+    if (kept) {
+      return kept;
     }
-    return kept;
+    if (wait) {
+      (readers ??= new Set()).add(render);
+    } else if (held) {
+      failed.set(render, held);
+    }
+    return undefined;
   };
 
   const state: Computed = {
@@ -1118,6 +1180,7 @@ export function memoStore<S extends Stores, T>(
       return false;
     },
     r: record,
+    h: () => readers?.size ?? 0,
     i: {
       get(): unknown {
         // The browser subscribes the slot before it reads it. The server only reads.
@@ -1127,20 +1190,21 @@ export function memoStore<S extends Stores, T>(
         // A value that loaded goes as a promise with the values of its sources, so the browser
         // takes it without computing while its own sources are the same. A value that computes at
         // once goes as a marker, since the memo of the importer sends it, and the browser computes
-        // it again; an object goes as it is, which the page state sends once for both.
+        // it again and writes the slot of each importer; an object goes as it is, which the page
+        // state sends once for both, and which the browser compares.
         ensure(true);
         if (note() || (held && !wait)) {
           return undefined;
         }
         if (!wait && !memo.a()) {
-          return typeof out.v === 'object' && out.v !== null ? out.v : 0;
+          return typeof out.v === 'object' && out.v !== null ? out.v : { [FACE]: 0 };
         }
         // The memo of the importer sends the error itself, so this one is generic. A promise in an
-        // array stays a promise in the browser, which puts the value of a promise slot in its place.
+        // object stays a promise in the browser, which puts the value of a promise slot in its place.
         const promise = (wait ? wait.promise : (sent ??= Promise.resolve(out.v))).catch(() => {
           throw new Error('The page could not compute a value');
         });
-        return [promise, record()];
+        return { [FACE]: promise, s: record() };
       },
       subscribe(listener: (value: unknown) => void): () => void {
         return listen(face, listener);
@@ -1151,17 +1215,16 @@ export function memoStore<S extends Stores, T>(
           return;
         }
         if (!isLoadedFace(value)) {
-          // It computed at once on the server, so it does here, and a value that differs, such as
-          // one of other sources, is written to the page. A marker in the slot makes the memo of
-          // the importer compute again, as nothing compares with it.
+          // It computed at once on the server, so it does here. The repair of each importer's slot
+          // writes a value that differs, such as one of other sources, and the marker, which no
+          // value equals.
           compute();
-          fresh = typeof value !== 'object' || value === null;
           return;
         }
         // A value that loaded of other sources than the browser's, such as a signal that a server
         // function wrote on the server, loads again here, and the old value stays meanwhile.
-        const [promise, serverSources] = value;
-        if (!sameData(serverSources, record())) {
+        const promise = value[FACE];
+        if (!sameSource(value.s, record())) {
           compute();
           return;
         }

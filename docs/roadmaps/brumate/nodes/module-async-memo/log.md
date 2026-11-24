@@ -43,3 +43,10 @@
 - A source of a loaded memo that cannot be sent: `unsendable` in `server.ts` names the source and the memo.
 - `brumate.render` is now the calls map itself, which `withEvent` writes and restores on `globalThis`, so every copy agrees.
 - A failed run is kept per render (`failed`, a WeakMap); a render that read it gets its error for the rest of the render, also after a later render loaded again.
+
+### Review round 3 (522dc843)
+
+- `readers` held every render's calls map for a memo that never recomputes. Now it holds renders only while a load is out: `finish` copies it into `failed` on a failure and clears it, and a render that reads a held error goes into `failed` directly. `h()` gives its size for the test.
+- The sync marker is `{ $$ms: 0 }`, which no value equals, so the repair of each importer writes its slot (the `fresh` flag of round 2 served the first importer only).
+- A loaded value goes as `{ $$ms: promise, s: sources }`; a sync value that holds a promise is no longer read as one that loaded.
+- Sources compare with `sameSource`: dates by time, maps and sets by entries, regular expressions by source and flags, typed arrays by items. `sameData` of the shared paths is unchanged.

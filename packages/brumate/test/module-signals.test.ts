@@ -861,6 +861,82 @@ describe('the page state of an imported module memo', () => {
   });
 });
 
+describe('the repair of a sync module memo with two importers', () => {
+  afterEach(() => {
+    delete (globalThis as { tallySeed?: number[] }).tallySeed;
+  });
+
+  it('writes the value of the browser in both, when it is 0', async () => {
+    const onServer = (await import(file('tally.brm.ts'))) as { fill(n: number): void };
+    onServer.fill(5);
+    const html = await resume('CountPage.brm');
+    expect(html).toMatch(/class="count-a"[^>]*>5<\/p>/);
+    await vi.waitFor(() => expect(text('.count-a')).toBe('0'), { timeout: 2000 });
+    await vi.waitFor(() => expect(text('.count-b')).toBe('0'), { timeout: 2000 });
+    // A sync value that holds a promise is a value, not one that loaded.
+    expect(text('.pair')).toBe('pair');
+  });
+
+  it('writes the value of the browser in both, when it is not 0', async () => {
+    await import(file('tally.brm.ts'));
+    (globalThis as { tallySeed?: number[] }).tallySeed = [1, 2];
+    await resume('CountPage.brm');
+    await vi.waitFor(() => expect(text('.count-a')).toBe('2'), { timeout: 2000 });
+    await vi.waitFor(() => expect(text('.count-b')).toBe('2'), { timeout: 2000 });
+  });
+});
+
+describe('the sources of a loaded module memo, as the page state sends them', () => {
+  it('a date, a set, a map and NaN that did not change load nothing', async () => {
+    await resume('StampView.brm');
+    const browser = (await import(file('stamp.brm.ts'))) as { calls: { stamp: number } };
+    expect(text('.stamped')).toBe('0 a 1 NaN');
+    await sleep(30);
+    expect(browser.calls.stamp).toBe(0);
+  });
+
+  it('a date that changed on the server loads once in the browser', async () => {
+    const onServer = (await import(file('stamp.brm.ts'))) as { touch(): void };
+    onServer.touch();
+    await resume('StampView.brm');
+    expect(text('.stamped')).toBe('1 a 1 NaN');
+    const browser = (await import(file('stamp.brm.ts'))) as { calls: { stamp: number } };
+    await vi.waitFor(() => expect(text('.stamped')).toBe('0 a 1 NaN'), { timeout: 2000 });
+    await sleep(30);
+    expect(browser.calls.stamp).toBe(1);
+  });
+});
+
+describe('the renders that a module memo holds on the server', () => {
+  it('holds none once a load ended, however many renders read it', async () => {
+    const RENDER = Symbol.for('brumate.render');
+    const global = globalThis as Record<symbol, unknown>;
+    const memo = memoStore(store(1), async (value) => {
+      await sleep(5);
+      return value;
+    });
+    /** Reads the memo as a render of the server does. */
+    function readIn(render: object): unknown {
+      global[RENDER] = render;
+      try {
+        return memo.p();
+      } finally {
+        delete global[RENDER];
+      }
+    }
+    const first = readIn({});
+    readIn({});
+    // Two renders wait for the load, so its error would reach them.
+    expect(memo.h()).toBe(2);
+    await first;
+    expect(memo.h()).toBe(0);
+    for (let index = 0; index < 300; index++) {
+      readIn({});
+    }
+    expect(memo.h()).toBe(0);
+  });
+});
+
 describe('a module memo that loaded on the server with other sources', () => {
   it('loads once in the browser, with its own sources, and keeps the old value meanwhile', async () => {
     const onServer = (await import(file('user.brm.ts'))) as UserModule;

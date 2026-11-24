@@ -1,0 +1,7 @@
+<script>
+  import CountA from './CountA.brm';
+  import CountB from './CountB.brm';
+</script>
+
+<CountA />
+<CountB />
