@@ -24,5 +24,6 @@ export type { CheckMapping, CheckOutput } from './check.ts';
 export { formatReport, inspect, report } from './inspect.ts';
 export type { InspectEntry, InspectOptions, InspectReport } from './inspect.ts';
 export { generateShared, sharedSites, SHARED_QUERY } from './shared-module.ts';
+export { transformModuleSignals } from './module-signals.ts';
 export type { SharedSite } from './shared-module.ts';
 export type { ReactiveModule, ResolveModule } from './modules.ts';

@@ -1,0 +1,8 @@
+<script>
+  import { tracker } from './cart.brm.ts';
+
+  const { size, push } = tracker();
+</script>
+
+<p class="size">{size}</p>
+<button class="push" onClick=push>Push</button>

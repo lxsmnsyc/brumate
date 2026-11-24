@@ -22,6 +22,7 @@ import type { oxc } from './oxc.ts';
 import { finish } from './sourcemap.ts';
 import type { SourceMap } from './sourcemap.ts';
 import { Patch } from './codegen/patch.ts';
+import { planModuleSignals } from './module-signals.ts';
 
 /** The query of the shared module of a module of reactive logic. */
 export const SHARED_QUERY = '?brumate-shared';
@@ -86,6 +87,9 @@ function analyze(module: ReactiveModule): Analysis {
     }
   }
   const sites = new Map<number, { site: SharedSite; node: oxc.Node; locals: Set<string> }>();
+  // The signals and memos that the module declares. Code that reads one reads a store, which a
+  // component compiles itself, so that code is not shared.
+  const signals = planModuleSignals(info.program, module.source, false, module.path)?.signals;
   for (const fn of info.functions.values()) {
     const body = fn.body;
     if (body?.type !== 'BlockStatement') {
@@ -177,6 +181,13 @@ function analyze(module: ReactiveModule): Analysis {
         }
       }
       check(node);
+      if (signals) {
+        forEachReference(node, (identifier) => {
+          if (signals.has(identifier.name) && !locals.has(identifier.name)) {
+            shareable = false;
+          }
+        });
+      }
       if (!shareable) {
         continue;
       }

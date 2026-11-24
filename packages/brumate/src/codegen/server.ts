@@ -69,7 +69,16 @@ export function generateServer(file: SFCFile, plan: Plan): string {
   for (const declaration of bodyMemos(plan, blocking, inline)) {
     lazy.add(declaration);
   }
-  addValueEdits(patch, file, model.sites, 'server', inline, lazy, model.component.id);
+  addValueEdits(
+    patch,
+    file,
+    model.sites,
+    'server',
+    inline,
+    lazy,
+    model.component.id,
+    !plan.hideNames,
+  );
   addEventEdits(patch, model);
   function source(node: { start: number; end: number }): string {
     return patch.slice(node.start, node.end);
@@ -152,7 +161,8 @@ export function generateServer(file: SFCFile, plan: Plan): string {
     );
   }
 
-  if (plan.styles.css) {
+  // With `styleFiles`, the stylesheet is a CSS module that the bundles of the build import.
+  if (plan.styles.css && !plan.styleFiles) {
     // A build (`hideNames`) sends the stylesheet without comments and whitespace.
     const css = plan.hideNames ? minifyCSS(plan.styles.css) : plan.styles.css;
     moduleBody.push(`const $$css = ${JSON.stringify(css)};`);

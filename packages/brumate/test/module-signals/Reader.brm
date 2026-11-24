@@ -1,0 +1,6 @@
+<script>
+  import { bump, count } from './Shared.brm';
+</script>
+
+<p class="reader">{count}</p>
+<button class="bump" onClick=(() => bump())>Bump</button>

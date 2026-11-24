@@ -77,6 +77,10 @@ export interface Plan {
    * component inserts them: the export of their render, such as `n0`, and their scope.
    */
   childrenRenders: Map<ComponentNode | DynamicTagNode, { symbol: string; scope: Scope }>;
+  /** True when the markup holds a `<script src>` or `<script inline>`, which the emit sets. */
+  scripts: boolean;
+  /** True when markup holds `viewTransition` or `viewTransitionName`, which the emit sets. */
+  viewTransitions: boolean;
   /**
    * The component whose children hold a block, for the blocks in children. The browser renders
    * the new bodies of such a block with the contexts of that component, as the server does.
@@ -93,6 +97,11 @@ export interface Plan {
   liveBlocks: Set<Body>;
   /** True when server function IDs hash the names of the functions. */
   hideNames: boolean;
+  /**
+   * True when the stylesheet is a style module of its own (`styleFiles`), so the render and
+   * server modules leave it out.
+   */
+  styleFiles: boolean;
   /** Errors in markup that the client could not update. */
   diagnostics: Diagnostic[];
 }
@@ -420,7 +429,13 @@ export function clientState(
   return { isLiveSite, clientSites, slots };
 }
 
-export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames = false): Plan {
+export function createPlan(
+  file: SFCFile,
+  graph: Graph,
+  path?: string,
+  hideNames = false,
+  styleFiles = false,
+): Plan {
   const model = graph.model;
   const name = getComponentName(file.filename);
   const bodyScopes = new Map<Body, Scope>();
@@ -826,6 +841,7 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     styles,
     liveBlocks,
     hideNames,
+    styleFiles,
     scopes,
     bodyScopes,
     anchors,
@@ -835,6 +851,8 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     elementItems,
     symbols,
     childrenRenders,
+    scripts: false,
+    viewTransitions: false,
     blockHolders,
     clientSites,
     diagnostics,

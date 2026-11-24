@@ -206,11 +206,12 @@ async function save() {
 - When the inputs of the memo change while it waits, it waits for the load of the current inputs. A load that the change replaced never resolves it, so writing an input and then awaiting `$resolve` gives the result for the new input.
 - It rejects with the error of the memo, when `timeout` milliseconds pass, or when `signal` aborts.
 - Call it in a handler, an effect or a `$client` callback. It is a compile error where a memo computes or markup renders. It takes a memo only, not a signal.
-- An effect callback cannot be `async`, so an effect uses `.then`:
+- An effect whose run needs the value is [`async`](./effects.md#async-effects):
 
   ```ts
-  $effect(() => {
-    $resolve(user).then((profile) => send(profile.name));
+  $effect(async () => {
+    const profile = await $resolve(user);
+    send(profile.name);
   });
   ```
 

@@ -1,0 +1,8 @@
+<script>
+  import { add, watcher } from './cart.brm.ts';
+
+  const { seen } = watcher();
+</script>
+
+<p class="seen">{seen}</p>
+<button class="add" onClick=(() => add(7))>Add</button>

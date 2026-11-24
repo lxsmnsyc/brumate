@@ -526,6 +526,10 @@ export type GlobalAttributes<E> = Handlers<E> &
     popover?: Attr<boolean | '' | Keyword<'auto' | 'manual' | 'hint'>>;
     spellcheck?: Attr<boolean | '' | Keyword<'true' | 'false'>>;
     tabindex?: Attr<Num>;
+    /** A class for the element in a view transition. It is named only while a transition runs. */
+    viewTransition?: Attr<string>;
+    /** The name of the element in a view transition, to pair it with one of the next page. */
+    viewTransitionName?: Attr<string>;
     translate?: Attr<'' | Keyword<'yes' | 'no'>>;
     writingsuggestions?: Attr<boolean | '' | Keyword<'true' | 'false'>>;
     autocorrect?: Attr<boolean | '' | Keyword<'on' | 'off'>>;
@@ -1222,6 +1226,10 @@ export interface Elements {
       referrerpolicy?: Attr<Referrer>;
       fetchpriority?: Attr<Keyword<'high' | 'low' | 'auto'>>;
       blocking?: Attr<'render' | (string & {})>;
+      /** Marks code that is written in the file, between the tags. The compiler does not read it. */
+      inline?: Attr<boolean>;
+      /** When the script of a `src` or `inline` runs. Without it, a script outside `#head` runs at `load`. */
+      trigger?: Attr<'idle' | 'visible' | 'interaction' | 'load'>;
     }
   >;
   search: Html<'search'>;

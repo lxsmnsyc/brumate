@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
-import { check, errorCount, formatRecord, parseTypeOutput } from '../src/check-command.ts';
+import { check, errorCount, formatRecord } from '../src/check-command.ts';
 import type { CheckRecord } from '../src/check-command.ts';
 import { compile } from '../src/index.ts';
 import { ERRORS, errorLink, findError, renderErrorsPage } from '../src/error-catalog.ts';
@@ -217,14 +217,14 @@ describe('check', () => {
   });
 });
 
-const TSC_BIN = fileURLToPath(new URL('../../tsc/bin/brumate-tsc.js', import.meta.url));
+const TSC_MODULE = fileURLToPath(new URL('../../tsc/dist/index.js', import.meta.url));
 const TSC_BUILT = existsSync(fileURLToPath(new URL('../../tsc/dist/index.js', import.meta.url)));
 const FIXTURE = fileURLToPath(new URL('../../tsc/test/fixture', import.meta.url));
 
 // The type checker needs the build of @brumate/tsc, like the tests of that package.
 describe.skipIf(!TSC_BUILT)('type check', () => {
   it('reports type errors of .brm files with the other problems', async () => {
-    const { records } = await check(FIXTURE, { tscBin: TSC_BIN });
+    const { records } = await check(FIXTURE, { tscModule: TSC_MODULE });
     const types: CheckRecord[] = [];
     let first: CheckRecord | undefined;
     for (const record of records) {
@@ -244,46 +244,45 @@ describe.skipIf(!TSC_BUILT)('type check', () => {
 
 describe('a type check that fails', () => {
   function typed(script: string): ReturnType<typeof check> {
-    const root = project({ 'A.brm': GOOD, 'tsconfig.json': '{}', 'tsc.js': script });
-    return check(root, { tscBin: join(root, 'tsc.js') });
+    const root = project({ 'A.brm': GOOD, 'tsconfig.json': '{}', 'tsc.mjs': script });
+    return check(root, { tscModule: join(root, 'tsc.mjs') });
   }
 
-  it('is an error when the process is killed', async () => {
-    const { records } = await typed("process.kill(process.pid, 'SIGKILL');");
+  it('is an error when checkProject throws', async () => {
+    const { records } = await typed("export function checkProject() { throw new Error('boom'); }");
     expect(errorCount(records)).toBe(1);
-    expect(records[0]!.message).toContain('SIGKILL');
+    expect(records[0]!.message).toBe('The type check did not finish: boom');
   });
 
-  it('is an error when it ends with a status and prints nothing', async () => {
-    const { records } = await typed('process.exitCode = 3;');
-    expect(errorCount(records)).toBe(1);
-    expect(records[0]!.message).toContain('status 3');
+  it('is skipped with a note when the module has no checkProject', async () => {
+    const { records, notes } = await typed('export function run() {}');
+    expect(records).toEqual([]);
+    expect(notes).toEqual([
+      'The type check was skipped: update @brumate/tsc to a version with checkProject, or pass --no-types.',
+    ]);
   });
 
-  it('is an error when it prints more than the buffer holds', async () => {
-    const { records } = await typed("process.stdout.write('x'.repeat(70 * 1024 * 1024));");
+  it('is an error when the module does not load', async () => {
+    const { records } = await typed('export const = ;');
     expect(errorCount(records)).toBe(1);
     expect(records[0]!.message).toContain('did not finish');
   });
-});
 
-describe('type output', () => {
-  it('reads the lines of the type checker', () => {
-    const output = [
-      "src/App.brm(9,19): error TS2322: Type 'string' is not assignable to type 'number'.",
-      '  The types of the property are not compatible.',
-      'src/App.brm(2,1): error BRM: Unexpected closing tag',
-      "error TS5057: Cannot find a tsconfig.json file at 'x'.",
-      '',
-    ].join('\n');
-    const records = parseTypeOutput(output, '/project');
+  it('keeps TypeScript records and drops syntax errors of the compiler', async () => {
+    const { records } = await typed(`export function checkProject() {
+      const place = { start: { line: 2, column: 3 }, end: { line: 2, column: 6 } };
+      return [
+        { file: 'A.brm', range: place, severity: 'error', message: 'Bad', code: 'TS2322' },
+        { file: 'A.brm', range: place, severity: 'error', message: 'Syntax', code: 'BRM031' },
+        { file: null, range: null, severity: 'warning', message: 'Global', code: 'TS6000' },
+      ];
+    }`);
     expect(records).toEqual([
       {
-        file: 'src/App.brm',
-        range: { start: { line: 9, column: 19 }, end: { line: 9, column: 19 } },
+        file: 'A.brm',
+        range: { start: { line: 2, column: 3 }, end: { line: 2, column: 6 } },
         severity: 'error',
-        message:
-          "Type 'string' is not assignable to type 'number'.\n  The types of the property are not compatible.",
+        message: 'Bad',
         code: 'TS2322',
         link: null,
         source: 'typescript',
@@ -291,9 +290,9 @@ describe('type output', () => {
       {
         file: null,
         range: null,
-        severity: 'error',
-        message: "Cannot find a tsconfig.json file at 'x'.",
-        code: 'TS5057',
+        severity: 'warning',
+        message: 'Global',
+        code: 'TS6000',
         link: null,
         source: 'typescript',
       },

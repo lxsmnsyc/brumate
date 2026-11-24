@@ -1,0 +1,22 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  async function save(title: string) {
+    'use server';
+    return title.length;
+  }
+
+  let total = $signal(0);
+
+  async function press() {
+    total = await save('milk');
+  }
+
+  function fail() {
+    throw new Error('broken handler');
+  }
+</script>
+
+<button class="save" onClick=press>Save {total}</button>
+<button class="fail" onClick=fail>Fail</button>
+<a class="item" href="/items/7?secret=1">Item</a>

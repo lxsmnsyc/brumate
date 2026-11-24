@@ -660,12 +660,6 @@ const SCRIPT: ErrorEntry[] = [
     '$effect(() => {\n  document.title = title;\n});',
   ),
   entry(
-    'BRM096',
-    'The callback of {name} cannot be async',
-    'The callback of `$effect` or `$client` is `async`.',
-    '$effect(() => {\n  load(id).then((value) => (data = value));\n});',
-  ),
-  entry(
     'BRM097',
     '$effect takes one argument',
     '`$effect` has more than one argument.',
@@ -787,8 +781,8 @@ const SCRIPT: ErrorEntry[] = [
   ),
   entry(
     'BRM117',
-    'Cannot assign to {kind} "{name}"',
-    'Code writes a memo, a const prop or another value that cannot change.',
+    'Cannot assign to {kind} "{name}"{hint}',
+    'Code writes a memo, a const prop, a module signal of an import or another value that cannot change.',
     'let count = $signal(0);\ncount = 5;',
   ),
   entry(
@@ -1236,6 +1230,54 @@ const MODULES: ErrorEntry[] = [
     '{name} reads {local}, which {specifier} does not export. Export it, so the component can import it',
     'A module function reads a value of its module that is not exported.',
     'export const STEP = 1;',
+  ),
+  entry(
+    'BRM211',
+    '{name} cannot be compiled in a module{reason}. {fix}',
+    'A module uses a form that its signals and memos cannot compile: a compile-time function such as `$effect` at the top level, a memo that awaits or calls a function it cannot follow, or a signal in a destructuring write.',
+    'export let count = $signal(0);\nexport const double = $memo(count * 2);',
+  ),
+  entry(
+    'BRM208',
+    '"{name}" is a signal of {module}, and a file of plain code gets its store, not its value. {fix}',
+    'A `.ts` or `.js` file imports a signal or a memo that a module declares at its top level. TypeScript types it as its value, and it is a store.',
+    "// cart.brm.ts\nexport let items = $signal<number[]>([]);\nexport function count(): number {\n  return items.length;\n}\n\n// plain.ts\nimport { count } from './cart.brm.ts';",
+  ),
+  entry(
+    'BRM209',
+    '"{name}" is written only by this effect. Use {form}',
+    'A warning. An `$effect` only assigns signals that nothing else writes, so each signal is a memo written the long way, and the page updates twice for one change. With one assignment and no `if`, the message gives the memo. An effect with a call, an `await`, a cleanup or a signal that a handler, another effect or a `$bind` also writes stays quiet.',
+    'let count = $signal(0);\nconst message = $memo(`Clicked ${count} times`);',
+  ),
+  entry(
+    'BRM212',
+    'A <script> with src is not inline. Give it src or inline, not both',
+    'A `<script>` in markup has both `src` and `inline`. `src` loads a file, and `inline` marks code that is written in the file.',
+    '<script src="https://example.com/chat.js" trigger="idle"></script>',
+  ),
+  entry(
+    'BRM213',
+    'A <script> with src has no code inside. Write the code in <script inline>',
+    'A `<script src>` in markup has text inside. The browser ignores it.',
+    '<script inline trigger="idle">\n  window.dataLayer = [];\n</script>',
+  ),
+  entry(
+    'BRM214',
+    'The trigger of a <script> is a plain string: idle, visible, interaction or load',
+    'The `trigger` of a `<script>` in markup is code in braces, has no value, or names another trigger.',
+    '<script src="https://example.com/chat.js" trigger="interaction"></script>',
+  ),
+  entry(
+    'BRM215',
+    'A script in #head cannot wait to be visible, since no element follows it. Use idle or interaction',
+    'A `<script trigger="visible">` is in `#head`. `visible` waits for the element after the script to come into view.',
+    '#head {\n  <script src="https://example.com/chat.js" trigger="idle"></script>\n}',
+  ),
+  entry(
+    'BRM216',
+    'A script with a trigger runs once per page, so data-rerun does not apply. Remove one of them',
+    'A `<script>` in markup has `trigger` and `data-rerun`. A script with a trigger never runs again after a navigation.',
+    '<script src="https://example.com/chat.js" trigger="idle"></script>',
   ),
 ];
 

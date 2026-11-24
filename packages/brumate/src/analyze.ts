@@ -23,6 +23,7 @@ import type {
   TemplateDecl,
 } from './ast.ts';
 import { isWithin, lookup, upstreamMemos } from './model.ts';
+import type { SignalName } from './module-signals.ts';
 import { KEY_NAMES } from './runtime/events.ts';
 import type {
   Declaration,
@@ -209,6 +210,139 @@ const TYPE_WRAPPERS = new Set([
 ]);
 
 type Fn = oxc.Function | oxc.ArrowFunctionExpression;
+
+interface EffectCopies {
+  assignments: oxc.AssignmentExpression[];
+  /** True when an `if` is in the body. */
+  branches: boolean;
+  /** The right sides and the tests, which must not read an assigned name. */
+  reads: oxc.Node[];
+}
+
+/** The names that every path of a statement assigns. */
+function assignedOnEveryPath(node: oxc.Node): Set<string> {
+  const names = new Set<string>();
+  switch (node.type) {
+    case 'BlockStatement':
+      for (const statement of node.body) {
+        for (const name of assignedOnEveryPath(statement)) {
+          names.add(name);
+        }
+      }
+      break;
+    case 'ExpressionStatement':
+    case 'ParenthesizedExpression':
+      return assignedOnEveryPath(node.expression);
+    case 'SequenceExpression':
+      for (const expression of node.expressions) {
+        for (const name of assignedOnEveryPath(expression)) {
+          names.add(name);
+        }
+      }
+      break;
+    case 'AssignmentExpression':
+      if (node.left.type === 'Identifier') {
+        names.add(node.left.name);
+      }
+      break;
+    case 'IfStatement':
+      if (node.alternate) {
+        const other = assignedOnEveryPath(node.alternate);
+        for (const name of assignedOnEveryPath(node.consequent)) {
+          if (other.has(name)) {
+            names.add(name);
+          }
+        }
+      }
+      break;
+  }
+  return names;
+}
+
+/** True when an identifier of the expression has one of the names. */
+function mentionsName(node: oxc.Node, names: Set<string>): boolean {
+  if (node.type === 'Identifier' && names.has(node.name)) {
+    return true;
+  }
+  for (const [, child] of children(node)) {
+    if (mentionsName(child, names)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * True when a statement only assigns identifiers, maybe under `if` and inside blocks, with no
+ * call, `await`, function, loop or `throw`. Collects the assignments.
+ */
+function collectCopies(node: oxc.Node, found: EffectCopies): boolean {
+  switch (node.type) {
+    case 'BlockStatement':
+      for (const statement of node.body) {
+        if (!collectCopies(statement, found)) {
+          return false;
+        }
+      }
+      return true;
+    case 'EmptyStatement':
+      return true;
+    case 'ExpressionStatement':
+      return collectCopies(node.expression, found);
+    case 'IfStatement':
+      found.branches = true;
+      found.reads.push(node.test);
+      return (
+        isPure(node.test) &&
+        collectCopies(node.consequent, found) &&
+        (!node.alternate || collectCopies(node.alternate, found))
+      );
+    case 'SequenceExpression':
+      for (const expression of node.expressions) {
+        if (!collectCopies(expression, found)) {
+          return false;
+        }
+      }
+      return true;
+    case 'AssignmentExpression':
+      // A compound operator reads the name, which a memo cannot do.
+      if (node.left.type !== 'Identifier' || node.operator !== '=' || !isPure(node.right)) {
+        return false;
+      }
+      found.reads.push(node.right);
+      found.assignments.push(node);
+      return true;
+    case 'ParenthesizedExpression':
+      return collectCopies(node.expression, found);
+    default:
+      return false;
+  }
+}
+
+/** True for an expression with no call, `await`, `new`, function, tagged template or assignment. */
+function isPure(node: oxc.Node): boolean {
+  switch (node.type) {
+    case 'CallExpression':
+    case 'NewExpression':
+    case 'TaggedTemplateExpression':
+    case 'AwaitExpression':
+    case 'YieldExpression':
+    case 'AssignmentExpression':
+    case 'UpdateExpression':
+    case 'ImportExpression':
+    case 'ArrowFunctionExpression':
+    case 'FunctionExpression':
+    case 'ClassExpression':
+      return false;
+    default:
+      for (const [, child] of children(node)) {
+        if (!isPure(child)) {
+          return false;
+        }
+      }
+      return true;
+  }
+}
 
 function isFunction(node: oxc.Node | null | undefined): node is Fn {
   return (
@@ -400,8 +534,11 @@ function readProvidedValues(value: oxc.Node): oxc.Node[] {
   return [value];
 }
 
-export function analyze(file: SFCFile): SemanticModel {
-  return new Analyzer(file).run();
+export function analyze(
+  file: SFCFile,
+  moduleSignals: ReadonlyMap<string, SignalName> = new Map(),
+): SemanticModel {
+  return new Analyzer(file, moduleSignals).run();
 }
 
 class Analyzer {
@@ -429,8 +566,12 @@ class Analyzer {
   private readonly module: Scope;
   private readonly component: Scope;
 
-  constructor(file: SFCFile) {
+  /** The names that read a module signal, with the module of the signal that an import gives. */
+  private readonly moduleSignals: ReadonlyMap<string, SignalName>;
+
+  constructor(file: SFCFile, moduleSignals: ReadonlyMap<string, SignalName>) {
     this.file = file;
+    this.moduleSignals = moduleSignals;
     this.module = this.createScope('module', undefined);
     this.component = this.createScope('component', this.module);
   }
@@ -483,6 +624,7 @@ class Analyzer {
     this.check();
     this.checkPromises();
     this.checkStoreSources();
+    this.checkEffectCopies();
 
     return {
       module: this.module,
@@ -796,6 +938,83 @@ class Analyzer {
           `The prop "${declaration.propKey}" is Bindable, but the component reads it with const and never writes it. Destructure it with let`,
           declaration.range,
         );
+      }
+    }
+  }
+
+  /**
+   * Warns about a signal that only an `$effect` writes, when the effect does nothing else: the
+   * signal is a memo written the long way. Any call, `await`, loop or cleanup ends the check, and
+   * so does a write of the signal anywhere else, which makes it state.
+   */
+  private checkEffectCopies(): void {
+    for (const site of this.sites) {
+      if (site.kind !== 'effect' || !isFunction(site.node)) {
+        continue;
+      }
+      const body = site.node.body;
+      if (!body) {
+        continue;
+      }
+      const copy = {
+        assignments: [] as oxc.AssignmentExpression[],
+        branches: false,
+        reads: [] as oxc.Node[],
+      };
+      if (!collectCopies(body, copy) || copy.assignments.length === 0) {
+        continue;
+      }
+      // A memo has no previous value: every assigned name is set on every path, and no value
+      // that the effect reads is a name that it assigns.
+      const assigned = new Set<string>();
+      for (const node of copy.assignments) {
+        assigned.add((node.left as oxc.IdentifierReference).name);
+      }
+      const every = assignedOnEveryPath(body);
+      let equivalent = true;
+      for (const name of assigned) {
+        equivalent &&= every.has(name);
+      }
+      for (const read of copy.reads) {
+        equivalent &&= !mentionsName(read, assigned);
+      }
+      if (!equivalent) {
+        continue;
+      }
+      // Each assignment writes a signal of this component that no other site writes.
+      const targets: { name: string; node: oxc.AssignmentExpression }[] = [];
+      let copies = true;
+      for (const node of copy.assignments) {
+        const target = node.left as oxc.IdentifierReference;
+        const write = site.writes.find(
+          (item) => item.range.start === target.start && item.range.end === target.end,
+        );
+        const declaration = write?.declaration;
+        if (
+          !declaration ||
+          declaration.kind !== 'signal' ||
+          declaration.bound ||
+          declaration.searchParam ||
+          declaration.optimistic ||
+          declaration.writes.some((item) => item.site !== site)
+        ) {
+          copies = false;
+          break;
+        }
+        targets.push({ name: declaration.name, node });
+      }
+      if (!copies) {
+        continue;
+      }
+      const single = copy.assignments.length === 1 && !copy.branches;
+      const reported = new Set<string>();
+      for (const { name, node } of targets) {
+        if (reported.has(name)) {
+          continue;
+        }
+        reported.add(name);
+        const form = single ? `const ${name} = $memo(...)` : 'a $memo';
+        this.report('warning', `"${name}" is written only by this effect. Use ${form}`, node);
       }
     }
   }
@@ -1810,9 +2029,6 @@ class Analyzer {
     if (callback.params.length > 0) {
       this.report('error', `The callback of ${name} takes no parameters`, callback);
     }
-    if (callback.async) {
-      this.report('error', `The callback of ${name} cannot be async`, callback);
-    }
     if (name === '$effect') {
       if (call.arguments.length > 1) {
         this.report('error', '$effect takes one argument', call);
@@ -2206,6 +2422,27 @@ class Analyzer {
     }
   }
 
+  /**
+   * The advice for a write of a name that reads a module signal, or undefined for any other name.
+   * A module cannot be written through an import, so the advice is a function that writes it.
+   */
+  private moduleSignalHint(declaration: Declaration): { kind: string; text: string } | undefined {
+    if (declaration.kind !== 'context' || !this.moduleSignals.has(declaration.name)) {
+      return undefined;
+    }
+    const { specifier, memo } = this.moduleSignals.get(declaration.name)!;
+    if (memo) {
+      return { kind: 'module memo', text: '. A memo is read-only' };
+    }
+    return {
+      kind: 'module signal',
+      text:
+        specifier === undefined
+          ? ''
+          : `. Export a function from ${specifier} that writes it, and call that function`,
+    };
+  }
+
   private check(): void {
     for (const declaration of this.declarations) {
       if (declaration.kind === 'action') {
@@ -2223,9 +2460,12 @@ class Analyzer {
       for (const write of site.writes) {
         const declaration = write.declaration;
         if (!WRITABLE.has(declaration.kind) && !declaration.writable && !declaration.store?.write) {
+          const signal = this.moduleSignalHint(declaration);
+          const kind = signal?.kind ?? declaration.kind;
+          const hint = signal?.text ?? '';
           this.report(
             'error',
-            `Cannot assign to ${declaration.kind} "${declaration.name}"`,
+            `Cannot assign to ${kind} "${declaration.name}"${hint}`,
             write.range,
           );
         } else if (

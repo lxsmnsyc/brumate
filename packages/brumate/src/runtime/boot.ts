@@ -6,10 +6,20 @@
 // This file keeps its arrow functions and its Array methods, for size: the loader ships to every
 // page, and the function declarations and loops measured 20 to 50 bytes of gzip larger.
 
-import { HAS_ACTIONS, HAS_BLOCKS, HAS_LATE_MARKUP, HAS_LISTENERS } from './features.ts';
+import {
+  HAS_ACTIONS,
+  HAS_BLOCKS,
+  HAS_LATE_MARKUP,
+  HAS_LISTENERS,
+  HAS_SCRIPTS,
+} from './features.ts';
+import { trustedScript } from './trusted.ts';
 import type * as Client from './client.ts';
 import type { ClientModule, DevtoolsHooks } from './client.ts';
 import type { SerialEntry } from './values.ts';
+import { TRACE } from './trace-flag.ts';
+import { setTraceHandler, traceEvent } from './trace-browser.ts';
+import type { TraceHandler } from './trace.ts';
 
 /** True on the dev server. A Vite build replaces it with `false`, so the devtools calls go. */
 const DEV = (import.meta as { env?: { DEV?: boolean } }).env?.DEV;
@@ -49,6 +59,23 @@ export interface LoaderOptions {
    * gets a `brumate:error` event on `window` and the error is logged.
    */
   onError?: (error: unknown, info: { scope?: number | string }) => void;
+  /**
+   * Receives a span for each event with the load and the run of its handler, for each server
+   * function that the page calls and for each navigation. See `TraceSpan`.
+   *
+   * - A server function call and a navigation send `traceparent` to the same origin, so the spans
+   *   of the server join the trace. A request to another origin sends none, and neither does a
+   *   page that a link loaded early (before the click, so it cannot join a trace). A request that
+   *   the server redirects to another origin keeps the header.
+   * - A call or a navigation joins the trace of a handler only when the handler makes it before
+   *   its first `await`. Handlers overlap, so a later call could belong to another handler. A
+   *   call after an `await`, from a memo or from a form, is the root of a trace of its own.
+   * - A span has no argument, result, query string or form value. A navigation has the route
+   *   pattern, such as `/items/[id]`, once the page arrives, and none when it fails.
+   * - The Vite plugin leaves the code out of a build whose entry does not pass `onTrace` to the
+   *   loader. See the `trace` option of the plugin when the entry is elsewhere.
+   */
+  onTrace?: TraceHandler;
 }
 
 export interface NavigateOptions {
@@ -132,6 +159,36 @@ export interface Navigation {
 }
 
 /**
+ * Applies the stylesheets of the bundles that the first load only preloaded (`b-sheet`), so the
+ * page does not wait for them to paint. They load after the page, for the components that the
+ * browser renders later and for navigation.
+ */
+function applySheets(): void {
+  const apply = (): void => {
+    for (const link of document.querySelectorAll<HTMLLinkElement>('link[rel=preload][b-sheet]')) {
+      // The loader may have linked it for a component that it renders.
+      let have = false;
+      for (const other of document.querySelectorAll<HTMLLinkElement>('link[rel~=stylesheet]')) {
+        have ||= other.href === link.href;
+      }
+      if (have) {
+        link.remove();
+      } else {
+        // A stylesheet like any other from here on.
+        link.rel = 'stylesheet';
+        link.removeAttribute('as');
+        link.removeAttribute('b-sheet');
+      }
+    }
+  };
+  if (document.readyState === 'complete') {
+    apply();
+  } else {
+    addEventListener('load', apply, { once: true });
+  }
+}
+
+/**
  * Starts resuming the page. Listens to the events in `b-on` attributes
  * and loads `brumate/client` and the component's module on the first one.
  * `navigate` adds client navigation, and returns how to import the core.
@@ -146,6 +203,15 @@ export function boot(
   // hooks that this loader gave it. A new loader can reuse the IDs of client scopes, so a stale
   // start would run in a scope of the new page.
   let stopped = false;
+  // True once the core started, so an event after it has no code of the core to wait for.
+  let coreReady = false;
+  if (TRACE) {
+    setTraceHandler(options.onTrace);
+  } else if (DEV && options.onTrace) {
+    console.warn(
+      'onTrace is set, but the build leaves the spans of the browser out. Set `trace: true` in the options of the brumate plugin.',
+    );
+  }
   /** The event types that the document listens to, and whether each listener is passive. */
   const types = new Map<string, boolean>();
   const removers: (() => void)[] = [];
@@ -185,6 +251,7 @@ export function boot(
   const loadCore = (): Promise<Core> =>
     (core ??= Promise.all([load(), loadSerial()]).then(([client, serial]) => {
       client.init({ ...options, load: loadModule, listen: scanInsert, inserted, serial });
+      coreReady = true;
       return client;
     }));
 
@@ -195,7 +262,18 @@ export function boot(
     if (stopped) {
       return;
     }
-    void loadCore().then((client) => client.handle(element, ref, event));
+    const trace = TRACE ? traceEvent(event, ref, !coreReady) : undefined;
+    const started = loadCore().then((client) =>
+      client.handle(element, ref, event, undefined, trace),
+    );
+    if (TRACE && trace) {
+      started.catch((error: unknown) => {
+        trace.fail(error);
+        throw error;
+      });
+    } else {
+      void started;
+    }
   };
 
   /**
@@ -410,6 +488,50 @@ export function boot(
       );
     }
   };
+  const waiting: (() => void)[] = [];
+  const inputs = ['pointerdown', 'keydown', 'touchstart', 'scroll'];
+  // Runs `go` when the trigger fires. `visible` watches `next`, the element after the markers.
+  const when = (trigger: string, next: Element | null, go: () => void): void => {
+    if (trigger === 'idle') {
+      idle(go);
+    } else if (trigger === 'visible' && next && typeof IntersectionObserver !== 'undefined') {
+      const observer = new IntersectionObserver((records) => {
+        if (records.some((record) => record.isIntersecting)) {
+          observer.disconnect();
+          go();
+        }
+      });
+      observer.observe(next);
+    } else if (HAS_SCRIPTS && trigger === 'interaction') {
+      // One set of listeners serves every script that waits, so a block that closes first leaves
+      // only its entry in the list, which `go` drops once it sees the template is gone.
+      waiting.push(go);
+      if (waiting.length === 1) {
+        const fire = (): void => {
+          for (const type of inputs) {
+            removeEventListener(type, fire, true);
+          }
+          for (const run of waiting.splice(0)) {
+            run();
+          }
+        };
+        for (const type of inputs) {
+          listen(window, type, fire, { capture: true, passive: true });
+        }
+      }
+    } else {
+      go();
+    }
+  };
+  // The element after a marker that a trigger watches. Other markers can follow it, and a
+  // template has no box, so it is never in view.
+  const after = (template: Element): Element | null => {
+    let next = template.nextElementSibling;
+    while (next?.tagName === 'TEMPLATE') {
+      next = next.nextElementSibling;
+    }
+    return next;
+  };
   // A `#defer` block whose body the server sends in the same response, with `b-hole`, waits for it.
   const onBlock = (root: ParentNode, template: Element): void => {
     const client = template.getAttribute('b-client');
@@ -429,30 +551,64 @@ export function boot(
     };
     // The element that a `$client` callback reads through `ref` (`b-b`), or that a component
     // forwards to its signal (`b-r`), or the one after the marker.
-    // Other markers can follow it, and a template has no box, so it is never in view.
     const near = template.getAttribute('b-near');
-    let after = template.nextElementSibling;
-    while (after?.tagName === 'TEMPLATE') {
-      after = after.nextElementSibling;
-    }
     const selector = `[b-b="${near}"],[b-r="${near}"]`;
     const next =
-      (near && (root.querySelector(selector) ?? document.querySelector(selector))) || after;
-    if (trigger === 'idle') {
-      idle(go);
-    } else if (trigger === 'visible' && next && typeof IntersectionObserver !== 'undefined') {
-      const observer = new IntersectionObserver((records) => {
-        if (records.some((record) => record.isIntersecting)) {
-          observer.disconnect();
-          go();
-        }
-      });
-      observer.observe(next);
-    } else {
-      go();
-    }
+      (near && (root.querySelector(selector) ?? document.querySelector(selector))) ||
+      after(template);
+    when(trigger, next, go);
   };
-  const SCANNED = '[b-on],template[b-listen],template[b-client],template[b-defer]';
+  // A page runs a script once, by its `src` or by its code.
+  const loaded = new Set<string>();
+  // The nonce that the policy of the loaded page knows. A page that navigation brought has the
+  // nonce of its own response, which the policy does not.
+  const pageNonce = (template: Element): string | undefined => {
+    for (const script of document.scripts) {
+      if (script.nonce) {
+        return script.nonce;
+      }
+    }
+    return (template as HTMLElement).nonce || template.getAttribute('nonce') || undefined;
+  };
+  // A `<script>` of markup, as a template with the attributes of the script, and its code in an
+  // inert script. The browser runs a script that it inserts, once the trigger fires.
+  const onScript = (template: Element): void => {
+    const code = (template as HTMLTemplateElement).content?.firstElementChild?.textContent ?? '';
+    const src = template.getAttribute('src');
+    const url = src === null ? undefined : new URL(src, document.baseURI);
+    const key = url ? url.href : code;
+    const trigger = template.getAttribute('b-script')!;
+    const run = (): void => {
+      // Markup that is gone, such as a page that navigation replaced, starts no script.
+      if (loaded.has(key) || !template.isConnected) {
+        return;
+      }
+      loaded.add(key);
+      const script = document.createElement('script');
+      for (const { name, value } of template.attributes) {
+        if (name === 'src') {
+          script.setAttribute(name, trustedScript(value, true));
+        } else if (!name.startsWith('b-') && name !== 'nonce') {
+          script.setAttribute(name, value);
+        }
+      }
+      const nonce = pageNonce(template);
+      if (nonce) {
+        script.nonce = nonce;
+        // A DOM without the property, such as in tests, reads the attribute.
+        script.setAttribute('nonce', nonce);
+      }
+      if (src === null) {
+        script.textContent = trustedScript(code);
+      }
+      document.head.append(script);
+    };
+    // The core scans markup before it is in the page, so `load` waits a moment for the insert.
+    when(trigger, after(template), () => (trigger === 'load' ? queueMicrotask(run) : run()));
+  };
+  const SCANNED =
+    '[b-on],template[b-listen],template[b-client],template[b-defer]' +
+    (HAS_SCRIPTS ? ',template[b-script]' : '');
   // One query of the markup for everything that the loader starts. The blocks start after the
   // rest, as they did when each kind had its own query.
   const scan = (root: ParentNode): void => {
@@ -462,7 +618,9 @@ export function boot(
     const blocks: Element[] = [];
     for (const element of select(root, SCANNED)) {
       if (element.tagName === 'TEMPLATE') {
-        if (HAS_LISTENERS && element.hasAttribute('b-listen')) {
+        if (HAS_SCRIPTS && element.hasAttribute('b-script')) {
+          onScript(element);
+        } else if (HAS_LISTENERS && element.hasAttribute('b-listen')) {
           onListener(element);
         } else if (
           HAS_BLOCKS &&
@@ -531,11 +689,15 @@ export function boot(
     observer?.takeRecords();
   };
 
+  applySheets();
   // The core starts at once and loads the code of the components on the page, so a call of a
   // function of another component, such as a function prop, runs at once and in order.
   void loadCore().catch(() => {});
   return () => {
     stopped = true;
+    if (TRACE) {
+      setTraceHandler(undefined);
+    }
     observer?.disconnect();
     for (const remove of removers.splice(0)) {
       remove();

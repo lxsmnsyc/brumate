@@ -29,11 +29,6 @@ export function resetIds(): void {
   nextId = -1;
 }
 
-/** Returns the instance of a scope by its ID. */
-export function getScope(id: ScopeId): Scope | undefined {
-  return scopes.get(id);
-}
-
 export function findRoot(scope: Scope): Scope {
   let current = scope;
   while (current.p) {

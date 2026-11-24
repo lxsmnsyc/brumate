@@ -22,6 +22,8 @@ declare const __BRUMATE_HAS_ROOT_WAIT__: boolean | undefined;
 declare const __BRUMATE_HAS_SEARCH_PARAMS__: boolean | undefined;
 declare const __BRUMATE_HAS_STORES__: boolean | undefined;
 declare const __BRUMATE_HAS_BRIDGES__: boolean | undefined;
+declare const __BRUMATE_HAS_SCRIPTS__: boolean | undefined;
+declare const __BRUMATE_HAS_VIEW_TRANSITIONS__: boolean | undefined;
 
 /** Children that the browser renders with an export of their own, each time they are inserted. */
 export const HAS_CHILDREN: boolean =
@@ -108,3 +110,11 @@ export const HAS_STORES: boolean =
 /** Stores of `bridge()`, which the page state holds. */
 export const HAS_BRIDGES: boolean =
   typeof __BRUMATE_HAS_BRIDGES__ === 'undefined' || __BRUMATE_HAS_BRIDGES__;
+
+/** `<script>` elements in markup, which the loader starts on their trigger. */
+export const HAS_SCRIPTS: boolean =
+  typeof __BRUMATE_HAS_SCRIPTS__ === 'undefined' || __BRUMATE_HAS_SCRIPTS__;
+
+/** `viewTransition` and `viewTransitionName` attributes, which get a name while a transition runs. */
+export const HAS_VIEW_TRANSITIONS: boolean =
+  typeof __BRUMATE_HAS_VIEW_TRANSITIONS__ === 'undefined' || __BRUMATE_HAS_VIEW_TRANSITIONS__;

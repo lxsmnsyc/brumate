@@ -123,6 +123,45 @@ export function clock() {
 }
 ```
 
+## Shared state at module level
+
+`$signal` and `$memo` also work at the top level of a `.brm.ts` module. They give one value for the module, which every component that imports it reads like its own signal.
+
+```brm live
+<script>
+  import { add, items, total } from './cart.brm.ts';
+</script>
+
+<button onClick=(() => add(5))>Add</button>
+<p>{items.length} items, {total}</p>
+```
+
+```ts live cart.brm.ts
+import { $memo, $signal } from 'brumate/signals';
+
+export let items: number[] = $signal<number[]>([]);
+export const total: number = $memo(items.reduce((sum, price) => sum + price, 0));
+
+export function add(price: number): void {
+  items = [...items, price];
+}
+```
+
+The module is compiled to the stores of `brumate/store`, so the feature adds no runtime. `let items = $signal(v)` becomes `store(v)`, and `$memo(expression)` becomes a `derived` store of the module signals that the expression reads. Code in the module reads a signal as `items.get()` and writes it as `items.set(…)`, and `$produce(items, recipe)` works as it does in a component.
+
+- A component reads an imported signal or memo like `$store(items)`. Reads render on the server, resume in the browser and update when the value changes.
+- A component cannot write what it imports, because an import is read-only. Write it in a function that the module exports, such as `add`. Assigning to `items` in the component is `Cannot assign to module signal "items"`, with that advice.
+- The same forms work in `<script module>`. A component writes a signal of its own `<script module>` in its script, since that is one file.
+- A function that a component copies with `const { … } = name()` reads a module signal like an imported store, and stays live.
+- A memo is lazy until something subscribes, and a memo over two module signals computes once per change.
+- A memo tracks the module signals that its expression reads, and those that the functions it calls read: functions of the module, and exported functions of other `.brm.ts` modules, followed through their calls. A function that the memo cannot follow is BRM211, with the advice to pass the signals as arguments.
+- A module reads a signal of another `.brm.ts` module like its own signal (`items.length`), and cannot write it: a write through an import is BRM117, so export a function from the module that owns it. The same holds for a `.brm` component that imports a signal of another component's `<script module>`.
+- A `.ts` file that imports a module signal gets the store, while TypeScript says the type of its value. `brumate check` reports that import as BRM208. Read the value in an exported function instead.
+- `$memo(await …)`, `$effect`, `$client` and the other compile-time functions cannot run at the top level of a module, and a signal cannot be the target of a destructuring write such as `[count] = values` (all BRM211). Put them in a component, or in a module function that a component calls.
+- A module function that a component copies can write the module signals of its own module: its writes go to the store.
+
+A module signal is one value for the whole server process, as `export const cart = store([])` is: two requests that write it share the value. A browser starts from the first value of its own module and repairs the page once if that differs from the value the server rendered. Keep per-request data in a context, which the framework holds for each request.
+
 ## Errors and types
 
 - An error in the code of the function points at the call in the component, and names the line in the module, as in `(in counter.brm.ts:7:5)`.

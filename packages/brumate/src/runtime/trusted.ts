@@ -7,12 +7,16 @@
 // escaped, and the scripts come from the server with the page, so the
 // policy passes them as they are.
 
+import { HAS_SCRIPTS } from './features.ts';
+
 /** The name of the policy, for `trusted-types brumate` in the policy of the site. */
 export const POLICY = 'brumate';
 
 interface Policy {
   createHTML(html: string): string;
   createScript(code: string): string;
+  /** Only with scripts in markup, so a build without them has no method. */
+  createScriptURL?(url: string): string;
 }
 
 /**
@@ -41,6 +45,7 @@ function ensure(): Policy | null {
       policy = factory.createPolicy(POLICY, {
         createHTML: (html) => html,
         createScript: (code) => code,
+        ...(HAS_SCRIPTS ? { createScriptURL: (url: string) => url } : {}),
       });
       factory[KEY] = policy;
     } catch (error) {
@@ -59,7 +64,14 @@ export function trustedHTML(html: string): string {
   return ensure()?.createHTML(html) ?? html;
 }
 
-/** The code of a script that came with the page, as the browser accepts it in a script's text. */
-export function trustedScript(code: string): string {
-  return ensure()?.createScript(code) ?? code;
+/**
+ * The code of a script that came with the page, as the browser accepts it in a script's text. With
+ * `url`, the `src` of a script of markup, as the browser accepts it in `script.src`. It is one
+ * function, so a build without scripts in markup has no code for the URL.
+ */
+export function trustedScript(code: string, url?: boolean): string {
+  const trusted = ensure();
+  return (
+    (HAS_SCRIPTS && url ? trusted?.createScriptURL?.(code) : trusted?.createScript(code)) ?? code
+  );
 }

@@ -5,6 +5,7 @@ import type {
   Branch,
   ClientTrigger,
   DynamicTagNode,
+  ElementNode,
   EventAttribute,
   Expression,
   ForBlock,
@@ -15,6 +16,7 @@ import type {
   RevealOrder,
   SFCFile,
   Script,
+  ScriptTrigger,
   Style,
   TemplateDecl,
 } from './ast.ts';
@@ -79,6 +81,12 @@ export const BRANCH_KEYWORDS: Set<string> = new Set(['else', 'catch', 'case', 'd
 
 const CLIENT_TRIGGERS = new Set<string>(['visible', 'idle', 'load']);
 
+const SCRIPT_TRIGGERS = new Set<string>(['idle', 'visible', 'interaction', 'load']);
+
+/** The open tag of a script that has `src` or `inline`, which makes it markup. */
+const MARKUP_SCRIPT = /^<script((?:[^>"'{]|"[^"]*"|'[^']*'|\{[^}]*\})*)>/;
+const MARKUP_SCRIPT_MARK = /(?:^|\s)(?:src|inline)(?=[\s=/>]|$)/;
+
 type Mode = 'file' | 'body' | 'element';
 
 export interface ParseOptions {
@@ -95,6 +103,8 @@ class Parser {
   private readonly source: string;
   private readonly fail: Fail;
   private readonly file: SFCFile;
+  /** How many `#head` blocks the parser is inside. */
+  private heads = 0;
 
   constructor(source: string, filename: string) {
     this.source = source;
@@ -230,6 +240,10 @@ class Parser {
       }
       if (this.startsWith('<!--')) {
         this.skipHTMLComment();
+        continue;
+      }
+      if (this.isTagStart('script') && this.isMarkupScript()) {
+        nodes.push(this.parseMarkupScript());
         continue;
       }
       if (this.isTagStart('script')) {
@@ -719,6 +733,91 @@ class Parser {
     return { script: { start, end: this.pos, program }, attributes };
   }
 
+  /** True for a `<script>` with `src` or `inline`, which is markup and not the script of a component. */
+  private isMarkupScript(): boolean {
+    const tag = MARKUP_SCRIPT.exec(this.source.slice(this.pos, this.pos + 2000));
+    return tag !== null && MARKUP_SCRIPT_MARK.test(tag[1]!);
+  }
+
+  /** Parses a `<script src>` or `<script inline>` in markup. */
+  private parseMarkupScript(): ElementNode {
+    const start = this.pos;
+    this.pos += '<script'.length;
+    const close = '</script>';
+    const attributes = this.parseAttributes('element');
+    if (this.startsWith('/>')) {
+      this.fail(`Expected ${close}`, this.pos);
+    }
+    this.pos++;
+    const contentStart = this.pos;
+    const contentEnd = this.source.indexOf(close, contentStart);
+    if (contentEnd === -1) {
+      this.fail(`Expected ${close}`, contentStart);
+    }
+    this.pos = contentEnd + close.length;
+    const text = this.source.slice(contentStart, contentEnd);
+
+    let src = false;
+    let inline = false;
+    let rerun = false;
+    let trigger: ScriptTrigger | undefined;
+    for (const attribute of attributes) {
+      if (
+        attribute.kind === 'spread' ||
+        attribute.kind === 'computed' ||
+        attribute.kind === 'ref'
+      ) {
+        continue;
+      }
+      if (attribute.name === 'src') {
+        src = true;
+      } else if (attribute.name === 'inline') {
+        inline = true;
+      } else if (attribute.name === 'data-rerun') {
+        rerun = true;
+      } else if (attribute.name === 'trigger') {
+        if (
+          attribute.kind !== 'static' ||
+          typeof attribute.value !== 'string' ||
+          !SCRIPT_TRIGGERS.has(attribute.value)
+        ) {
+          this.fail(
+            'The trigger of a <script> is a plain string: idle, visible, interaction or load',
+            attribute.start,
+          );
+        }
+        trigger = attribute.value as ScriptTrigger;
+      }
+    }
+    if (src && inline) {
+      this.fail('A <script> with src is not inline. Give it src or inline, not both', start);
+    }
+    if (src && text.trim() !== '') {
+      this.fail('A <script> with src has no code inside. Write the code in <script inline>', start);
+    }
+    if (trigger === 'visible' && this.heads > 0) {
+      this.fail(
+        'A script in #head cannot wait to be visible, since no element follows it. Use idle or interaction',
+        start,
+      );
+    }
+    if (trigger && rerun) {
+      this.fail(
+        'A script with a trigger runs once per page, so data-rerun does not apply. Remove one of them',
+        start,
+      );
+    }
+    return {
+      kind: 'element',
+      start,
+      end: this.pos,
+      tag: 'script',
+      attributes,
+      children: inline ? [{ kind: 'text', start: contentStart, end: contentEnd, value: text }] : [],
+      script: { trigger, inline, head: this.heads > 0 },
+    };
+  }
+
   private parseTopLevelScript(): void {
     const start = this.pos;
     const { script, attributes } = this.parseScriptBlock();
@@ -855,7 +954,7 @@ class Parser {
     this.pos++;
     this.skipTrivia();
     let script: Script | undefined;
-    if (this.isTagStart('script')) {
+    if (this.isTagStart('script') && !this.isMarkupScript()) {
       const scriptStart = this.pos;
       const parsed = this.parseScriptBlock();
       if (Object.keys(parsed.attributes).length > 0) {
@@ -973,8 +1072,12 @@ class Parser {
         const fallback = this.parseBranch('else') ? this.parseBody('else') : undefined;
         return { kind: 'loading', start, end: this.pos, on, body, fallback };
       }
-      case 'head':
-        return { kind: 'head', start, end: this.pos, body: this.parseBody('head') };
+      case 'head': {
+        this.heads++;
+        const body = this.parseBody('head');
+        this.heads--;
+        return { kind: 'head', start, end: this.pos, body };
+      }
       case 'reveal':
         return this.parseReveal(start);
       case 'portal': {

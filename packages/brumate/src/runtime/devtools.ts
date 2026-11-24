@@ -190,6 +190,8 @@ export interface EffectEntry {
   time: number;
   cleanups: number;
   lastCleanup?: number;
+  /** True while a run of an async callback has not settled. */
+  pending?: boolean;
   /** False once its cleanup ran and it has not run again, such as in a removed scope. */
   active: boolean;
 }
@@ -590,7 +592,12 @@ export function installDevtools(
         state.effects.set(key, entry);
       }
       const now = performance.now();
-      if (kind === 'run') {
+      if (kind === 'pending') {
+        entry.pending = true;
+      } else if (kind === 'skip') {
+        entry.pending = false;
+      } else if (kind === 'run') {
+        entry.pending = false;
         entry.runs++;
         entry.time += time;
         entry.recent.push(now);

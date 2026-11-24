@@ -9,8 +9,8 @@ const ERROR = 1;
 const WARNING = 2;
 
 function toDiagnostic(document: TextDocument, diagnostic: CompilerDiagnostic): Diagnostic {
-  // An error with an entry in the catalog has a code and a page that explains it.
-  const entry = diagnostic.severity === 'error' ? findError(diagnostic.message) : undefined;
+  // An error or a warning with an entry in the catalog has a code and a page that explains it.
+  const entry = findError(diagnostic.message);
   return {
     severity: diagnostic.severity === 'error' ? ERROR : WARNING,
     message: diagnostic.message,

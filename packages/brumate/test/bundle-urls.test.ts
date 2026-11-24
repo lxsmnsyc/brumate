@@ -233,16 +233,19 @@ describe('the bundle URLs from the server', () => {
     expect(other.toSorted()).toEqual([chunk('Layout'), chunk('Other')].toSorted());
   });
 
-  it('link to the stylesheets of the bundles of the page', async () => {
+  it('link a sheet with a CSS file of a module in its chunk, which blocks the paint', async () => {
     const link = /<link rel="stylesheet" href="([^"]+\.css)">/;
     const html = await page('/other');
     const [, href] = link.exec(html)!;
     expect(readFileSync(`${app}dist/client${href}`, 'utf8')).toContain('teal');
+    // It holds a CSS file that is not component CSS, so it is no preload.
+    expect(html).not.toContain(`rel="preload" as="style" b-sheet href="${href}"`);
     // The records name it too, for the loader, which adds it when the page has no link to it.
     expect(loads(html)).toContain(href);
     expect(await page('/')).not.toMatch(link);
-    // Navigation keeps the stylesheets of the next page in its head.
-    expect(await page('/other', { 'x-brumate-base': '20' })).toContain(href);
+    // Navigation keeps the stylesheets of the next page in its head, and waits for them.
+    const navigation = await page('/other', { 'x-brumate-base': '20' });
+    expect(navigation).toContain(`<link rel="stylesheet" href="${href}">`);
   });
 
   it('name the bundles of the next page for client navigation', async () => {

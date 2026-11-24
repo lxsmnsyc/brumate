@@ -566,6 +566,203 @@ export async function run({ browser, url, runner }) {
         }
       },
     );
+    await flow(
+      '/: a navigation waits for the stylesheets of the next page, and links each URL once',
+      async () => {
+        await page.goto(`${url}/`, { waitUntil: 'load' });
+        // The client applies the stylesheets that the first load only preloaded, after `load`.
+        // Their requests must be over before the test delays the ones of the navigation.
+        await page.waitForFunction(
+          () =>
+            !document.querySelector('link[rel=preload][b-sheet]') &&
+            [...document.querySelectorAll('link[rel~="stylesheet"]')].every((link) => link.sheet),
+          undefined,
+          { timeout: 5000 },
+        );
+        await page.evaluate(() => {
+          window.__e2eSamePage = true;
+          // The moment the docs page is in the document, all its stylesheets must have applied.
+          // A stylesheet that blocks rendering also holds the frames, so the check does not wait
+          // for one.
+          window.__e2eFrames = { docs: 0, pending: 0 };
+          const watcher = new MutationObserver(() => {
+            if (document.querySelector('.docs .sidebar') && window.__e2eFrames.docs === 0) {
+              window.__e2eFrames.docs = 1;
+              for (const link of document.querySelectorAll('link[rel~="stylesheet"]')) {
+                if (!link.sheet) {
+                  window.__e2eFrames.pending += 1;
+                }
+              }
+              watcher.disconnect();
+            }
+          });
+          watcher.observe(document.documentElement, { childList: true, subtree: true });
+        });
+        const requested = [];
+        const record = (request) => {
+          if (request.url().endsWith('.css')) {
+            requested.push(request.url());
+          }
+        };
+        page.on('request', record);
+        // The stylesheets that the home page did not load come late.
+        await page.route('**/*.css', async (route) => {
+          await new Promise((resolve) => setTimeout(resolve, 400));
+          // The test can unroute while a delayed request is pending, which makes it already handled.
+          await route.continue().catch((error) => {
+            if (!String(error).includes('already handled')) {
+              throw error;
+            }
+          });
+        });
+        try {
+          await page.locator('.header-nav a', { hasText: 'Docs' }).click();
+          await page.waitForURL(`${url}/docs`, { timeout: 5000 });
+          await page.locator('.docs .sidebar').waitFor({ timeout: 5000 });
+          await page.waitForTimeout(300);
+        } finally {
+          await page.unroute('**/*.css');
+          page.off('request', record);
+        }
+        const frames = await page.evaluate(() => window.__e2eFrames);
+        assert(requested.length > 0, 'the navigation loaded no stylesheet, so nothing was delayed');
+        assert(frames.docs > 0, 'the docs page did not appear');
+        assert(
+          frames.pending === 0,
+          `${frames.pending} stylesheets were still loading when the docs page appeared`,
+        );
+        assert(
+          await page.evaluate(() => window.__e2eSamePage === true),
+          'the link loaded a new page',
+        );
+        const links = await page.evaluate(() =>
+          [...document.querySelectorAll('link[rel~="stylesheet"]')].map((link) => link.href),
+        );
+        assert(
+          new Set(links).size === links.length,
+          `the page links a stylesheet twice: ${links.join(' ')}`,
+        );
+        const twice = requested.filter((href, index) => requested.indexOf(href) !== index);
+        assert(twice.length === 0, `a stylesheet loaded twice: ${twice.join(' ')}`);
+        // Going back is a navigation too: the home page keeps one link for each URL.
+        await page.goBack();
+        await page.waitForURL(`${url}/`, { timeout: 5000 });
+        const back = await page.evaluate(() =>
+          [...document.querySelectorAll('link[rel~="stylesheet"]')].map((link) => link.href),
+        );
+        assert(
+          new Set(back).size === back.length,
+          `the page links a stylesheet twice: ${back.join(' ')}`,
+        );
+      },
+    );
+    await flow('/: a stylesheet that never answers does not hold the navigation', async () => {
+      await page.goto(`${url}/`, { waitUntil: 'load' });
+      // The stylesheet of the docs comes after 6 s, and the navigation waits at most 4 s.
+      await page.route('**/DocsShell*.css', async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 6000));
+        await route.continue().catch(() => {});
+      });
+      try {
+        const started = Date.now();
+        await page.locator('.header-nav a', { hasText: 'Docs' }).click();
+        await page.waitForURL(`${url}/docs`, { timeout: 5500 });
+        await page.locator('.docs .sidebar').waitFor({ timeout: 5500 });
+        assert(Date.now() - started < 5500, 'the navigation waited for the slow stylesheet');
+        // Let the stylesheet arrive before the next flow.
+        await page.waitForTimeout(2500);
+      } finally {
+        await page.unroute('**/DocsShell*.css');
+      }
+    });
+    await flow('/: a visit that a newer one replaced does not swap or leave', async () => {
+      await page.goto(`${url}/`, { waitUntil: 'load' });
+      await page.evaluate(() => {
+        window.__e2eSeen = false;
+        new MutationObserver(() => {
+          // The address changes in the swap of a visit.
+          if (location.pathname === '/docs') {
+            window.__e2eSeen = true;
+          }
+        }).observe(document.documentElement, { childList: true, subtree: true });
+      });
+      await page.route('**/DocsShell*.css', async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        await route.continue().catch(() => {});
+      });
+      try {
+        // The docs link, then another page before the first has its stylesheets.
+        await page.locator('.header-nav a', { hasText: 'Docs' }).click();
+        await page.waitForTimeout(300);
+        await page.locator('.header-nav a[href="/ui"]').click();
+        await page.waitForURL(`${url}/ui`, { timeout: 5000 });
+        await page.waitForTimeout(2500);
+      } finally {
+        await page.unroute('**/DocsShell*.css');
+      }
+      assert(page.url() === `${url}/ui`, `the page is ${page.url()}`);
+      assert(!(await page.evaluate(() => window.__e2eSeen)), 'the replaced visit swapped in');
+      // The page of the newer visit still works: a link goes back to the home page and its demo runs.
+      await page.locator('.header-nav a[href="/docs"]').click();
+      await page.waitForURL(`${url}/docs`, { timeout: 5000 });
+      await page.locator('.brand').click();
+      await page.waitForURL(`${url}/`, { timeout: 5000 });
+      const button = page.locator('[data-demo="Cart"] button').first();
+      await button.scrollIntoViewIfNeeded();
+      await button.click();
+      await page
+        .locator('[data-demo="Cart"]', { hasText: '1 in the cart' })
+        .waitFor({ timeout: 5000 });
+    });
+    await flow(
+      '/docs: the head keeps only stylesheets that an element of the page uses',
+      async () => {
+        await page.goto(`${url}/docs`, { waitUntil: 'load' });
+        // The same check as the client: a link whose rules scope to `b-c-<hash>` is in use when an
+        // element has the attribute. Stylesheets that a bundle of the page names stay.
+        const stale = () =>
+          page.evaluate(() => {
+            const bundled = new Set();
+            for (const script of document.querySelectorAll('script[b-load]')) {
+              for (const name of script.getAttribute('b-load').split(' ')) {
+                bundled.add(name.slice(name.lastIndexOf('/') + 1));
+              }
+            }
+            const found = [];
+            for (const link of document.head.querySelectorAll('link[rel~="stylesheet"]')) {
+              const href = link.getAttribute('href');
+              const text = [...link.sheet.cssRules].map((rule) => rule.cssText).join('');
+              const names = [...new Set(text.match(/b-c-[\w-]+/g) ?? [])];
+              if (
+                names.length > 0 &&
+                !link.hasAttribute('b-bundle') &&
+                !bundled.has(href.slice(href.lastIndexOf('/') + 1)) &&
+                !names.some((name) => document.querySelector(`[${name}]`))
+              ) {
+                found.push(href);
+              }
+            }
+            return found;
+          });
+        let visited = 0;
+        for (const href of ['/docs/routing', '/docs/state', '/docs/components', '/docs']) {
+          const link = page.locator(`.sidebar a[href="${href}"]`).first();
+          if ((await link.count()) === 0) {
+            continue;
+          }
+          await link.click();
+          await page.waitForURL(`${url}${href}`, { timeout: 5000 });
+          await page.waitForTimeout(300);
+          const left = await stale();
+          assert(
+            left.length === 0,
+            `${href} leaves stylesheets that no element uses: ${left.join(' ')}`,
+          );
+          visited += 1;
+        }
+        assert(visited >= 2, `only ${visited} docs links were visited`);
+      },
+    );
     await page.close();
   }
 

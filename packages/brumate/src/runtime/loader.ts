@@ -3,6 +3,8 @@ import { boot, importCore } from './boot.ts';
 import { NAVIGATION_KEY, ROUTE_KEY } from './context.ts';
 import { HAS_SEARCH_PARAMS } from './features.ts';
 import type { Core, LoaderOptions, Navigation } from './boot.ts';
+import { TRACE } from './trace-flag.ts';
+import { isTracing, traceNavigation } from './trace-browser.ts';
 
 export type { LoaderOptions, NavigateOptions } from './boot.ts';
 export { startWithoutNavigation } from './static-loader.ts';
@@ -16,8 +18,14 @@ export function start(options: LoaderOptions): () => void {
   return boot(options, options.navigate === false ? undefined : navigation);
 }
 
-/** Starts loading the page of a link, unless the link asks not to. */
+/**
+ * Starts loading the page of a link, unless the link asks not to. A traced page loads nothing
+ * early: its navigation sends `traceparent`, which an early request cannot carry.
+ */
 function prefetch(link: HTMLAnchorElement | undefined): void {
+  if (TRACE && isTracing()) {
+    return;
+  }
   if (link && link.getAttribute('data-prefetch') !== 'none') {
     void import('./navigate.ts').then((module) => module.prefetch(link.href));
   }
@@ -100,6 +108,8 @@ function navigation({
       document.documentElement.removeAttribute('data-navigating');
       state({ pending: false });
     }
+    // Made now, while a handler that starts the navigation runs, so it joins the trace of the handler.
+    const trace = TRACE ? traceNavigation(url, init) : undefined;
     return import('./navigate.ts')
       .then((module) =>
         module.navigate({
@@ -111,6 +121,7 @@ function navigation({
           build: options.build,
           focus: settings.focus !== false,
           transition: settings.transition === true,
+          trace,
           // The core forgets the old page, or only stops reading, when layouts stay.
           leave: async (partial) => {
             if (core()) {

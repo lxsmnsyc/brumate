@@ -172,7 +172,8 @@ A signal changes when you assign a new value. To change one item of an array or 
 - The new value shares every object that the recipe did not change. With a keyed `#for`, only the changed item updates.
 - If the recipe changes nothing, the signal keeps its value and nothing updates.
 - The recipe can return a new value instead of changing the draft.
-- Only plain objects and arrays are drafted. A `Map`, a `Set` or a class instance inside the value is used as it is.
+- Plain objects, arrays, `Map`s and `Set`s are drafted, also inside the value. A map or set is copied on the first change, keeps the order of its entries, and the old one stays as it was. Keys of a map are never drafted: use the key of the base value, as `draft.set(id, value)` does.
+- An instance of another class is used as it is. If the recipe changes one and returns nothing, nothing updates, and the dev server warns: `$produce(tags) changed a Counter and returned nothing`. Return a new value instead.
 - `$produce` writes the signal, so it is allowed where writes are.
 
 Without `$produce`, write a new value yourself: `todos = todos.map((todo) => (todo.id === id ? { ...todo, done: !todo.done } : todo))`.
@@ -248,7 +249,7 @@ A handler is one update pass. The page changes when the handler returns, not at 
 - A signal never leaves its file. A function receives the value of a signal, not the signal, so the compiler can see every read and write. To let another component change a value, pass it a function, such as `onChange=((value) => (count = value))`. See [Components](./components.md).
 - Functions imported from other modules work with values. `format(count)` gets a number, and cannot write `count`.
 - Each signal holds one value. An object or array changes by assigning a new value, or with `$produce`. A value that other code changes, such as a store of another library, comes in with [`$store`](./context.md#live-values-with-stores).
-- Declare signals and memos at the top level of a `<script>`, or of the script of a block. A declaration inside a function is a compile error.
+- Declare signals and memos at the top level of a `<script>`, or of the script of a block. A declaration inside a function is a compile error. To share one value between components, declare the signal at the top level of a `.brm.ts` module. See [Shared state at module level](./reactive-modules.md#shared-state-at-module-level).
 
 ## What the browser gets
 
