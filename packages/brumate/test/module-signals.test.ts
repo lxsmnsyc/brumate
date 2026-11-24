@@ -420,3 +420,276 @@ describe('brumate check', () => {
     }
   });
 });
+
+interface Forms {
+  input: { get(): string; set(value: string): void };
+  query: { get(): string; subscribe(listener: (value: string) => void): () => void };
+  typed: {
+    get(): string;
+    subscribe(listener: (value: string) => void): () => void;
+    n: boolean;
+  };
+  slow: { get(): string; subscribe(listener: (value: string) => void): () => void };
+  label: { get(): string; subscribe(listener: (value: string) => void): () => void };
+  shown: {
+    get(): string;
+    set(value: string): void;
+    subscribe(listener: (value: string) => void): () => void;
+  };
+  runs: { label: number; gate: number };
+  type(text: string): void;
+  guess(text: string): void;
+}
+
+describe('a gate, a debounced and a throttled value, and an optimistic value of a module', () => {
+  it('renders on the server, resumes, and updates two components', async () => {
+    const html = await serverHtml('FormsPage.brm');
+    expect(html).toContain('class="a-query"');
+    expect(html).toContain('>idle</p>');
+    await resume('FormsPage.brm');
+    expect(text('.a-pending')).toBe('idle');
+    click('.a-type');
+    await vi.waitFor(() => expect(text('.a-pending')).toBe('waiting'), { timeout: 2000 });
+    // The gate passes at once, the debounced value after its wait.
+    await vi.waitFor(() => expect(text('.a-query')).toBe('abc'), { timeout: 2000 });
+    expect(text('.b-query')).toBe('abc');
+    expect(text('.a-label')).toBe('abc (3)');
+    await vi.waitFor(() => expect(text('.a-typed')).toBe('abc'), { timeout: 2000 });
+    expect(text('.b-typed')).toBe('abc');
+    expect(text('.a-slow')).toBe('abc');
+    expect(text('.a-pending')).toBe('idle');
+    // A guard that says no keeps the value.
+    click('.a-one');
+    await vi.waitFor(() => expect(text('.a-typed')).toBe('a'), { timeout: 2000 });
+    expect(text('.a-query')).toBe('abc');
+    expect(text('.b-query')).toBe('abc');
+  });
+});
+
+describe('$isPending, $resolve and $untrack of a component on an imported module value', () => {
+  it('reads the pending state, waits for it, and reads without tracking', async () => {
+    await resume('FormsC.brm');
+    expect(text('.c-pending')).toBe('idle');
+    expect(text('.c-length')).toBe('0');
+    click('.c-type');
+    click('.c-wait');
+    await vi.waitFor(() => expect(text('.c-pending')).toBe('waiting'), { timeout: 2000 });
+    expect(text('.c-both')).toBe('waiting');
+    // The untracked reads keep what they read at the start.
+    expect(text('.c-length')).toBe('0');
+    await vi.waitFor(() => expect(text('.c-loud')).toBe('XYZ'), { timeout: 2000 });
+    expect(text('.c-pending')).toBe('idle');
+    await vi.waitFor(() => expect(text('.c-resolved')).toBe('xyz'), { timeout: 2000 });
+    expect(text('.c-seen')).toBe('');
+  });
+});
+
+describe('the forms in <script module>', () => {
+  it('renders, resumes, and updates the readers of the file', async () => {
+    const html = await serverHtml('OwnForms.brm');
+    expect(html).toContain('>idle</p>');
+    await resume('OwnForms.brm');
+    click('.o-type');
+    await vi.waitFor(() => expect(text('.o-pending')).toBe('waiting'), { timeout: 2000 });
+    await vi.waitFor(() => expect(text('.o-query')).toBe('abc'), { timeout: 2000 });
+    expect(text('.o-shown')).toBe('ABC');
+    expect(text('.o-typed')).toBe('');
+    await vi.waitFor(() => expect(text('.o-typed')).toBe('abc'), { timeout: 2000 });
+    expect(text('.o-slow')).toBe('abc');
+    expect(text('.o-pending')).toBe('idle');
+    click('.o-guess');
+    await vi.waitFor(() => expect(text('.o-shown')).toBe('guess'), { timeout: 2000 });
+  });
+});
+
+interface Guarded {
+  n: { get(): number };
+  rising: { get(): number; subscribe(listener: (value: number) => void): () => void };
+  source: { get(): number; subscribe(listener: (value: number) => void): () => void };
+  guessed: {
+    get(): number;
+    set(value: number): void;
+    subscribe(listener: (value: number) => void): () => void;
+  };
+  setN(value: number): void;
+  guess(value: number): void;
+}
+
+describe('the stores of the forms', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('$gate keeps its value when the guard says no, and runs no reader', async () => {
+    const guarded = (await import(file('guarded.brm.ts'))) as Guarded;
+    const seen: number[] = [];
+    const stopWatching = guarded.rising.subscribe((value) => seen.push(value));
+    guarded.setN(3);
+    guarded.setN(1);
+    expect(guarded.rising.get()).toBe(3);
+    guarded.setN(4);
+    expect(seen).toEqual([3, 4]);
+    stopWatching();
+    // Without a reader there is no history: the value is the value, as on the server.
+    guarded.setN(1);
+    expect(guarded.rising.get()).toBe(1);
+  });
+
+  it('$gate holds the error of a guard that throws, and passes the next value', async () => {
+    const guarded = (await import(file('guarded.brm.ts'))) as Guarded;
+    const seen: number[] = [];
+    const stopWatching = guarded.rising.subscribe((value) => seen.push(value));
+    guarded.setN(2);
+    expect(() => guarded.setN(5)).toThrow('five');
+    expect(() => guarded.rising.get()).toThrow('five');
+    // The first value after an error passes without the guard.
+    guarded.setN(1);
+    expect(guarded.rising.get()).toBe(1);
+    expect(seen).toEqual([2, 1]);
+    stopWatching();
+  });
+
+  it('$gate refuses a promise', () => {
+    const code = transformModuleSignals(
+      module(
+        "import { $gate, $signal } from 'brumate/signals';\nexport let a = $signal(1);\nexport const g = $gate(Promise.resolve(a), () => true);",
+      ),
+    );
+    expect(code).toContain('$$gated([a], ([a]) => (Promise.resolve(a)), () => true)');
+  });
+
+  it('$debounced waits for the input to stop, and is pending meanwhile', async () => {
+    vi.useFakeTimers();
+    const forms = (await import(file('forms.brm.ts'))) as Forms;
+    const seen: string[] = [];
+    const stopWatching = forms.typed.subscribe((value) => seen.push(value));
+    expect(forms.typed.n).toBe(false);
+    forms.type('a');
+    vi.advanceTimersByTime(150);
+    forms.type('ab');
+    expect(forms.typed.n).toBe(true);
+    // The wait starts again at each change.
+    vi.advanceTimersByTime(199);
+    expect(seen).toEqual([]);
+    expect(forms.typed.get()).toBe('');
+    vi.advanceTimersByTime(1);
+    expect(seen).toEqual(['ab']);
+    expect(forms.typed.n).toBe(false);
+    stopWatching();
+  });
+
+  it('$throttled takes the first value at once and the last one after the wait', async () => {
+    vi.useFakeTimers();
+    const forms = (await import(file('forms.brm.ts'))) as Forms;
+    const seen: string[] = [];
+    const stopWatching = forms.slow.subscribe((value) => seen.push(value));
+    forms.type('a');
+    expect(seen).toEqual(['a']);
+    vi.advanceTimersByTime(50);
+    forms.type('ab');
+    forms.type('abc');
+    expect(seen).toEqual(['a']);
+    vi.advanceTimersByTime(149);
+    expect(seen).toEqual(['a']);
+    vi.advanceTimersByTime(1);
+    expect(seen).toEqual(['a', 'abc']);
+    stopWatching();
+  });
+
+  it('a debounced value is the value itself without a reader', async () => {
+    const forms = (await import(file('forms.brm.ts'))) as Forms;
+    forms.type('now');
+    expect(forms.typed.get()).toBe('now');
+    expect(forms.slow.get()).toBe('now');
+  });
+
+  it('$optimistic shows a guess and resets when the source changes', async () => {
+    const guarded = (await import(file('guarded.brm.ts'))) as Guarded;
+    const seen: number[] = [];
+    const stopWatching = guarded.guessed.subscribe((value) => seen.push(value));
+    expect(guarded.guessed.get()).toBe(0);
+    guarded.guess(7);
+    expect(guarded.guessed.get()).toBe(7);
+    guarded.setN(2);
+    expect(guarded.guessed.get()).toBe(20);
+    expect(seen).toEqual([7, 20]);
+    stopWatching();
+  });
+
+  it('$optimistic resets when every server call of the page finishes', async () => {
+    const guarded = (await import(file('guarded.brm.ts'))) as Guarded;
+    const { track } = await import('../src/runtime/client.ts');
+    const stopWatching = guarded.guessed.subscribe(() => {});
+    guarded.guess(7);
+    let release!: () => void;
+    const first = track(new Promise<void>((done) => (release = done)));
+    let releaseSecond!: () => void;
+    const second = track(new Promise<void>((done) => (releaseSecond = done)));
+    release();
+    await first;
+    await new Promise((done) => setTimeout(done, 5));
+    // One call is still out: the guess stays.
+    expect(guarded.guessed.get()).toBe(7);
+    releaseSecond();
+    await second;
+    await vi.waitFor(() => expect(guarded.guessed.get()).toBe(0), { timeout: 2000 });
+    stopWatching();
+  });
+
+  it('keeps BRM211 for the forms that need a component, and names where to call them', () => {
+    const cases: [string, string][] = [
+      ["import { $props } from 'brumate/signals';\nconst { a } = $props();", '$props'],
+      ["import { $effect } from 'brumate/signals';\n$effect(() => {});", '$effect'],
+      ["import { $client } from 'brumate/signals';\nconst x = $client(() => 1);", '$client'],
+      [
+        "import { $getContext } from 'brumate/signals';\nexport const c = $getContext(K);",
+        '$getContext',
+      ],
+      ["import { $route } from 'brumate/signals';\nexport const r = $route();", '$route'],
+    ];
+    for (const [text, name] of cases) {
+      const message = error(() => transformModuleSignals(module(text)));
+      expect(findError(message)?.code).toBe('BRM211');
+      expect(message).toContain(name);
+      expect(message).toContain('in a component');
+    }
+  });
+
+  it('reports a form that is declared the wrong way as BRM211', () => {
+    const head =
+      "import { $debounced, $gate, $optimistic, $signal, $memo } from 'brumate/signals';\n";
+    const cases = [
+      'export let a = $signal(1);\nexport let g = $gate(a, () => true);',
+      'export let a = $signal(1);\nexport const g = $gate(a);',
+      'export let a = $signal(1);\nexport const g = $gate(a, 3);',
+      'export let a = $signal(1);\nexport const d = $debounced(a, 10 + 5);',
+      'export let a = $signal(1);\nexport const d = $debounced(a);',
+      'export let a = $signal(1);\nexport const m = $memo(a);\nexport const o = $optimistic(m);',
+      'export let a = $signal(1);\nexport let o = $optimistic(a);',
+      'export let a = $signal(1);\nexport let o = $optimistic(a + 1);',
+      'export let a = $signal(1);\nexport const d = $debounced(await a, 10);',
+    ];
+    for (const text of cases) {
+      const message = error(() => transformModuleSignals(module(head + text)));
+      expect(`${findError(message)?.code}: ${text}`).toBe(`BRM211: ${text}`);
+    }
+  });
+
+  it('$untrack in a memo: a change of the untracked name does not compute it again', async () => {
+    const forms = (await import(file('forms.brm.ts'))) as Forms;
+    const stopWatching = forms.label.subscribe(() => {});
+    const before = forms.runs.label;
+    forms.type('ab');
+    // `query` changed with the input, so the label computes once. A longer input that the gate
+    // refuses leaves it alone, though the untracked length changed.
+    expect(forms.runs.label - before).toBe(1);
+    expect(forms.label.get()).toBe('ab (2)');
+    forms.type('abc');
+    expect(forms.label.get()).toBe('abc (3)');
+    const mid = forms.runs.label;
+    forms.type('a');
+    expect(forms.runs.label).toBe(mid);
+    expect(forms.label.get()).toBe('abc (3)');
+    stopWatching();
+  });
+});

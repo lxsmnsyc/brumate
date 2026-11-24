@@ -1,0 +1,7 @@
+<script>
+  import { query, shown, typed } from './forms.brm.ts';
+</script>
+
+<p class="b-query">{query}</p>
+<p class="b-typed">{typed}</p>
+<p class="b-shown">{shown}</p>

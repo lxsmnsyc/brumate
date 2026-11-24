@@ -3019,9 +3019,11 @@ class Resolver {
             }
             if (target?.type === 'Identifier' && reference) {
               this.analyzer.pendingCalls.push({ reference, at: range(node) });
+              // A store that can be pending, such as a debounced value of a module, is read like a memo.
               if (
                 reference.declaration.kind !== 'memo' &&
-                reference.declaration.kind !== 'async-memo'
+                reference.declaration.kind !== 'async-memo' &&
+                !reference.declaration.store
               ) {
                 this.analyzer.report(
                   'error',

@@ -1234,7 +1234,7 @@ const MODULES: ErrorEntry[] = [
   entry(
     'BRM211',
     '{name} cannot be compiled in a module{reason}. {fix}',
-    'A module uses a form that its signals and memos cannot compile: a compile-time function such as `$effect` at the top level, a memo that awaits or calls a function it cannot follow, or a signal in a destructuring write.',
+    'A module uses a form that its top-level values cannot compile: a compile-time function that needs a component, such as `$effect`, at the top level, a memo, gate or timed value that awaits or calls a function it cannot follow, a form with the wrong arguments, or a signal in a destructuring write.',
     'export let count = $signal(0);\nexport const double = $memo(count * 2);',
   ),
   entry(

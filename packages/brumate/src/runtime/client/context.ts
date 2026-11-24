@@ -7,12 +7,12 @@ import type { Context as ContextValue, Route } from '../context.ts';
 import { madeStores } from '../shared.ts';
 import type { ScopeId, StoreRead } from '../shared.ts';
 import { Store, findStored, isBridged, sameData, sendStore } from '../store.ts';
-import type { StoreLike } from '../store.ts';
+import type { Pendable, StoreLike } from '../store.ts';
 import { loadModule } from './code.ts';
 import { findRoot, resolveScope } from './scopes.ts';
 import { DEV, scopes } from './state.ts';
 import type { Scope } from './state.ts';
-import { pass, sendContext, set, writeSlot } from './updates.ts';
+import { markPending, pass, sendContext, set, writeSlot } from './updates.ts';
 
 /** The scope that provides a context to `scope`: itself or the nearest one above it. */
 function findProvider(scope: Scope, key: string): Scope | undefined {
@@ -144,6 +144,16 @@ function subscribeSlot(
     stop = found.subscribe(listener);
   }
   (scope.stops ??= []).push(stop);
+  // A store that can be pending, such as a debounced value of a module, marks the slot loading.
+  const waits = (found as Pendable).q;
+  if (waits) {
+    const listener = (on: boolean): void => sendContext(() => markPending(scope, slot, on));
+    waits.add(listener);
+    scope.stops.push(() => waits.delete(listener));
+    if ((found as Pendable).n) {
+      listener(true);
+    }
+  }
   if (write) {
     (scope.b ??= {})[slot] = (value: unknown) => found.set!(value);
   }

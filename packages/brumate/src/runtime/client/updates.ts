@@ -307,6 +307,19 @@ function startLoading(scope: Scope, slot: number, key: string): void {
 }
 
 /**
+ * Marks the slot of a store that can be pending, such as a debounced value of a module, as loading
+ * or not. `$isPending` and `$resolve` read it as they read a memo.
+ */
+export function markPending(scope: Scope, slot: number, on: boolean): void {
+  const key = `${scope.id}:${slot}`;
+  if (on) {
+    startLoading(scope, slot, key);
+  } else if (loadingSlots.delete(key)) {
+    trigger(scope, slot);
+  }
+}
+
+/**
  * Computes a memo of `$debounced` after its value stops changing for `ms`,
  * or one of `$throttled` at most once every `ms`, with the last value after
  * the wait. The memo is pending while it waits.

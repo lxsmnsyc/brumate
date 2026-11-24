@@ -1,0 +1,7 @@
+<script>
+  import FormsA from './FormsA.brm';
+  import FormsB from './FormsB.brm';
+</script>
+
+<FormsA />
+<FormsB />

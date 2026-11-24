@@ -1,0 +1,30 @@
+<script module>
+  import { $debounced, $gate, $memo, $optimistic, $signal, $throttled } from 'brumate/signals';
+
+  let text = $signal('');
+  const query = $gate(text, (_, next) => next.length >= 2);
+  const typed = $debounced(text, 200);
+  const slow = $throttled(text, 200);
+  const shouting = $memo(text.toUpperCase());
+  let shown = $optimistic(shouting);
+
+  export function guess(value) {
+    shown = value;
+  }
+</script>
+
+<script>
+  import { $isPending } from 'brumate/signals';
+
+  function type() {
+    text = 'abc';
+  }
+</script>
+
+<p class="o-query">{query}</p>
+<p class="o-typed">{typed}</p>
+<p class="o-slow">{slow}</p>
+<p class="o-shown">{shown}</p>
+<p class="o-pending">{$isPending(typed) ? 'waiting' : 'idle'}</p>
+<button class="o-type" onClick=type>Type</button>
+<button class="o-guess" onClick=(() => guess('guess'))>Guess</button>

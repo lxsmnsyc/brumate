@@ -73,6 +73,7 @@ Declares writable state. Reading the variable reads the value, and assigning to 
 - Server: the initial value is computed once. It does not track what it reads.
 - Client: it can be written in event handlers, `$effect` and `$client` callbacks, and the functions that they call. A write anywhere else is a compile error.
 - Its value is sent to the browser only when client code needs it.
+- At the top level of a module: yes, with `let`. See [Shared state at module level](./reactive-modules.md#shared-state-at-module-level).
 
 ## `$memo`
 
@@ -89,6 +90,7 @@ Declares a read-only value computed from other values.
 - Assigning to it is a compile error.
 - Server: computed when first read. Markup outside every `#loading` body waits for a promise. A `#loading` body that reads it renders in place when it is ready, and after the rest of the page otherwise.
 - Client: computed again when the values it reads change. While a new promise loads, the memo keeps its old value. Only the latest run is written.
+- At the top level of a module: yes, with `const`, and without `await`. See [Shared state at module level](./reactive-modules.md#shared-state-at-module-level).
 
 ## `$gate`
 
@@ -110,6 +112,7 @@ const items = $gate(list.filter(done), (prev, next) => !sameItems(prev, next));
 - A guard that throws makes the memo hold the error, as a memo whose value throws does. Each read throws it, and the error goes to the nearest `#try`.
 - The next value after a held error passes without the guard.
 - The value cannot be a promise. `await` and a call of a server function are a compile error (BRM203), and any other promise or stream throws when the value is computed, on the server and in the browser. Use `$memo` for loading.
+- At the top level of a module: yes, with `const`. It is a `derived` store that keeps its value when the guard says no. See [Shared state at module level](./reactive-modules.md#shared-state-at-module-level).
 
 ## `$isPending`
 
@@ -160,6 +163,7 @@ Waits until a memo is no longer pending, and gives its value.
 - It rejects with the error of the memo, when `timeout` milliseconds pass, or when `signal` aborts.
 - Use it in a handler, an effect or a `$client` callback, as `await $resolve(memo)`. Never use it where a memo computes or markup renders.
 - A handler that reads an async memo with no value yet is a compile error (BRM182), unless `$isPending` guards the read or it is written with `$resolve`.
+- It also takes a name that a component imports from a module, such as a debounced value. `$isPending` of such a name is true while the value waits.
 
 ## `flush`
 
@@ -215,6 +219,8 @@ function $untrack<T>(value: T): T;
 ```
 
 Reads a value without depending on it. A memo or effect that reads `$untrack(count)` does not run again when `count` changes. A function called inside it, such as `$untrack(save())`, adds no dependencies either.
+
+At the top level of a module it works in a memo, a gate and a timed value: the module signals that it reads are not sources of the store.
 
 ## `$produce`
 
@@ -377,6 +383,7 @@ let shown = $optimistic(names);
 - A write shows a guess. The guess stays until `source` changes, or until every server call of the page finishes.
 - Write it with `=`. `++` and `--` are compile errors.
 - `source` is a name. A signal is a compile error, because a handler can write a signal directly.
+- At the top level of a module: yes, with `let`. `source` is a module memo, and an exported function writes it. The guess is a browser state, so a write on the server does nothing. See [Shared state at module level](./reactive-modules.md#shared-state-at-module-level).
 
 ## `$debounced` and `$throttled`
 
@@ -391,6 +398,7 @@ Memos of `value` that the browser writes after a wait.
 - `$throttled` takes it at most once every `ms` milliseconds: the first change at once, and the last one after the wait.
 - Server: the value itself. Client: pending while it waits.
 - `ms` is a number literal. Any other value is a compile error.
+- At the top level of a module: yes, with `const`. The store is pending while it waits, so `$isPending` and `$resolve` of an importer see it. See [Shared state at module level](./reactive-modules.md#shared-state-at-module-level).
 
 ## Not supported
 

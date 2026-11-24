@@ -279,8 +279,13 @@ export function derived<T>(
   const out = new Store<T>(initial as T);
   const subscribers = new Set<() => void>();
   let level = 1;
+  // Present only when a source can be pending.
+  const pend: Pendable = {};
   for (const source of list) {
     level = Math.max(level, ((source as { d?: number }).d ?? 0) + 1);
+    if ((source as Pendable).q) {
+      pend.q = new Set();
+    }
   }
 
   // The state of one run: `cleanup` is what `fn` returned, and `write` is where `set` goes.
@@ -369,6 +374,24 @@ export function derived<T>(
       for (const source of list) {
         stops.push(source.subscribe(() => heard(source)));
       }
+      // A store that reads a pending store is pending while it is.
+      if (pend.q) {
+        const check = (): void => {
+          let pending = false;
+          for (const source of list) {
+            pending ||= !!(source as Pendable).n;
+          }
+          setPending(pend, pending);
+        };
+        for (const source of list) {
+          const q = (source as Pendable).q;
+          if (q) {
+            q.add(check);
+            stops.push(() => q.delete(check));
+          }
+        }
+        check();
+      }
     } catch (error) {
       // A store that failed to start has no subscriptions, so it can start again.
       started = false;
@@ -398,7 +421,7 @@ export function derived<T>(
     }
   };
 
-  return Object.assign(
+  const result = Object.assign(
     {
       get(): T {
         if (started) {
@@ -442,6 +465,224 @@ export function derived<T>(
     },
     { d: level },
   );
+  if (pend.q) {
+    Object.defineProperties(result, {
+      q: { value: pend.q },
+      n: { get: () => !!pend.n },
+    });
+  }
+  return result;
+}
+
+// Forms of a module: the stores that `$gate`, `$debounced` and `$throttled` compile to at the top
+// level of a module. The compiler calls them, so they have no docs of their own.
+
+/**
+ * A store that can be pending, as a memo that loads is. `n` is true while it waits, and `q` holds
+ * the functions that hear of a change of `n`. `$isPending` and `$resolve` read it in a component.
+ */
+export interface Pendable {
+  n?: boolean;
+  q?: Set<(pending: boolean) => void>;
+}
+
+/** Sets the pending flag of a store, and tells its listeners when it changed. */
+function setPending(target: Pendable, pending: boolean): void {
+  if (!!target.n !== pending) {
+    target.n = pending;
+    for (const listener of target.q!) {
+      listener(pending);
+    }
+  }
+}
+
+/** True on the server, or in a test while server code runs. */
+export function onServer(): boolean {
+  const inRequest = (globalThis as Record<symbol, (() => boolean) | undefined>)[
+    Symbol.for('brumate.inRequest')
+  ];
+  return typeof document === 'undefined' || inRequest?.() === true;
+}
+
+/**
+ * The store of `$gate(value, guard)`: a derived store that takes a new value only when
+ * `guard(prev, next)` returns true. Otherwise it keeps its value and its readers do not run. The
+ * first value passes, and so does the first one after an error. Without a subscriber there is no
+ * history, so `get` gives the value, as the server renders it. A promise or a stream is an error.
+ */
+export function gated<S extends Stores, T>(
+  sources: S,
+  fn: (values: StoresValues<S>) => T,
+  guard: (prev: T, next: T) => boolean,
+): StoreLike<T> {
+  let live = 0;
+  let has = false;
+  let last: T;
+  // The error of the last run while a subscriber holds the store, which `get` throws again.
+  let held: { error: unknown } | undefined;
+  const inner = derived(sources, (values: StoresValues<S>, set: (value: T) => void) => {
+    try {
+      held = undefined;
+      const next = fn(values);
+      if (
+        next !== null &&
+        typeof next === 'object' &&
+        (typeof (next as { then?: unknown }).then === 'function' ||
+          typeof (next as { [Symbol.asyncIterator]?: unknown })[Symbol.asyncIterator] ===
+            'function')
+      ) {
+        throw new TypeError(
+          'The value of $gate is a promise or a stream. Use $memo for a value that loads',
+        );
+      }
+      if (live === 0 || !has || guard(last, next)) {
+        if (live > 0) {
+          has = true;
+          last = next;
+        }
+        set(next);
+      }
+    } catch (error) {
+      has = false;
+      held = live > 0 ? { error } : undefined;
+      throw error;
+    }
+  });
+  const subscribe = inner.subscribe;
+  const get = inner.get;
+  return Object.assign(inner, {
+    get(): T {
+      if (held) {
+        throw held.error;
+      }
+      return get();
+    },
+    subscribe(listener: (value: T) => void): () => void {
+      live++;
+      let stop: (() => void) | undefined;
+      try {
+        stop = subscribe(listener);
+      } catch (error) {
+        if (--live === 0) {
+          held = undefined;
+        }
+        throw error;
+      }
+      return () => {
+        if (stop) {
+          stop();
+          stop = undefined;
+          if (--live === 0) {
+            has = false;
+            held = undefined;
+          }
+        }
+      };
+    },
+  });
+}
+
+/**
+ * The store of `$debounced(value, ms)` and `$throttled(value, ms)`. The browser takes the value
+ * after `ms` once the sources stop changing, or at most once every `ms` with `throttle`, and is
+ * pending while it waits. On the server, and without a subscriber, it is the value itself.
+ */
+export function timed<S extends Stores, T>(
+  sources: S,
+  fn: (values: StoresValues<S>) => T,
+  ms: number,
+  throttle?: boolean,
+): StoreLike<T> & Pendable {
+  const single = !Array.isArray(sources);
+  const list: StoreLike<unknown>[] = single ? [sources] : sources;
+  const out = new Store<T>(undefined as T);
+  const waiting: Pendable = { q: new Set() };
+  let count = 0;
+  let stops: (() => void)[] = [];
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let last = -Infinity;
+
+  const read = (): T => {
+    const values: unknown[] = [];
+    for (const source of list) {
+      values.push(source.get());
+    }
+    return fn((single ? values[0] : values) as StoresValues<S>);
+  };
+
+  const fire = (): void => {
+    timer = undefined;
+    last = Date.now();
+    try {
+      sendStore(out, read());
+    } finally {
+      setPending(waiting, false);
+    }
+  };
+
+  const heard = (): void => {
+    if (onServer()) {
+      sendStore(out, read());
+      return;
+    }
+    const since = Date.now() - last;
+    if (throttle && timer === undefined && since >= ms) {
+      fire();
+      return;
+    }
+    if (!throttle) {
+      clearTimeout(timer);
+      timer = undefined;
+    }
+    timer ??= setTimeout(fire, throttle ? ms - since : ms);
+    setPending(waiting, true);
+  };
+
+  const stop = (): void => {
+    for (const end of stops) {
+      end();
+    }
+    stops = [];
+    clearTimeout(timer);
+    timer = undefined;
+    waiting.n = false;
+  };
+
+  return {
+    get(): T {
+      return count > 0 ? out.v : read();
+    },
+    subscribe(listener: (value: T) => void): () => void {
+      const off = out.subscribe(listener);
+      if (count++ === 0) {
+        try {
+          out.v = read();
+          for (const source of list) {
+            stops.push(source.subscribe(heard));
+          }
+        } catch (error) {
+          count--;
+          stop();
+          off();
+          throw error;
+        }
+      }
+      let done = false;
+      return () => {
+        if (!done) {
+          done = true;
+          off();
+          if (--count === 0) {
+            stop();
+          }
+        }
+      };
+    },
+    q: waiting.q,
+    get n(): boolean {
+      return !!waiting.n;
+    },
+  };
 }
 
 // Bridges: a store of another library that can cross the page state. `bridge()` names how to make
