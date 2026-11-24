@@ -147,17 +147,17 @@ export function add(price: number): void {
 }
 ```
 
-The module is compiled to the stores of `brumate/store`, so the feature adds nothing to a page that does not use it. `let items = $signal(v)` becomes `store(v)`, and `$memo(expression)` becomes a store of the module signals that the expression reads, which works as `derived` does and also holds an error (see below). The `derived` of `brumate/store` that you call yourself does not hold errors. Code in the module reads a signal as `items.get()` and writes it as `items.set(…)`, and `$produce(items, recipe)` works as it does in a component.
+The module is compiled to the stores of `brumate/store`, so the feature adds nothing to a page that does not use it. `let items = $signal(v)` becomes `store(v)`, and `$memo(expression)` becomes a store of the module signals that the expression reads, which holds an error (see below) and can load a value (see [A memo that loads](#a-memo-that-loads)). The `derived` of `brumate/store` that you call yourself does not hold errors. Code in the module reads a signal as `items.get()` and writes it as `items.set(…)`, and `$produce(items, recipe)` works as it does in a component.
 
-- A component reads an imported signal or memo like `$store(items)`. Reads render on the server, resume in the browser and update when the value changes.
+- A component reads an imported signal like `$store(items)`, and an imported memo as a memo of its own. Reads render on the server, resume in the browser and update when the value changes.
 - A component cannot write what it imports, because an import is read-only. Write it in a function that the module exports, such as `add`. Assigning to `items` in the component is `Cannot assign to module signal "items"`, with that advice.
 - The same forms work in `<script module>`. A component writes a signal of its own `<script module>` in its script, since that is one file.
 - A function that a component copies with `const { … } = name()` reads a module signal like an imported store, and stays live.
-- A memo is lazy until something subscribes, and a memo over two module signals computes once per change.
+- A memo computes when it is first read, and again when a module signal that it reads changes. A memo over two module signals computes once per change.
 - A memo tracks the module signals that its expression reads, and those that the functions it calls read: functions of the module, and exported functions of other `.brm.ts` modules, followed through their calls. A function that the memo cannot follow is BRM211, with the advice to pass the signals as arguments.
 - A module reads a signal of another `.brm.ts` module like its own signal (`items.length`), and cannot write it: a write through an import is BRM117, so export a function from the module that owns it. The same holds for a `.brm` component that imports a signal of another component's `<script module>`.
 - A `.ts` file that imports a module signal gets the store, while TypeScript says the type of its value. `brumate check` reports that import as BRM208. Read the value in an exported function instead.
-- `$memo(await …)`, `$effect`, `$client` and the compile-time functions that need a component (`$props`, `$setContext`, `$getContext`, `$route`, `$searchParam`, `$navigation`, `$id`, `$title`, `$action`, `$handler`, `$bind`, `$isBound`, `$isPassed`) cannot run at the top level of a module, and a signal cannot be the target of a destructuring write such as `[count] = values` (all BRM211). Put them in a component, or in a module function that a component calls.
+- `$effect`, `$client` and the compile-time functions that need a component (`$props`, `$setContext`, `$getContext`, `$route`, `$searchParam`, `$navigation`, `$id`, `$title`, `$action`, `$handler`, `$bind`, `$isBound`, `$isPassed`) cannot run at the top level of a module, and a signal cannot be the target of a destructuring write such as `[count] = values` (all BRM211). Put them in a component, or in a module function that a component calls.
 - A module function that a component copies can write the module signals of its own module: its writes go to the store.
 
 ### The forms a module can declare
@@ -167,8 +167,8 @@ Each form is declared on its own at the top level, as in a component, with one v
 | Form                    | Declare with | At module level                                                                                                                                                           |
 | ----------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `$signal(value)`        | `let`        | A `store`. Exported functions write it.                                                                                                                                   |
-| `$memo(expression)`     | `const`      | A `derived` store of the module signals that the expression reads.                                                                                                        |
-| `$gate(value, guard)`   | `const`      | A `derived` store that keeps its value when `guard(prev, next)` returns false. The first value passes, and so does the first one after an error.                          |
+| `$memo(expression)`     | `const`      | A store of the module signals that the expression reads. Its value can load: a promise, `await` or an async iterable, as in a component.                                  |
+| `$gate(value, guard)`   | `const`      | A store that keeps its value when `guard(prev, next)` returns false. The first value passes, and so does the first one after an error.                                    |
 | `$debounced(value, ms)` | `const`      | A store that the browser writes once the value has not changed for `ms`. It is pending while it waits. The server has the value itself.                                   |
 | `$throttled(value, ms)` | `const`      | A store that the browser writes at most once every `ms`, with the last value after the wait. It is pending while it waits.                                                |
 | `$optimistic(source)`   | `let`        | A store that follows the module memo `source`. An exported function writes a guess. It goes back when the source changes, or when every server call of the page finishes. |
@@ -189,12 +189,49 @@ export function type(text: string): void {
 ```
 
 - The arguments are those of the component forms, and an error that a component form has keeps its code: BRM085 to BRM092 for the declaration and the arguments, BRM120 for a signal as the source of `$optimistic`, BRM161 for `++` and `--` on it, BRM202 and BRM203 for `$gate`. `$optimistic` follows a memo of a module. Anything else that a module cannot compile, such as `await` in a debounced value or a source that is no module memo, is BRM211.
-- A component that imports one of them reads it like `$store(x)`. `$isPending(typed)` is true while a debounced or throttled value waits, and so is the `$isPending` of a memo that reads it. `$resolve(typed)` waits for it, and `$untrack` reads it once.
+- A component reads an imported memo, gate or timed value as a memo of its own, and an optimistic value like `$store(x)`. A form over a memo that loads waits for it, as in a component. `$isPending(typed)` is true while a debounced or throttled value waits, and so is the `$isPending` of a memo that reads it. `$resolve(typed)` waits for it, and `$untrack` reads it once.
 - The guard of `$gate` does not track what it reads and runs in the browser, on changes. Without a subscriber a gate has no history, so it gives the value, as the server renders it. A throw in the guard, in a memo, or in a debounced or throttled value is held as in a component: the write that caused it does not throw, the other values of the change still update, and each read of the store throws the error, which goes to the nearest `#try` of the component that reads it. The next value that computes without a throw replaces it. The gate lets that value pass without the guard.
 - `$optimistic` follows a memo, as in a component, and not a signal: write the signal from the exported function. Its guess is a browser state, so a write on the server does nothing.
 - `$effect` and `$client` stay BRM211 at the top level, since they need a component.
 
-A module signal is one value for the whole server process, as `export const cart = store([])` is: two requests that write it share the value. A browser starts from the first value of its own module and repairs the page once if that differs from the value the server rendered. Keep per-request data in a context, which the framework holds for each request.
+### A memo that loads
+
+A memo of a module takes the same values as one of a component: a promise, `await`, and an async iterable.
+
+```ts
+// user.brm.ts
+import { $memo, $signal } from 'brumate/signals';
+import { fetchUser } from './api.ts';
+
+export let id: number = $signal(1);
+export const user: User = $memo(await fetchUser(id));
+
+export function show(next: number): void {
+  id = next;
+}
+```
+
+```brm
+<script>
+  import { $isPending } from 'brumate/signals';
+  import { user } from './user.brm.ts';
+</script>
+
+#loading {
+  <h1 class={ pending: $isPending(user) }>{user.name}</h1>
+} #else {
+  <p>Loading…</p>
+}
+```
+
+- A component reads the memo as a memo of its own, so `#loading`, `await user`, `$isPending(user)`, `await $resolve(user)` and `#try` work as in [Async data](./async-data.md). A handler that reads a memo with `await` and no guard is BRM182, as for a memo of the component.
+- The memo loads once for all its readers, for the latest values of the module signals that it reads, and again when one of them changes. Only the latest load is written, and the old value stays while a new one loads.
+- The server waits for it, or streams it in `#loading`, as for a memo of a component. The page state sends its value, as for a memo of a component, and the values of the signals that it reads. The browser takes that value on resume while its own values of those signals are the same, so code of the module that reads it, such as an exported function that a handler calls, gets the value without a load. When they differ, such as after a server function wrote a signal on the server, the browser loads once for its own values and keeps the old value meanwhile. A signal that a memo that loads reads must hold a value that the page can send, as a signal of a component must.
+- A stream gives each of its values in turn in the browser. The server renders its first value.
+- A load that fails goes to the nearest `#try` of each component that reads the memo. In the browser the memo holds the error until a signal that it reads changes.
+- Code in the module that reads the memo before its first value has loaded throws `This value is still loading`. A memo, a gate or a timed value of the module that reads it waits for it, and is pending meanwhile.
+
+A module signal is one value for the whole server process, as `export const cart = store([])` is: two requests that write it share the value. A memo that loads is one load for the process too: the requests share it while it loads and after, and it loads again when a signal that it reads changes. A load that fails goes to the requests that read it, and the next request loads again. A browser starts from the first value of its own module and repairs the page once if that differs from the value the server rendered. Keep per-request data in a context, which the framework holds for each request.
 
 ## Errors and types
 

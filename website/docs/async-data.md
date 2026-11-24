@@ -45,6 +45,7 @@ const posts = $memo(fetch(`/api/posts?user=${id}`).then((response) => response.j
 - A memo that reads a loading memo gets its value, never a promise. While the value loads, that memo waits too.
 - `await` works in the expression: `$memo(await load(id))`.
 - The type of the memo is the value, not the promise. `$memo(getUser(id))` has the type of the user.
+- A memo at the top level of a `.brm.ts` module loads the same way, once for every component that imports it, and again when a signal that it reads changes. Each component reads it as its own memo. See [A memo that loads](./reactive-modules.md#a-memo-that-loads).
 
 ## `#loading`
 

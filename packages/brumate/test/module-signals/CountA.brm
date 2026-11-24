@@ -1,0 +1,5 @@
+<script>
+  import { count } from './tally.brm.ts';
+</script>
+
+<p class="count-a">{count}</p>

@@ -2435,10 +2435,13 @@ class Analyzer {
    * A module cannot be written through an import, so the advice is a function that writes it.
    */
   private moduleSignalHint(declaration: Declaration): { kind: string; text: string } | undefined {
-    if (declaration.kind !== 'context' || !this.moduleSignals.has(declaration.name)) {
+    const found = this.moduleSignals.get(declaration.name);
+    // A module memo is a memo of the importer, and a signal reads its store.
+    const memoKind = declaration.kind === 'memo' || declaration.kind === 'async-memo';
+    if (!found || (declaration.kind !== 'context' && !(found.memo && memoKind))) {
       return undefined;
     }
-    const { specifier, memo } = this.moduleSignals.get(declaration.name)!;
+    const { specifier, memo } = found;
     if (memo) {
       return { kind: 'module memo', text: '. A memo is read-only' };
     }

@@ -1,0 +1,6 @@
+<script>
+  import { long } from './box.brm.ts';
+</script>
+
+<p class="long">{long.length}</p>
+<p class="text">{long}</p>

@@ -1,0 +1,6 @@
+<script>
+  import { count, pair } from './tally.brm.ts';
+</script>
+
+<p class="count-b">{count}</p>
+<p class="pair">{pair[1]}</p>

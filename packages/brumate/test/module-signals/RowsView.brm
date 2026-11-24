@@ -1,0 +1,5 @@
+<script>
+  import { count } from './box.brm.ts';
+</script>
+
+<p class="count">{count}</p>

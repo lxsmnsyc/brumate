@@ -1,0 +1,5 @@
+<script>
+  import { boxLoaded } from './box.brm.ts';
+</script>
+
+<p class="loaded">{boxLoaded}</p>

@@ -1,0 +1,6 @@
+<script>
+  import { boxed, grow } from './box.brm.ts';
+</script>
+
+<p class="boxed">{boxed}</p>
+<button class="grow" onClick=(() => grow())>Grow</button>

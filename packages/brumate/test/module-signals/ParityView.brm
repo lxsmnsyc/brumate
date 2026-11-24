@@ -1,0 +1,5 @@
+<script>
+  import { parity } from './parity.brm.ts';
+</script>
+
+<p class="parity">{parity}</p>

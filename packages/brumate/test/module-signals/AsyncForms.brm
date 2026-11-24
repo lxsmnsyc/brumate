@@ -1,0 +1,11 @@
+<script>
+  import { gatedName, slowName, steadyName } from './user.brm.ts';
+</script>
+
+<p class="f-gated">{gatedName}</p>
+#loading {
+  <p class="f-slow">{slowName}</p>
+  <p class="f-steady">{steadyName}</p>
+} #else {
+  <p class="f-wait">wait</p>
+}

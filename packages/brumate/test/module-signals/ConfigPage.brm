@@ -1,0 +1,6 @@
+<script>
+  import ConfigView from './ConfigView.brm';
+</script>
+
+<ConfigView />
+<ConfigView />

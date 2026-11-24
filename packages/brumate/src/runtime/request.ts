@@ -337,6 +337,11 @@ let currentCalls: Map<string, unknown> | undefined;
 (globalThis as Record<symbol, unknown>)[Symbol.for('brumate.inRequest')] = (): boolean =>
   current !== undefined || currentCalls !== undefined;
 
+// The call results of the render that runs now, one object for the render, under a symbol of the
+// registry so every copy of the runtime agrees. A memo of a module shares a failed load with the
+// render that read it, and loads again for another render.
+const RENDER = Symbol.for('brumate.render');
+
 /**
  * Runs a callback with an event, so `getEvent()` in its code before its first
  * `await` returns it. Returns what the callback returns, such as its promise.
@@ -349,13 +354,17 @@ export function withEvent<T>(
 ): T {
   const outer = current;
   const outerCalls = currentCalls;
+  const global = globalThis as Record<symbol, unknown>;
+  const outerRender = global[RENDER];
   current = event;
   currentCalls = calls;
+  global[RENDER] = calls;
   try {
     return callback();
   } finally {
     current = outer;
     currentCalls = outerCalls;
+    global[RENDER] = outerRender;
   }
 }
 

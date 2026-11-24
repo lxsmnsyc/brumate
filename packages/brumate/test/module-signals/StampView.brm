@@ -1,0 +1,5 @@
+<script>
+  import { stamped } from './stamp.brm.ts';
+</script>
+
+<p class="stamped">{stamped}</p>

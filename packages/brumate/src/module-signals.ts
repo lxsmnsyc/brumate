@@ -1,12 +1,14 @@
-// Signals and memos at the top level of a module. They are sugar over the stores of
-// `brumate/store`, so they add no runtime:
+// Signals and memos at the top level of a module. They compile to the stores of `brumate/store`:
 //
 //   export let items = $signal<number[]>([]);   // export const items = $$store<number[]>([])
 //   export const total = $memo(items.length);   // export const total = $$derived([items], ([items]) => (items.length))
 //
 // - Code of the module reads a signal with `items.get()` and writes it with `items.set(…)`.
+// - A memo is a `memoStore`, whose value can load: `$memo(await load(id))` gives it an async
+//   function.
 // - A component that imports a signal reads it like `$store(items)`, one way: it can write a
-//   signal of its own `<script module>`, and no signal of an import.
+//   signal of its own `<script module>`, and no signal of an import. It reads a memo as a memo of
+//   its own over the load of the store, which follows the values of the store's sources.
 // - In `<script module>`, the store has the name `$$ms_items`, and the instance script reads it
 //   under the name `items`.
 
@@ -33,11 +35,9 @@ const STORE_MODULE = 'brumate/store';
 const CLIENT_MODULE = 'brumate/client';
 const STORE = '$$store';
 const DERIVED = '$$derived';
-/** The name that the store of a memo is imported under: `derived` that holds an error. */
-const HELD = 'heldDerived';
+/** The store of a memo: it holds an error, and its value can load. */
+const HELD = 'memoStore';
 const PRODUCE = '$$produce';
-const GATED = '$$gated';
-const TIMED = '$$timed';
 const OPTIMISTIC = '$$optimistic';
 
 /** The compile-time functions that declare a value at the top level, and what each makes. */
@@ -53,12 +53,37 @@ const FORMS: ReadonlyMap<string, 'signal' | 'memo'> = new Map([
 const PREFIX = '$$ms_';
 /** The `$store` that the importer side calls. */
 const READ = '$$ms_read';
+/** The `$memo` that the importer side calls. */
+const MEMO = '$$ms_memo';
+/** The prefix of the slot that holds the values of the sources of a memo. */
+const INPUTS = '$$ms_in_';
+
+/**
+ * The declaration that reads a module value in a component. A signal and an optimistic value read
+ * the store with `$store`. A memo, a gate and a timed value are memos of the component over the
+ * load of the store, which compute again on each notice of `store.i`, so `#loading`, `await`,
+ * `$isPending` and `$resolve` work on them as on a memo of the component. The slot of `store.i`
+ * holds the value that the server rendered, which the store of the browser takes on resume.
+ */
+function readSignal(name: string, store: string, signal: ModuleSignal, own: boolean): string {
+  if (signal.kind === 'memo') {
+    const inputs = `${INPUTS}${name}`;
+    return `const ${inputs} = ${READ}(${store}.i);\nconst ${name} = ${MEMO}(${signal.awaits ? 'await ' : ''}${store}.p(${inputs}));`;
+  }
+  // A signal of the file is written with `let`: the write calls the `set` of the store. A signal of
+  // an import is read-only.
+  return `${own && signal.kind === 'signal' ? 'let' : 'const'} ${name} = ${READ}(${store});`;
+}
 
 /** A signal or a memo at the top level of a module. */
 export interface ModuleSignal {
   kind: 'signal' | 'memo';
   /** True for the value of `$optimistic`, which is written with `=` only. */
   optimistic?: boolean;
+  /** The form that made it, such as `$memo`. */
+  form?: string;
+  /** True for a memo that awaits, which an importer declares as `$memo(await …)`. */
+  awaits?: boolean;
   /** The name of the binding that holds the store. */
   binding: string;
   /** The name that the module exports it as. */
@@ -468,6 +493,7 @@ function plan(
       }
       signals.set(declarator.id.name, {
         kind: made,
+        form: macro,
         ...(macro === '$optimistic' ? { optimistic: true } : {}),
         binding: scriptModule ? `${PREFIX}${declarator.id.name}` : declarator.id.name,
         ...(statement === declaration ? {} : { exported: declarator.id.name }),
@@ -512,8 +538,6 @@ function plan(
   let usesStore = false;
   let usesDerived = false;
   let usesProduce = false;
-  let usesGated = false;
-  let usesTimed = false;
   let usesOptimistic = false;
   /** The imports of signals of other modules, by module and name, shared by every memo. */
   const dependencies = new Map<string, { local: string; line: string }>();
@@ -774,8 +798,14 @@ function plan(
         );
       }
     }
+    // A memo awaits as in a component. The other forms take a value that is ready.
+    let awaits = false;
     function findAwait(node: oxc.Node): void {
       if (node.type === 'AwaitExpression') {
+        if (macro === '$memo') {
+          awaits = true;
+          return;
+        }
         if (macro === '$gate') {
           throw new ModuleError(
             '$gate takes a value that is ready. Use $memo for a promise or a server function',
@@ -808,27 +838,39 @@ function plan(
     // the next argument.
     const typed = (call as { typeArguments?: oxc.Node }).typeArguments;
     const open = source.indexOf('(', typed?.end ?? call.callee.end);
-    let helper = TIMED;
-    if (macro === '$memo') {
-      helper = DERIVED;
-    } else if (macro === '$gate') {
-      helper = GATED;
+    usesDerived = true;
+    if (awaits) {
+      signal.awaits = true;
     }
-    usesGated ||= macro === '$gate';
-    usesTimed ||= macro === '$debounced' || macro === '$throttled';
-    usesDerived ||= macro === '$memo';
     edits.push({
       start: call.callee.start,
       end: open + 1,
-      text: `${helper}([${stores.join(', ')}], ([${reads.join(', ')}]) => (`,
+      text: `${DERIVED}([${stores.join(', ')}], ${awaits ? 'async ' : ''}([${reads.join(', ')}]) => (`,
     });
+    // The names of the sources, which an error of the page state names.
+    const named: string[] = [];
+    for (const read of reads) {
+      named.push(
+        read.startsWith('$$dep_') ? read.slice('$$dep_'.length, read.lastIndexOf('_')) : read,
+      );
+    }
+    const sourceNames = JSON.stringify(named);
     if (macro === '$memo') {
-      edits.push({ start: call.end - 1, end: call.end - 1, text: ')' });
+      edits.push({
+        start: call.end - 1,
+        end: call.end - 1,
+        text: `), { n: ${sourceNames} }`,
+      });
     } else {
+      // The second argument becomes an option: the guard of a gate, or the wait of a timed value.
       edits.push({ start: argument.end, end: argument.end, text: ')' });
-      if (macro === '$throttled') {
-        edits.push({ start: extra!.end, end: extra!.end, text: ', true' });
-      }
+      const key = macro === '$gate' ? 'g' : 'm';
+      edits.push({ start: extra!.start, end: extra!.start, text: `{ ${key}: ` });
+      edits.push({
+        start: extra!.end,
+        end: extra!.end,
+        text: `${macro === '$throttled' ? ', t: true' : ''}, n: ${sourceNames} }`,
+      });
     }
   }
 
@@ -906,12 +948,6 @@ function plan(
   }
   if (usesDerived) {
     names.push(`${HELD} as ${DERIVED}`);
-  }
-  if (usesGated) {
-    names.push(`gated as ${GATED}`);
-  }
-  if (usesTimed) {
-    names.push(`timed as ${TIMED}`);
   }
   if (names.length > 0) {
     header.push(`import { ${names.join(', ')} } from '${STORE_MODULE}';`);
@@ -1161,7 +1197,9 @@ export function expandSignals(
           end: item.end,
           text: `${name} as ${PREFIX}${item.local.name}`,
         });
-        declarations.push(`const ${item.local.name} = ${READ}(${PREFIX}${item.local.name});`);
+        declarations.push(
+          readSignal(item.local.name, `${PREFIX}${item.local.name}`, signal, false),
+        );
       }
     }
   }
@@ -1193,9 +1231,7 @@ export function expandSignals(
         continue;
       }
       names.set(name, { memo: signal.kind === 'memo' });
-      // A signal is written with `let`: the write calls the `set` of the store.
-      const keyword = signal.kind === 'signal' ? 'let' : 'const';
-      declarations.push(`${keyword} ${name} = ${READ}(${signal.binding});`);
+      declarations.push(readSignal(name, signal.binding, signal, true));
     }
   }
 
@@ -1227,7 +1263,9 @@ export function expandSignals(
     return undefined;
   }
   if (declarations.length > 0) {
-    const text = `import { $store as ${READ} } from '${SIGNALS_MODULE}';\n${declarations.join('\n')}`;
+    const body = declarations.join('\n');
+    const memo = body.includes(`${MEMO}(`) ? `, $memo as ${MEMO}` : '';
+    const text = `import { $store as ${READ}${memo} } from '${SIGNALS_MODULE}';\n${body}`;
     if (file.instanceScript && program) {
       // After the imports, which can use the names that the declarations read.
       let at = afterTag(source, file.instanceScript.start);
