@@ -1,5 +1,100 @@
 # brumate
 
+## 0.9.0
+
+### Minor Changes
+
+- 55cc81e: - The callback of `$effect` and `$client` can be `async`. `BRM096` is removed.
+  - One run of an async effect goes at a time.
+  - A stale run cleans up as soon as it settles.
+  - A scope that is removed does not wait for a pending run.
+  - A rejection of the run or of its cleanup goes to the nearest `#try`.
+  - A cleanup can be an object with `[Symbol.dispose]` or `[Symbol.asyncDispose]`, in sync effects too.
+- 3d2e068: - `BRM209` warns about an `$effect` that only assigns signals that nothing else writes, and names the `$memo` that replaces it.
+  - `brumate check`, the language server and the dev server show the code of each warning.
+- 402787e: - `<script src="https://…" trigger="idle|visible|interaction|load">` loads a script of another site at that moment.
+  - `<script inline trigger="…">` does the same for code written in the `.brm` file.
+  - The loader starts each of these scripts once per page, under the page nonce and the `brumate` Trusted Types policy.
+  - In `#head`, a script without `trigger` is a plain element that runs as in HTML. A client navigation keeps it when its HTML is the same, whatever the nonce.
+  - A build with no script in markup ships none of this code.
+  - New errors `BRM212` to `BRM216`.
+- 8cebc3a: - `$signal`, `$memo`, `$gate`, `$debounced`, `$throttled`, `$optimistic` and `$untrack` work at the top level of a `.brm.ts` module and of `<script module>`.
+  - Each module value is shared by every importer. Components read it like their own values.
+  - Components write a module signal only through functions that the module exports. The script of a `<script module>` file can also write its own signals and optimistic values.
+  - A module that uses none of these forms adds nothing to the page.
+  - A throw in a module memo, gate, or debounced or throttled value goes to the nearest `#try` of each component that reads it. The write that caused it does not throw, and the other values of the change still update.
+  - A module memo can return a promise or an async iterable and can use `await`, as a component memo can.
+  - An async module memo loads once for every reader. Server requests share one load. A failed load goes only to the requests that read it, and the next request loads again.
+  - A component reads an imported memo, gate, or debounced or throttled value as a memo of its own, so `#loading`, `await`, `$isPending`, `$resolve`, `#try` and `BRM182` work on it.
+  - `$resolve` takes the names that a component imports from a module.
+  - The page state carries the value of a loaded module memo and the values of its sources. On resume, the browser keeps the value while the sources are the same, and loads once when they differ.
+  - A gate, or a debounced or throttled value, over a module memo that is loading waits for it.
+  - Module forms keep the error codes of the matching component forms: `BRM085` to `BRM092`, `BRM120`, `BRM161`, `BRM202` and `BRM203`.
+  - `BRM211` reports a form that a module cannot compile, such as `$effect`, `$client`, `await` in a gate, or a `$optimistic` source that is not a module memo.
+  - A write through an import is `BRM117`, with advice.
+  - `brumate check` reports `BRM208` when a plain `.ts` file imports a module signal.
+- 4fe89c2: - `start` of `brumate/loader` and `brumate/static-loader` takes `onTrace`.
+  - `onTrace` gets a span for each event (`brumate.event`), the code a handler waited for (`brumate.load`), the handler run (`brumate.run`), each server function call (`brumate.fetch`) and each navigation (`brumate.navigation`).
+  - The spans of one event share a trace.
+  - A call or a navigation to the same origin sends a `traceparent` header, so the server spans join the trace. A request to another origin sends no header.
+  - Spans carry no arguments, results, query strings or form values.
+  - A call or a navigation joins the trace of its handler only when the handler makes it before its first `await`. A later call starts a trace of its own.
+  - A page with `onTrace` does not load linked pages early, so each navigation sends the header.
+  - A navigation span has its route pattern, such as `/items/[id]`, once the page arrives, and no path when it fails.
+  - A client build whose entry does not pass `onTrace` ships none of this code.
+  - The new `trace` option of the Vite plugin (`true`, `false` or `'auto'`) turns tracing on or off when the client entry is elsewhere.
+- ad57eae: - `src/middleware.ts` can export `onTrace`. It gets a span for each request, render, memo load, server function call, and `#loading` or `#defer` body on the server.
+  - Span names and shapes follow the `TraceSpan` types of `brumate/server` (`brumate.request`, `brumate.render` and so on).
+  - The server reads an incoming `traceparent` header.
+  - `handleRequest`, `handleRoute` and `render` take `onTrace` as an option.
+  - Without `onTrace`, the server makes no spans.
+- 197b2af: - `brumate/otel` exports `otel()`, an `onTrace` handler that makes an OpenTelemetry span for each brumate span, with its name, attributes, times, status and error message.
+  - A request with a `traceparent` header keeps that parent.
+  - `@opentelemetry/api` is an optional peer dependency. Without it, `otel()` throws once and names the package.
+  - Each span has the attributes `brumate.trace_id`, `brumate.span_id` and `brumate.parent_id`. The ids in the exporter come from the SDK's `IdGenerator` and differ from these. The span tree is the same.
+
+  ```ts
+  // src/middleware.ts
+  import { otel } from 'brumate/otel';
+  export const onTrace = otel({ tracerName: 'brumate' });
+  ```
+
+- f446be4: - `$produce` drafts `Map` and `Set`, in a signal and inside a drafted object.
+  - A drafted map or set is copied on the first change and keeps the order of its entries. The old one is not changed.
+  - Values of a map or set are drafted. Keys are never drafted.
+  - In dev, `$produce` warns when the recipe changes an instance of another class and returns nothing.
+- 6a76e4f: `getScope` is no longer exported from `brumate/client`. Read a scope with `scopes.get(id)` of the same module.
+- cd99066: - Scope attributes add no specificity. File styles and block styles scope a selector with `:where([b-c-<hash>])` instead of `[b-c-<hash>]`.
+  - `.a .b` keeps the specificity (0,2,0) it was written with.
+  - A scoped rule now loses to a later global or parent rule of the same written specificity. In 0.8, the scope attribute made it win.
+- ab985e2: - In a build, component CSS goes through Vite's CSS pipeline into `.css` assets, one per route bundle plus shared chunks. No `$$css` string is left in the `.js` output.
+  - The project's PostCSS config or Lightning CSS runs on component styles, in builds and in dev.
+  - The server writes the CSS of the components a page renders as `<style>` elements in render order. Rule order is the same on every page, and no first paint waits for a stylesheet.
+  - Bundle stylesheets load without blocking. A client navigation or a `#defer` body waits for its stylesheets before it shows.
+  - The server links the stylesheets of a component rendered outside the routes.
+  - In dev and with a relative `base`, the CSS stays inline.
+- 6246e05: - `viewTransition="card"` and `viewTransitionName=(expr)` mark an element for a view transition.
+  - Marked elements in view get `view-transition-name` and `view-transition-class` only while a transition runs, from `transition()` or from a client navigation with `transition: true`. They lose them when it ends.
+  - Lists can slide and a picture can move between pages with no hand-written unique names.
+  - A build with no marked element ships none of this code.
+
+### Patch Changes
+
+- d8f5ef4: - `brumate check` runs the type checker of `@brumate/tsc` in its own process instead of spawning `brumate-tsc`.
+  - Type errors carry their end position.
+- 38bba17: The brumate skill mentions `onTrace` of `src/middleware.ts`, of `start` and of `brumate/otel`.
+- 66b7831: The brumate skill teaches the 0.9 APIs.
+
+  - Async `$effect` and `$client` callbacks, and the BRM209 warning.
+  - `$produce` on maps and sets, and module signals.
+  - `<script inline>` and `<script src>` with `trigger`.
+  - `viewTransition` and `viewTransitionName`.
+  - How scoped component CSS reaches the page.
+
+  The head script example uses `<script inline data-rerun>` in place of `raw()`.
+
+- 11c59d5: The code blocks of the brumate skill are type-checked. Four examples now type-check as written: the remove button, the async effect, the context and the `#catch` reset.
+
 ## 0.8.1
 
 ### Patch Changes
