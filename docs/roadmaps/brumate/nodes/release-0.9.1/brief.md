@@ -32,6 +32,9 @@ depends_on:
   - on: memo-template-resume
     kind: hard
     why: the patch fix of 0.9.1
+  - on: svg-ambiguous-clone
+    kind: hard
+    why: a patch fix of 0.9.1
 ---
 
 # Release brumate 0.9.1

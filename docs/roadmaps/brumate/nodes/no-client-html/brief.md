@@ -1,7 +1,7 @@
 ---
 id: no-client-html
 title: Drop the HTML-string machinery from the client
-status: todo
+status: active
 priority: should
 type: refactor
 outline: false

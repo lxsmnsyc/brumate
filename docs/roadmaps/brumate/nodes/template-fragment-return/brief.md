@@ -1,7 +1,7 @@
 ---
 id: template-fragment-return
 title: "#template functions and children return cloned nodes"
-status: active
+status: done
 priority: should
 type: refactor
 story:
@@ -21,7 +21,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-25
-spent:
+spent: 334268
 owns:
   - docs/roadmaps/brumate/nodes/template-fragment-return/**
 shared:
