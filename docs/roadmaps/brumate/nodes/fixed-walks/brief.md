@@ -1,7 +1,7 @@
 ---
 id: fixed-walks
 title: The walk of a cloned template is code
-status: active
+status: done
 priority: should
 type: refactor
 story:
@@ -21,7 +21,7 @@ exclusive: [bench]
 fulfilled_by:
 gate: false
 added: 2026-11-25
-spent:
+spent: 106940
 owns:
   - packages/brumate/src/codegen/template.ts
   - packages/brumate/test/fixed-walks.test.ts
