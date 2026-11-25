@@ -126,10 +126,26 @@ const SHELL_LOADER = [
   '    }',
   "    const { useStorage } = await import('nitro/storage');",
   "    const file = await useStorage('assets:brumate').getItem([...segments, 'index.html'].join(':'));",
-  "    return typeof file === 'string' ? file : file == null ? undefined : String(file);",
+  '    return file == null ? undefined : withNonce(String(file), options?.nonce);',
   '  } catch {',
   '    return undefined;',
   '  }',
+  '}',
+].join('\n');
+
+/**
+ * Gives each script tag of a piece of HTML that has no nonce the nonce of the render, when the
+ * render has one. It serves the default scripts, and a prerendered shell: the build wrote the
+ * shell with no nonce, as the nonce belongs to a request.
+ */
+const SCRIPT_NONCE = [
+  'function withNonce(html, nonce) {',
+  '  if (nonce === undefined) {',
+  '    return html;',
+  '  }',
+  '  const value = String(nonce).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");',
+  // A function, so a `$&` or a `$\'` in the nonce is text and not a replacement pattern.
+  '  return html.replace(/<script(?=[\\s>])(?![^>]*\\snonce=)/g, () => `<script nonce="${value}"`);',
   '}',
 ].join('\n');
 
@@ -219,9 +235,10 @@ export function routeModule(
     ...imports,
     `export const routes = ${routes};`,
     ...(shells ? [SHELL_LOADER] : []),
+    ...(scripts || shells ? [SCRIPT_NONCE] : []),
     `export ${shells ? 'async ' : ''}function handle(request, options) {`,
     ...(shells ? ['  const shell = options?.shell ?? (await loadShell(request, options));'] : []),
-    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions, fileMiddleware${middleware ? ', middleware, onError, onTrace' : ''}${dev ? ', dev: true' : ''}${build === undefined ? '' : `, build: ${JSON.stringify(build)}`}${hints.length > 0 ? `, hints: ${JSON.stringify(hints)}` : ''}${Object.keys(bundleHints).length > 0 ? `, bundleHints: ${JSON.stringify(bundleHints)}` : ''}${shells ? ', ...(shell === undefined ? {} : { shell })' : ''}, ...options${scripts ? `, scripts: options?.scripts ?? ${JSON.stringify(scripts)}` : ''} });`,
+    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions, fileMiddleware${middleware ? ', middleware, onError, onTrace' : ''}${dev ? ', dev: true' : ''}${build === undefined ? '' : `, build: ${JSON.stringify(build)}`}${hints.length > 0 ? `, hints: ${JSON.stringify(hints)}` : ''}${Object.keys(bundleHints).length > 0 ? `, bundleHints: ${JSON.stringify(bundleHints)}` : ''}${shells ? ', ...(shell === undefined ? {} : { shell })' : ''}, ...options${scripts ? `, scripts: options?.scripts ?? withNonce(${JSON.stringify(scripts)}, options?.nonce)` : ''} });`,
     '}',
   ].join('\n');
 }

@@ -190,14 +190,17 @@ export async function serveBuild(root) {
   };
 }
 
-/** The policy of a page that Nitro serves. It has no nonce, so only Trusted Types are required. */
+/** The policy that the proxy adds to each page: a string in a script sink must go through brumate. */
 const NITRO_POLICY = "require-trusted-types-for 'script'; trusted-types brumate";
 
 /**
  * Serves the Nitro build of an example in `root` with `node .output/server/index.mjs`, behind a
- * proxy that adds the Trusted Types policy to each page. Nitro owns the script tags, so there
- * is no nonce for a script-src policy: a string in an HTML or script sink that skips the policy
- * still fails.
+ * proxy that adds the Trusted Types policy to each page. The nonce policy comes from the app: its
+ * entry makes a nonce for each response, passes it to `handle` and sends `script-src
+ * 'nonce-…' 'strict-dynamic'`, as an app without a proxy that sets policies does. The proxy joins
+ * the two, so a script without the nonce of its page is blocked, and a string in an HTML or
+ * script sink that skips the policy fails. A page that is a file of the build has no nonce and
+ * gets Trusted Types only.
  */
 export async function serveNitro(root) {
   assert(
@@ -211,6 +214,8 @@ export async function serveNitro(root) {
     env: { PORT: String(port), NODE_ENV: 'production' },
     url: target,
   });
+  // The pages that came with a nonce policy from the app.
+  let nonced = 0;
   const http = createHttpServer((request, response) => {
     const upstream = sendHttpRequest(
       `${target}${request.url}`,
@@ -218,7 +223,11 @@ export async function serveNitro(root) {
       (answer) => {
         const headers = { ...answer.headers };
         if ((headers['content-type'] ?? '').includes('html')) {
-          headers['content-security-policy'] = NITRO_POLICY;
+          const own = headers['content-security-policy'];
+          if (own?.includes("script-src 'nonce-")) {
+            nonced++;
+          }
+          headers['content-security-policy'] = own ? `${own}; ${NITRO_POLICY}` : NITRO_POLICY;
         }
         response.writeHead(answer.statusCode, headers);
         answer.pipe(response);
@@ -249,6 +258,8 @@ export async function serveNitro(root) {
         http.close(resolve);
       });
       await stopApp();
+      // An app that sends no nonce policy would pass every step, so the run fails.
+      assert(nonced > 0, `${path.relative(repo, root)} sent no page with a nonce policy`);
     },
   };
 }

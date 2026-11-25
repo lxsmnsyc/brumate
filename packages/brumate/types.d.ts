@@ -44,6 +44,6 @@ declare module 'virtual:brumate/routes' {
   export const routes: import('brumate/server').RouteNode;
   export function handle(
     request: Request,
-    options?: import('brumate/server').DocumentOptions,
+    options?: import('brumate/server').RouteOptions,
   ): Promise<Response | undefined>;
 }

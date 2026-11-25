@@ -19,13 +19,28 @@ export default {
       }
     }
     // Pages and endpoints, from the files under src/routes.
+    // A nonce for the scripts of this response: the pages write it on their script tags, and the
+    // policy below allows only those.
+    const nonce = btoa(crypto.randomUUID());
     const options = {
       address,
+      nonce,
       // The browser starts to load the loader and the core while the page renders. Only Node has
       // `writeEarlyHints`.
       earlyHints: (link: string[]) => request.runtime?.node?.res?.writeEarlyHints?.({ link }),
     };
     const answer = await handle(request, options);
-    return answer ?? new Response('Not found', { status: 404 });
+    if (!answer) {
+      return new Response('Not found', { status: 404 });
+    }
+    if (!answer.headers.get('content-type')?.includes('text/html')) {
+      return answer;
+    }
+    const page = new Response(answer.body, answer);
+    page.headers.set(
+      'content-security-policy',
+      `script-src 'nonce-${nonce}' 'strict-dynamic'; object-src 'none'; base-uri 'none'`,
+    );
+    return page;
   },
 };

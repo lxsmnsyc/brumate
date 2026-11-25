@@ -14,7 +14,29 @@ const runtime = (name: string): string =>
 
 const app = fileURLToPath(new URL('../.output/default-scripts/', import.meta.url));
 
-type Handle = (request: Request, options?: { scripts?: string }) => Promise<Response | undefined>;
+interface HandleOptions {
+  scripts?: string;
+  nonce?: string;
+}
+
+type Handle = (request: Request, options?: HandleOptions) => Promise<Response | undefined>;
+
+/** The opening tags of the scripts that load a file. */
+function srcTags(html: string): string[] {
+  return html.match(/<script\b[^>]*\ssrc="[^"]*"[^>]*>/g) ?? [];
+}
+
+/** Checks that every script tag that loads a file has the nonce, or that none has one. */
+function expectNonce(html: string, nonce: string | undefined, count: number): void {
+  const tags = srcTags(html);
+  expect(tags).toHaveLength(count);
+  // The attribute each tag must have, or the text that none may contain.
+  const escaped = nonce?.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;');
+  const needle = nonce === undefined ? 'nonce=' : ` nonce="${escaped}"`;
+  for (const tag of tags) {
+    expect(tag.includes(needle)).toBe(nonce !== undefined);
+  }
+}
 
 function writeApp(): void {
   rmSync(app, { recursive: true, force: true });
@@ -66,7 +88,7 @@ const config: InlineConfig = {
   },
 };
 
-async function text(handle: Handle, options?: { scripts?: string }): Promise<string> {
+async function text(handle: Handle, options?: HandleOptions): Promise<string> {
   const response = await handle(new Request('http://localhost/'), options);
   expect(response?.status).toBe(200);
   return await response!.text();
@@ -109,6 +131,24 @@ describe('the scripts of the dev server', () => {
     expect(html).toContain(devScripts());
     // The scripts come after the page state, in the tail of the page.
     expect(html.indexOf('/@vite/client')).toBeGreaterThan(html.indexOf('Count'));
+  });
+
+  it('carry the nonce of the render, and only then', async () => {
+    dev ??= await createServer({ ...config, appType: 'custom', server: { middlewareMode: true } });
+    const { handle } = (await dev.ssrLoadModule('virtual:brumate/routes')) as { handle: Handle };
+    expectNonce(await text(handle, { nonce: 'abc123' }), 'abc123', 2);
+    expectNonce(await text(handle), undefined, 2);
+    // A nonce is attribute text, so a quote in it does not end the attribute.
+    const odd = await text(handle, { nonce: 'a"b' });
+    expect(odd).toContain(' nonce="a&quot;b"');
+    // A `$` in a nonce is text: it is not a pattern of a replacement.
+    for (const dollar of ['n$&x', "a$'b", 'c$`d', 'e$$f']) {
+      expectNonce(await text(handle, { nonce: dollar }), dollar, 2);
+    }
+    // The scripts of the caller are written as they are.
+    const own = await text(handle, { nonce: 'abc123', scripts: '<script src="/own.js"></script>' });
+    expect(own).toContain('<script src="/own.js"></script>');
+    expect(own).not.toContain('/@vite/client');
   });
 
   it('sit under the base', async () => {
@@ -163,6 +203,9 @@ describe('the scripts of a build', () => {
     const html = await text(handle);
     expect(html).toContain(entryScript('/', file));
     expect(html).not.toContain('/@vite/client');
+    // The entry tag carries the nonce of the render, and has none without one.
+    expectNonce(await text(handle, { nonce: 'abc123' }), 'abc123', 1);
+    expectNonce(html, undefined, 1);
     // An explicit empty string names nothing.
     const none = await text(handle, { scripts: '' });
     expect(none).not.toContain(entryScript('/', file));
