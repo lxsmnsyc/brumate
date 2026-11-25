@@ -1,7 +1,7 @@
 ---
 id: state-dedupe-spike
 title: "Spike: leave out state strings the markup already printed"
-status: active
+status: done
 priority: should
 type: experiment
 story:
@@ -20,7 +20,7 @@ exclusive: [bench]
 fulfilled_by:
 gate: true
 added: 2026-11-18
-spent:
+spent: 540330
 owns:
   - docs/roadmaps/brumate/nodes/state-dedupe-spike/**
 shared: []
