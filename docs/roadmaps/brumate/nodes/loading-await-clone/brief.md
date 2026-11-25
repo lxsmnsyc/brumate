@@ -1,7 +1,7 @@
 ---
 id: loading-await-clone
 title: "A #loading body with an await clones its template"
-status: active
+status: done
 priority: should
 type: refactor
 story:
@@ -21,7 +21,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-26
-spent:
+spent: 257647
 owns:
   - docs/roadmaps/brumate/nodes/loading-await-clone/**
 shared:
