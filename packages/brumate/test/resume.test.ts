@@ -10175,6 +10175,28 @@ describe('await in block scripts, #for rows and markup of a browser render', () 
     expect(errors).toEqual([]);
   });
 
+  it('resumes a #loading (memo) body with an await that holds a component and a block', async () => {
+    const errors = watchErrors();
+    await resume('awaitLoadingNestedOn', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(inFlight()).toEqual([1, 70]));
+    expect(document.querySelector('.fallback')).not.toBeNull();
+    await settleUser(70);
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1 ada70']));
+    expect(document.querySelector('.fallback')).toBeNull();
+    expect(text('.nested')).toBe('ada70');
+    expect(text('span')).toBe('ada70');
+    // The block inside the body keeps working after the body is in the page.
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(text('.nested')).toBe('off'));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(text('.nested')).toBe('ada70'));
+    expect(document.querySelectorAll('.user')).toHaveLength(1);
+    expect(document.querySelectorAll('span')).toHaveLength(1);
+    expect(errors).toEqual([]);
+  });
+
   it('shows the #loading fallback until the await in the script of its body settles', async () => {
     await resume('awaitLoading', {});
     click(document.querySelector('.toggle')!);

@@ -83,11 +83,11 @@ it('renders every body of the pages as a clone', () => {
 }, 60000);
 
 /**
- * A page turns `clientHTML` on only when one of its functions builds an HTML string. The body of
- * a `#loading` that waits, with the start marker of its block before the `await`, is the one
- * that still does: its HTML and its callback share one string, which a clone cannot split.
+ * A page turns `clientHTML` on only when one of its functions builds an HTML string, or a
+ * template that renders from HTML holds a place for nodes. The body of a `#loading` that waits
+ * clones: its markers are in the rest of the render, after the `await`.
  */
-it('builds HTML in the browser only for a waiting `#loading` body', () => {
+it('builds HTML in the browser only for templates that render from HTML', () => {
   const sources = new Map<string, string>();
   for (const name of readdirSync(input)) {
     if (name.endsWith('.brm')) {
@@ -111,7 +111,6 @@ it('builds HTML in the browser only for a waiting `#loading` body', () => {
   }
   // The templates with an ambiguous top element that hold places for what they insert build HTML.
   expect(found).toEqual([
-    'awaitLoadingOn.brm',
     'tplAmbiguousBox.brm',
     'tplAmbiguousInner.brm',
     'tplChildrenParam.brm',

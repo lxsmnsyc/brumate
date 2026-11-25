@@ -3298,8 +3298,14 @@ export class Emitter {
    * the block, so the browser finds the body to hide while a memo of the header loads.
    */
   private emitLoadingBody(block: Block & { kind: 'loading' }, scope: Scope): void {
-    this.open(scope, block, '1');
-    this.emitBody(block.body);
+    if (this.options.mode === 'client') {
+      // The body writes its markers after its script, with its markup. For a body that waits
+      // at an `await`, that is the rest of the render, so the body clones its template.
+      this.emitBody(block.body, true, () => this.open(scope, block, '1'));
+    } else {
+      this.open(scope, block, '1');
+      this.emitBody(block.body);
+    }
     this.end(block);
   }
 

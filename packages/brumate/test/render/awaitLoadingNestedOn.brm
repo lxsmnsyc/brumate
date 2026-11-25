@@ -1,0 +1,30 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import Badge from './Badge.brm';
+  import { loadUser } from './waitData.ts';
+
+  let open = $signal(false);
+  let shown = $signal(true);
+</script>
+
+<button class="open" onClick=(() => (open = !open))>Open</button>
+<button class="toggle" onClick=(() => (shown = !shown))>Toggle</button>
+#if (open) {
+  <script>
+    const user = $memo(loadUser(1));
+  </script>
+  #loading (user) {
+    <script>
+      const extra = await $memo(loadUser(70));
+    </script>
+    <p class="user">{user.name} {extra.name}</p>
+    <Badge label=(extra.name) />
+    #if (shown) {
+      <b class="nested">{extra.name}</b>
+    } #else {
+      <i class="nested">off</i>
+    }
+  } #else {
+    <p class="fallback">loading</p>
+  }
+}
