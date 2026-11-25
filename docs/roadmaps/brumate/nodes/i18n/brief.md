@@ -1,7 +1,7 @@
 ---
 id: i18n
 title: Internationalization
-status: todo
+status: dropped
 priority: should
 type: story
 outline: true
@@ -26,7 +26,7 @@ depends_on: []
 
 ## Goal
 
-> 2026-11-25: moved to 0.10.0 as should by the maintainer (lives in `brumate`, no new package).
+> 2026-11-25: dropped by the maintainer. Paraglide fills the gap: its Vite plugin compiles catalogs into typed message functions, and brumate already has what it needs (middleware for the locale, `<html lang>` in the layout and on navigation, server-only calls that never ship). Brumate has no i18n of its own.
 
 Message catalogs that ship almost no text for markup that stays on the server, the locale in middleware, and formatting.
 

@@ -1346,6 +1346,8 @@ Render props as `#template` props, `data-*` state, controlled and uncontrolled s
 
 ### Internationalization
 
+> 2026-11-25: not planned. The maintainer chose to leave internationalization to Paraglide, which fills the gap with no change to brumate. The design below stays as notes.
+
 Brumate has nothing to translate the text of a page. `I18nProvider` of `@brumate/ui` sets the locale and the direction of the parts, not their text. Resuming makes a design possible that ships almost no messages: markup that the browser never renders again stays on the server with its text.
 
 #### Messages
