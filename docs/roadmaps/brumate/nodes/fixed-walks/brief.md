@@ -2,10 +2,10 @@
 id: fixed-walks
 title: Fixed walks
 status: todo
-priority: later
+priority: should
 type: feature
 outline: true
-milestone: backlog
+milestone: 0.10.0
 target:
 from:
 size: M
@@ -28,6 +28,8 @@ depends_on:
 # Fixed walks
 
 ## Goal
+
+> 2026-11-25: moved to 0.10.0 as should by the maintainer (lives in `brumate`, no new package).
 
 Emit the walk of a cloned template as code, as Solid and Svelte do. About 2 to 3% of a click. Branch exp/fixed-walk.
 

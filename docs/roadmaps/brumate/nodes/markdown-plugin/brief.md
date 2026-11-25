@@ -26,6 +26,8 @@ depends_on: []
 
 ## Goal
 
+> 2026-11-25: kept in the backlog by the maintainer: it needs a separate package, deferred for now.
+
 Make the markdown plugin of the website a general plugin that apps can use.
 
 ## Context

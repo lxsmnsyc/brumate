@@ -2,10 +2,10 @@
 id: images
 title: Images
 status: todo
-priority: later
+priority: should
 type: story
 outline: true
-milestone: backlog
+milestone: 0.10.0
 target:
 from:
 size: L
@@ -25,6 +25,8 @@ depends_on: []
 # Images
 
 ## Goal
+
+> 2026-11-25: moved to 0.10.0 as should by the maintainer (lives in `brumate`, no new package).
 
 Image imports and an `Image` part, from `@solidjs/image`.
 

@@ -26,6 +26,8 @@ depends_on: []
 
 ## Goal
 
+> 2026-11-25: kept in the backlog by the maintainer: it needs a separate package, deferred for now.
+
 Merge PR #3 once the TypeScript 7.1 API is stable.
 
 ## Context
