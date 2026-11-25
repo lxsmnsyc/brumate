@@ -1,14 +1,15 @@
 // Children, and the calls of `#template` values: markup that renders where it is inserted.
 
 import { HAS_CHILDREN, HAS_CLIENT_HTML, HAS_TEMPLATES } from '../features.ts';
-import { insertValue, isRaw } from '../html.ts';
+import { insertValue, isRaw, raw } from '../html.ts';
+import type { Raw } from '../html.ts';
 import type { ScopeId } from '../shared.ts';
 import { loadedFunction } from './code.ts';
 import { holdPlace, insertHTML } from './insert.ts';
 import { resolve } from './references.ts';
 import type { Handler } from './references.ts';
 import { resolveScope } from './scopes.ts';
-import { insertedChildren, scopes, updating } from './state.ts';
+import { insertedChildren, scopes, templateNodes, updating } from './state.ts';
 import type { Scope } from './state.ts';
 
 /**
@@ -42,6 +43,22 @@ export function templateCall(
   args: unknown[],
 ): TemplateCall {
   return new TemplateCall(ref, owner, args, (at) => insert(render(...args), undefined, at));
+}
+
+/**
+ * The output of a template that cloned its markup: a place for the clone, which the insert fills,
+ * and the template's scope, which the insert links to its call. The insert follows the render
+ * at once, as for children, so the clone is still waiting.
+ */
+export function rawNodes(fragment: DocumentFragment, scope?: ScopeId): Raw {
+  // The nodes at the top of the clone find the scope, when a replace destroys the scopes in them.
+  const owner = scope === undefined ? undefined : scopes.get(scope);
+  if (owner) {
+    for (const node of fragment.childNodes) {
+      templateNodes.set(node, owner);
+    }
+  }
+  return raw(holdPlace(fragment), scope);
 }
 
 // Rendering on the client

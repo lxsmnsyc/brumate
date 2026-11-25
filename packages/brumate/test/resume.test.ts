@@ -2736,6 +2736,13 @@ describe('resume', () => {
     expect(client.scopes.size).toBe(count);
   });
 
+  it('renders a template whose top element is an `<a>` in the SVG that it is inserted in', async () => {
+    await resume('tplSvgLink', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.host .lnk')).not.toBeNull());
+    expect(document.querySelector('.host .lnk')!.namespaceURI).toBe('http://www.w3.org/2000/svg');
+  });
+
   it('replaces a template of the file with another template at the same insert', async () => {
     await resume('tplInPlaceHost', {});
     click(document.querySelector('.open')!);

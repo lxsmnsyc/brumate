@@ -1,0 +1,14 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let open = $signal(false);
+</script>
+
+#template lnk(label: string) {
+  <a href="#x" class="lnk">{label}</a>
+}
+
+<button class="open" onClick=(() => (open = true))>Open</button>
+#if (open) {
+  <svg class="host">{lnk('go')}</svg>
+}

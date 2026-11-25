@@ -210,6 +210,24 @@ class ClientGenerator {
     return name;
   }
 
+  /** The shared constants of the code that `withTemplates` gives, by their code. */
+  private readonly sharedConstants = new Map<string, string>();
+
+  /**
+   * A constant for code that lands in another part than the current one, so a module constant
+   * of this part would be missing there. The core keeps it by its key, and makes it once.
+   */
+  private shareConstant(code: string): string {
+    let call = this.sharedConstants.get(code);
+    if (!call) {
+      // The key is a hash of the code, so an edit in development makes a new constant.
+      const key = hashCode(code);
+      call = `$$b.shared(${JSON.stringify(key)}, () => ${code})`;
+      this.sharedConstants.set(code, call);
+    }
+    return call;
+  }
+
   generate(): ClientOutput {
     this.collectRenders();
     this.checkSupport();
@@ -2127,6 +2145,7 @@ class ClientGenerator {
     const emitter = new Emitter(this.file, this.plan, this.valuePatch, {
       mode: 'client',
       outer: { inside: templates, base, baseVar: '$$p' },
+      hoist: (code) => this.shareConstant(code),
     });
     for (const line of this.prologue(templates, base)) {
       emitter.line(line);
@@ -2317,4 +2336,18 @@ class ClientGenerator {
     }
     return `{ ${scopes.join(', ')} }`;
   }
+}
+
+/** A short key for code: a 53-bit hash, in base 36. */
+function hashCode(code: string): string {
+  let h1 = 0xdeadbeef;
+  let h2 = 0x41c6ce57;
+  for (let index = 0; index < code.length; index++) {
+    const char = code.charCodeAt(index);
+    h1 = Math.imul(h1 ^ char, 2654435761);
+    h2 = Math.imul(h2 ^ char, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
 }

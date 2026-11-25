@@ -50,9 +50,10 @@ it('finds the children that the browser renders, the templates that it calls, ti
 <ul>{row('Cat', picked % 2 === 0)}</ul>
 `);
   expect(called.templates).toBe(true);
-  // A `#head` block, a template and a `#try` clone in the browser.
+  // A `#head` block and a `#try` clone in the browser. A template returns its clone, which its
+  // insert holds a place for in the HTML, so a template turns `clientHTML` on.
   expect(titled.clientHTML).toBe(false);
-  expect(templated.clientHTML).toBe(false);
+  expect(templated.clientHTML).toBe(true);
   const tried = use(`<script>
   import { $signal } from 'brumate/signals';
   let open = $signal(false);
@@ -69,6 +70,7 @@ it('finds the children that the browser renders, the templates that it calls, ti
   expect(tried.clientHTML).toBe(false);
   expect(joinFeatures([plain, titled, templated])).toEqual({
     ...noFeatures(),
+    clientHTML: true,
     templates: true,
     titles: true,
   });

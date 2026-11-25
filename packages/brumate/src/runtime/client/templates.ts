@@ -176,6 +176,16 @@ export function clone(source: Template): ClonedNode[] {
   return cloned as ClonedNode[];
 }
 
+const sharedValues = new Map<string, unknown>();
+
+/** A constant of code that renders in another module than the one that names it, made once. */
+export function shared<T>(key: string, make: () => T): T {
+  if (!sharedValues.has(key)) {
+    sharedValues.set(key, make());
+  }
+  return sharedValues.get(key) as T;
+}
+
 /**
  * Keeps an element of cloned markup on its scope, where updates find it. An element at the top
  * of the clone, or one with handlers, gets its `b-b` too, which `list` and the handlers read to

@@ -1,6 +1,7 @@
 // The tree of scopes: finding a scope, making one for markup that the client renders, and
 // removing one with what it owns.
 
+import { HAS_TEMPLATES } from '../features.ts';
 import { parseId } from '../shared.ts';
 import type { ScopeId } from '../shared.ts';
 import { MARKER, clear, portals, rangeEnd, rendered, sweepIndexes } from './blocks.ts';
@@ -15,6 +16,7 @@ import {
   loads,
   memoControllers,
   scopes,
+  templateNodes,
   waiters,
   timers,
 } from './state.ts';
@@ -167,6 +169,11 @@ export function destroyNodes(scope: Scope | undefined, first: Node | null, end: 
         NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT,
       );
       for (let current: Node | null = walker.currentNode; current; current = walker.nextNode()) {
+        // The top of a template's clone, which may name no scope itself.
+        const top = HAS_TEMPLATES ? templateNodes.get(current) : undefined;
+        if (top && !above.has(top)) {
+          inside.add(top);
+        }
         if (current.nodeType === 1) {
           const key = (current as Element).getAttribute('b-b');
           if (key !== null) {

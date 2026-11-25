@@ -48,10 +48,12 @@ export function u4($$s) {
 function price(...$$a) { return $$b.templateCall("TemplateUpdate_kx4ubq#T2", $$p, price$, $$a); }
 function price$(label: string, amount: number) {
   let $$html = '';
-  const $$s2 = $$b.createScope(2, $$p);
-  $$html += "<span class=\"price\"><!--t" + $$s2 + ":0-->" + $$b.insert((label)) + "<!--/t-->: <!--t" + $$s2 + ":1-->" + $$b.insert((amount)) + "<!--/t--></span>";
+  const $$s2 = $$b.createScope(2, $$p, undefined, 2);
+  const $$e = $$b.clone($$b.shared("orcap4pu9d", () => $$b.template("<span b-x=\"1\" class=\"price\"><!--x0-->: </span>", 2))), $$f = $$e[2];
+  $$b.keepText($$s2, 0, $$e[0], (label));
+  $$b.appendText($$s2, 1, $$e[1], (amount));
   $$b.setSlots($$s2, [label, amount]);
-  return $$b.raw($$html, $$s2);
+  return $$b.rawNodes($$f, $$s2);
 }
 return price('Subtotal', $$b.get($$s, 0));
 })($$s), ($$v) => $$b.content($$s, 1, $$v));
@@ -59,7 +61,8 @@ return price('Subtotal', $$b.get($$s, 0));
 
 # Render module
 import * as $$b from 'brumate/client';
-const $$t0 = $$b.template("<button b-x=\"0\" b-on=\"click=TemplateUpdate_kx4ubq#h3\">Add</button><p b-x=\"1\"></p>", 2);
+const $$t0 = $$b.template("<span b-x=\"1\" class=\"price\"><!--x0-->: </span>", 2);
+const $$t1 = $$b.template("<button b-x=\"0\" b-on=\"click=TemplateUpdate_kx4ubq#h3\">Add</button><p b-x=\"1\"></p>", 2);
 
 export default function TemplateUpdate($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
@@ -68,12 +71,14 @@ export default function TemplateUpdate($$props: Record<string, never>): string |
   function price(...$$a) { return $$b.templateCall("TemplateUpdate_kx4ubq#T2", $$s1, price$, $$a); }
   function price$(label: string, amount: number) {
     let $$html = '';
-    const $$s2 = $$b.createScope(2, $$s1);
-    $$html += "<span class=\"price\"><!--t" + $$s2 + ":0-->" + $$b.insert((label)) + "<!--/t-->: <!--t" + $$s2 + ":1-->" + $$b.insert((amount)) + "<!--/t--></span>";
+    const $$s2 = $$b.createScope(2, $$s1, undefined, 2);
+    const $$e = $$b.clone($$t0), $$f = $$e[2];
+    $$b.keepText($$s2, 0, $$e[0], (label));
+    $$b.appendText($$s2, 1, $$e[1], (amount));
     $$b.setSlots($$s2, [label, amount]);
-    return $$b.raw($$html, $$s2);
+    return $$b.rawNodes($$f, $$s2);
   }
-  const $$e = $$b.clone($$t0), $$f = $$e[2];
+  const $$e = $$b.clone($$t1), $$f = $$e[2];
   $$b.keep($$s1, 0, $$e[0]);
   $$b.keep($$s1, 1, $$e[1]);
   $$b.fillValue($$s1, 1, (price('Subtotal', total)), ($$v) => $$b.setContent($$e[1], $$v, $$s1));

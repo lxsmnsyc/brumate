@@ -259,6 +259,22 @@ export type Fill = { kind: 'if'; renders: string[] } | { kind: 'for'; render: st
 /** The `$handler` calls that each patch has edited, since emitters of a file share its patch. */
 const handlerEdits = new WeakMap<Patch, Set<object>>();
 
+/** The tags that HTML and SVG both have, so the parent decides the namespace of the element. */
+const AMBIGUOUS_TAGS = new Set(['a', 'script', 'style', 'title']);
+
+/** True if markup has an element at its top that HTML and SVG both have. */
+function hasAmbiguousTop(nodes: Markup[]): boolean {
+  for (const node of nodes) {
+    if (node.kind === 'element' && AMBIGUOUS_TAGS.has(node.tag.toLowerCase())) {
+      return true;
+    }
+    if (node.kind === 'fragment' && hasAmbiguousTop(node.children)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 const CLIENT_HELPERS: Record<string, string> = {
   scope: 'createScope',
   slots: 'setSlots',
@@ -1922,13 +1938,22 @@ export class Emitter {
       );
     }
     this.line(`${this.async}function ${name}(${params})${type} {`);
+    const fn = this.currentFn;
     this.line(`let $$html = '';`);
     // A template can render anywhere, so its elements get the style variables.
     this.atTopLevel(() => this.emitBody(template.body));
     this.flush();
     // The output names the template's scope, which the insert links to where it is called.
     const at = this.plan.scopes.get(scope)!.needsId ? `, ${this.scopeVar(scope)}` : '';
-    this.line(`return $$b.raw($$html${at});`);
+    // In the browser, the template clones its markup when it can. A template can be called
+    // anywhere, so one whose top element is SVG or HTML by where it goes (`<a>`) renders from
+    // HTML, which the insert parses in its own context.
+    const cloned =
+      this.options.mode === 'client' &&
+      this.options.hoist !== undefined &&
+      !hasAmbiguousTop(template.body.children) &&
+      cloneLines(this, this.options.hoist, fn, template.body);
+    this.line(cloned ? `return $$b.rawNodes($$f${at});` : `return $$b.raw($$html${at});`);
     this.close();
   }
 
