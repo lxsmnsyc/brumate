@@ -1,5 +1,15 @@
 # @brumate/tsc
 
+## 0.2.0
+
+### Minor Changes
+
+- d8f5ef4: `checkProject(root)` type-checks a project and returns its diagnostics with file, range, message and code. It does not print and does not end the process.
+
+### Patch Changes
+
+- @brumate/language-core@0.3.2
+
 ## 0.1.19
 
 ### Patch Changes

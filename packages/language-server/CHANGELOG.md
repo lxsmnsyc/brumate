@@ -1,5 +1,33 @@
 # @brumate/language-server
 
+## 0.2.0
+
+### Minor Changes
+
+- 3d2e068: - `BRM209` warns about an `$effect` that only assigns signals that nothing else writes, and names the `$memo` that replaces it.
+  - `brumate check`, the language server and the dev server show the code of each warning.
+
+### Patch Changes
+
+- Updated dependencies [55cc81e]
+- Updated dependencies [d8f5ef4]
+- Updated dependencies [3d2e068]
+- Updated dependencies [402787e]
+- Updated dependencies [8cebc3a]
+- Updated dependencies [38bba17]
+- Updated dependencies [4fe89c2]
+- Updated dependencies [ad57eae]
+- Updated dependencies [197b2af]
+- Updated dependencies [f446be4]
+- Updated dependencies [6a76e4f]
+- Updated dependencies [cd99066]
+- Updated dependencies [66b7831]
+- Updated dependencies [11c59d5]
+- Updated dependencies [ab985e2]
+- Updated dependencies [6246e05]
+  - brumate@0.9.0
+  - @brumate/language-core@0.3.2
+
 ## 0.1.19
 
 ### Patch Changes
