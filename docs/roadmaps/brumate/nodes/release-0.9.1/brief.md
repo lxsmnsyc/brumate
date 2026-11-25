@@ -35,6 +35,9 @@ depends_on:
   - on: svg-ambiguous-clone
     kind: hard
     why: a patch fix of 0.9.1
+  - on: kept-page-nonce
+    kind: hard
+    why: a patch fix of 0.9.1
 ---
 
 # Release brumate 0.9.1
