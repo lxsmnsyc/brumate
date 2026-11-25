@@ -44,7 +44,7 @@ A brumate app never writes the `/@vite/client` tag or the client entry script, i
 | dev-pages           | M    | Plain `vite dev` serves pages through a post middleware; `appType: 'custom'`; skipped under `middlewareMode` and Nitro                    |
 | nitro-scripts       | S    | The Nitro entry drops `?assets=client` and the DEV ternary; e2e in dev and build                                                          |
 | examples-glue       | M    | Delete the hand-written tags and example glue, repoint the e2e, guard test                                                                |
-| script-nonce        | S    | The default script tags carry the nonce of the render; `handle` options typed as `RouteOptions` (found by examples-glue)                 |
+| script-nonce        | S    | The default script tags carry the nonce of the render; `handle` options typed as `RouteOptions` (found by examples-glue)                  |
 | nitro-prerender     | M    | Prerendering works in a Nitro build (found by examples-glue)                                                                              |
 | client-scripts-docs | S    | getting-started, deploying, reference-plugin and the skill                                                                                |
 

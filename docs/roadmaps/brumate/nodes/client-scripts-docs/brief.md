@@ -1,7 +1,7 @@
 ---
 id: client-scripts-docs
 title: Docs: vite dev serves pages, scripts are a default
-status: todo
+status: active
 priority: 
 type: docs
 story: client-scripts
