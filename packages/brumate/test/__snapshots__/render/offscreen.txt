@@ -224,51 +224,61 @@ export function e33($$s) {
           return () => log$($$s.p.p, 'removable cleanup');
         });
 }
-const $$k4 = $$b.template("<p b-x=\"0\" b-c-1oupne3 class=\"late\">Late </p>", 1);
-const $$k5 = $$b.template("<!--x0--><aside b-x=\"1\" b-c-1oupne3 class=\"portal-a\">Portal </aside><!--/P-->", 2);
+const $$k4 = $$b.template("<p b-x=\"0\" b-c-1oupne3 class=\"inner\">Inner </p>", 1);
+const $$k5 = $$b.template("<p b-x=\"0\" b-c-1oupne3 class=\"late\">Late </p>", 1);
+const $$k6 = $$b.template("<!--x0--><aside b-x=\"1\" b-c-1oupne3 class=\"portal-a\">Portal </aside><!--/P-->", 2);
+const $$k7 = $$b.template("<template b-x=\"0\" b-client=\"idle=Offscreen_1oupne3#c16\"></template><template b-x=\"1\" b-listen=\"window\" b-on=\"keydown=Offscreen_1oupne3#h17\"></template><section b-c-1oupne3 class=\"panel-a flex\"><input b-x=\"2\" b-c-1oupne3 class=\"draft\" b-on=\"input=Offscreen_1oupne3#h19\"><p b-x=\"3\" b-c-1oupne3 class=\"draft-text\"></p><!--x4--></section><p b-c-1oupne3 class=\"inline\" style=\"display: grid\">Inline</p><p b-x=\"5\" b-c-1oupne3 class=\"styled\">Styled</p>Count <!--x6--><!--x7--><!--x8-->", 9, undefined, 1);
 export function r2($$p) {
   let $$html = '';
   let inner = $$b.get($$p, 2);
   let count = $$b.get($$p, 1);
   let look = $$b.get($$p, 4);
-  const $$s2 = $$b.createScope(2, $$p);
+  const $$s2 = $$b.createScope(2, $$p, undefined, 7);
   let draft = ('');
-  $$html += "<template b-b=\"" + $$s2 + ":0\" b-client=\"idle=Offscreen_1oupne3#c16\"></template><template b-b=\"" + $$s2 + ":1\" b-listen=\"window\" b-on=\"keydown=Offscreen_1oupne3#h17\"></template><section b-c-1oupne3 class=\"panel-a flex\"><input b-c-1oupne3 class=\"draft\"" + $$b.attribute("value", (draft)) + " b-b=\"" + $$s2 + ":2\" b-on=\"input=Offscreen_1oupne3#h19\"><p b-c-1oupne3 class=\"draft-text\" b-b=\"" + $$s2 + ":3\">" + $$b.insert((draft)) + "</p>";
-  if (inner) {
-    $$html += "<!--b" + $$s2 + ":4:1-->";
-    const $$s3 = $$b.createScope(3, $$s2);
-    $$html += "<p b-c-1oupne3 class=\"inner\">Inner <!--t" + $$s3 + ":0-->" + $$b.insert((count)) + "<!--/t--></p><!--/b-->";
-  } else {
-    $$html += "<!--b" + $$s2 + ":4:-1--><!--/b-->";
-  }
-  $$html += "</section><p b-c-1oupne3 class=\"inline\" style=\"display: grid\">Inline</p><p b-c-1oupne3 class=\"styled\"" + $$b.attribute("style", (look)) + " b-b=\"" + $$s2 + ":5\">Styled</p>Count <!--t" + $$s2 + ":6-->" + $$b.insert((count)) + "<!--/t-->";
   const $$body0 = () => {
     let $$html = '';
-    const $$s4 = $$b.createScope(4, $$s2, undefined, 1);
+    const $$s3 = $$b.createScope(3, $$s2, undefined, 1);
     const $$e = $$b.clone($$k4), $$f = $$e[1];
+    $$b.appendText($$s3, 0, $$e[0], (count));
+    return $$f;
+  };
+  const $$body1 = () => {
+    let $$html = '';
+    const $$s4 = $$b.createScope(4, $$s2, undefined, 1);
+    const $$e = $$b.clone($$k5), $$f = $$e[1];
     $$b.appendText($$s4, 0, $$e[0], (count));
     return $$f;
   };
-  $$html += $$b.nodes($$b.branchNodes($$s2, 7, (count > 1) ? 0 : -1, [$$body0]));
-  const $$portal1 = (() => {
+  const $$e = $$b.clone($$k7), $$f = $$e[9];
+  $$b.keep($$s2, 0, $$e[0]);
+  $$b.keep($$s2, 1, $$e[1]);
+  $$b.setAttr($$e[2], "value", (draft));
+  $$b.keep($$s2, 2, $$e[2]);
+  $$b.keep($$s2, 3, $$e[3]);
+  $$b.setContent($$e[3], (draft), $$s2);
+  $$b.place($$e[4], $$b.offscreenNodes($$s2, 4, (inner), $$body0));
+  $$b.setAttr($$e[5], "style", (look));
+  $$b.keep($$s2, 5, $$e[5]);
+  $$b.keepText($$s2, 6, $$e[6], (count));
+  $$b.place($$e[7], $$b.branchNodes($$s2, 7, (count > 1) ? 0 : -1, [$$body1]));
+  const $$portal2 = (() => {
     let $$html = '';
     const $$s5 = $$b.createScope(5, $$s2, undefined, 1);
-    const $$e = $$b.clone($$k5), $$f = $$e[2];
+    const $$e = $$b.clone($$k6), $$f = $$e[2];
     $$b.nameComment($$e[0], "P" + $$s5);
     $$b.appendText($$s5, 0, $$e[1], (count));
     return $$f;
   })();
-  $$b.addPortal($$portal1);
-  $$html += $$b.component(OffscreenChild, { "value": (count) }, undefined, $$s2, 8);
+  $$b.addPortal($$portal2);
+  $$b.place($$e[8], $$b.componentNodes(OffscreenChild, { "value": (count) }, undefined, $$s2, 8));
   $$b.setSlots($$s2, [draft]);
-  return $$html;
+  return $$f;
 }
-const $$k6 = $$b.template("<p b-x=\"0\" b-c-1oupne3 class=\"inner\">Inner </p>", 1);
 export function r3($$p) {
   let $$html = '';
   let count = $$b.get($$p.p, 1);
   const $$s3 = $$b.createScope(3, $$p, undefined, 1);
-  const $$e = $$b.clone($$k6), $$f = $$e[1];
+  const $$e = $$b.clone($$k4), $$f = $$e[1];
   $$b.appendText($$s3, 0, $$e[0], (count));
   return $$f;
 }
@@ -276,37 +286,39 @@ export function r4($$p) {
   let $$html = '';
   let count = $$b.get($$p.p, 1);
   const $$s4 = $$b.createScope(4, $$p, undefined, 1);
-  const $$e = $$b.clone($$k4), $$f = $$e[1];
+  const $$e = $$b.clone($$k5), $$f = $$e[1];
   $$b.appendText($$s4, 0, $$e[0], (count));
   return $$f;
 }
-const $$k7 = $$b.template("<section b-x=\"0\" b-c-1oupne3 class=\"panel-b\">B </section>", 1);
+const $$k8 = $$b.template("<section b-x=\"0\" b-c-1oupne3 class=\"panel-b\">B </section>", 1);
 export function r6($$p) {
   let $$html = '';
   let count = $$b.get($$p, 1);
   const $$s6 = $$b.createScope(6, $$p, undefined, 1);
-  const $$e = $$b.clone($$k7), $$f = $$e[1];
+  const $$e = $$b.clone($$k8), $$f = $$e[1];
   $$b.appendText($$s6, 0, $$e[0], (count));
   return $$f;
 }
+const $$k9 = $$b.template("<p b-c-1oupne3 class=\"removable\">Removable</p>", 0);
+const $$k10 = $$b.template("<!--x0-->", 1);
 export function r7($$p) {
   let $$html = '';
   let tab = $$b.get($$p, 0);
   const $$s7 = $$b.createScope(7, $$p);
-  if (tab === 'a') {
-    $$html += "<!--b" + $$s7 + ":0:1-->";
+  const $$body0 = () => {
+    let $$html = '';
     const $$s8 = $$b.createScope(8, $$s7);
-    $$html += "<p b-c-1oupne3 class=\"removable\">Removable</p><!--/b-->";
-  } else {
-    $$html += "<!--b" + $$s7 + ":0:-1--><!--/b-->";
-  }
-  return $$html;
+    const $$e = $$b.clone($$k9), $$f = $$e[0];
+    return $$f;
+  };
+  const $$e = $$b.clone($$k10), $$f = $$e[1];
+  $$b.place($$e[0], $$b.offscreenNodes($$s7, 0, (tab === 'a'), $$body0));
+  return $$f;
 }
-const $$k8 = $$b.template("<p b-c-1oupne3 class=\"removable\">Removable</p>", 0);
 export function r8($$p) {
   let $$html = '';
   const $$s8 = $$b.createScope(8, $$p);
-  const $$e = $$b.clone($$k8), $$f = $$e[0];
+  const $$e = $$b.clone($$k9), $$f = $$e[0];
   return $$f;
 }
 
@@ -320,9 +332,14 @@ export function log$($$s, entry: string): void {
 # Render module
 import * as $$b from 'brumate/client';
 import OffscreenChild from "./OffscreenChild.brm?brumate-render";
+import { r7 as $$r7 } from "./offscreen.brm?brumate-client";
 const $$css = ".flex:where([b-c-1oupne3]) {\n    display: flex;\n  }";
-const $$t0 = $$b.template("<p b-x=\"0\" b-c-1oupne3 class=\"late\">Late </p>", 1);
-const $$t1 = $$b.template("<!--x0--><aside b-x=\"1\" b-c-1oupne3 class=\"portal-a\">Portal </aside><!--/P-->", 2);
+const $$t0 = $$b.template("<p b-x=\"0\" b-c-1oupne3 class=\"inner\">Inner </p>", 1);
+const $$t1 = $$b.template("<p b-x=\"0\" b-c-1oupne3 class=\"late\">Late </p>", 1);
+const $$t2 = $$b.template("<!--x0--><aside b-x=\"1\" b-c-1oupne3 class=\"portal-a\">Portal </aside><!--/P-->", 2);
+const $$t3 = $$b.template("<template b-x=\"0\" b-client=\"idle=Offscreen_1oupne3#c16\"></template><template b-x=\"1\" b-listen=\"window\" b-on=\"keydown=Offscreen_1oupne3#h17\"></template><section b-c-1oupne3 class=\"panel-a flex\"><input b-x=\"2\" b-c-1oupne3 class=\"draft\" b-on=\"input=Offscreen_1oupne3#h19\"><p b-x=\"3\" b-c-1oupne3 class=\"draft-text\"></p><!--x4--></section><p b-c-1oupne3 class=\"inline\" style=\"display: grid\">Inline</p><p b-x=\"5\" b-c-1oupne3 class=\"styled\">Styled</p>Count <!--x6--><!--x7--><!--x8-->", 9, undefined, 1);
+const $$t4 = $$b.template("<section b-x=\"0\" b-c-1oupne3 class=\"panel-b\">B </section>", 1);
+const $$t5 = $$b.template("<button b-x=\"0\" b-c-1oupne3 class=\"tab-a\" b-on=\"click=Offscreen_1oupne3#h7\">A</button><button b-x=\"1\" b-c-1oupne3 class=\"tab-b\" b-on=\"click=Offscreen_1oupne3#h8\">B</button><button b-x=\"2\" b-c-1oupne3 class=\"bump\" b-on=\"click=Offscreen_1oupne3#h9\">Bump</button><button b-x=\"3\" b-c-1oupne3 class=\"toggle-inner\" b-on=\"click=Offscreen_1oupne3#h10\">Inner</button><button b-x=\"4\" b-c-1oupne3 class=\"remove\" b-on=\"click=Offscreen_1oupne3#h11\">Remove</button><button b-x=\"5\" b-c-1oupne3 class=\"restyle\" b-on=\"click=Offscreen_1oupne3#h12\">Restyle</button><main b-c-1oupne3><!--x6--><!--x7--><!--x8--><!--/b--></main>", 9);
 
 export default function Offscreen($$props: Record<string, any>): string | DocumentFragment {
   let $$html = '';
@@ -337,65 +354,68 @@ export default function Offscreen($$props: Record<string, any>): string | Docume
   function log(entry: string): void {
     ((globalThis as { offscreenLog?: string[] }).offscreenLog ??= []).push(entry);
   }
-  $$html += "<button b-c-1oupne3 class=\"tab-a\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Offscreen_1oupne3#h7\">A</button><button b-c-1oupne3 class=\"tab-b\" b-b=\"" + $$s1 + ":1\" b-on=\"click=Offscreen_1oupne3#h8\">B</button><button b-c-1oupne3 class=\"bump\" b-b=\"" + $$s1 + ":2\" b-on=\"click=Offscreen_1oupne3#h9\">Bump</button><button b-c-1oupne3 class=\"toggle-inner\" b-b=\"" + $$s1 + ":3\" b-on=\"click=Offscreen_1oupne3#h10\">Inner</button><button b-c-1oupne3 class=\"remove\" b-b=\"" + $$s1 + ":4\" b-on=\"click=Offscreen_1oupne3#h11\">Remove</button><button b-c-1oupne3 class=\"restyle\" b-b=\"" + $$s1 + ":5\" b-on=\"click=Offscreen_1oupne3#h12\">Restyle</button><main b-c-1oupne3>";
-  if (tab === 'a') {
-    $$html += "<!--b" + $$s1 + ":6:1-->";
-    const $$s2 = $$b.createScope(2, $$s1);
+  const $$body0 = () => {
+    let $$html = '';
+    const $$s2 = $$b.createScope(2, $$s1, undefined, 7);
     let draft = ('');
-    $$html += "<template b-b=\"" + $$s2 + ":0\" b-client=\"idle=Offscreen_1oupne3#c16\"></template><template b-b=\"" + $$s2 + ":1\" b-listen=\"window\" b-on=\"keydown=Offscreen_1oupne3#h17\"></template><section b-c-1oupne3 class=\"panel-a flex\"><input b-c-1oupne3 class=\"draft\"" + $$b.attribute("value", (draft)) + " b-b=\"" + $$s2 + ":2\" b-on=\"input=Offscreen_1oupne3#h19\"><p b-c-1oupne3 class=\"draft-text\" b-b=\"" + $$s2 + ":3\">" + $$b.insert((draft)) + "</p>";
-    if (inner) {
-      $$html += "<!--b" + $$s2 + ":4:1-->";
-      const $$s3 = $$b.createScope(3, $$s2);
-      $$html += "<p b-c-1oupne3 class=\"inner\">Inner <!--t" + $$s3 + ":0-->" + $$b.insert((count)) + "<!--/t--></p><!--/b-->";
-    } else {
-      $$html += "<!--b" + $$s2 + ":4:-1--><!--/b-->";
-    }
-    $$html += "</section><p b-c-1oupne3 class=\"inline\" style=\"display: grid\">Inline</p><p b-c-1oupne3 class=\"styled\"" + $$b.attribute("style", (look)) + " b-b=\"" + $$s2 + ":5\">Styled</p>Count <!--t" + $$s2 + ":6-->" + $$b.insert((count)) + "<!--/t-->";
-    const $$body0 = () => {
+    const $$body1 = () => {
+      let $$html = '';
+      const $$s3 = $$b.createScope(3, $$s2, undefined, 1);
+      const $$e = $$b.clone($$t0), $$f = $$e[1];
+      $$b.appendText($$s3, 0, $$e[0], (count));
+      return $$f;
+    };
+    const $$body2 = () => {
       let $$html = '';
       const $$s4 = $$b.createScope(4, $$s2, undefined, 1);
-      const $$e = $$b.clone($$t0), $$f = $$e[1];
+      const $$e = $$b.clone($$t1), $$f = $$e[1];
       $$b.appendText($$s4, 0, $$e[0], (count));
       return $$f;
     };
-    $$html += $$b.nodes($$b.branchNodes($$s2, 7, (count > 1) ? 0 : -1, [$$body0]));
-    const $$portal1 = (() => {
+    const $$e = $$b.clone($$t3), $$f = $$e[9];
+    $$b.keep($$s2, 0, $$e[0]);
+    $$b.keep($$s2, 1, $$e[1]);
+    $$b.setAttr($$e[2], "value", (draft));
+    $$b.keep($$s2, 2, $$e[2]);
+    $$b.keep($$s2, 3, $$e[3]);
+    $$b.setContent($$e[3], (draft), $$s2);
+    $$b.place($$e[4], $$b.offscreenNodes($$s2, 4, (inner), $$body1));
+    $$b.setAttr($$e[5], "style", (look));
+    $$b.keep($$s2, 5, $$e[5]);
+    $$b.keepText($$s2, 6, $$e[6], (count));
+    $$b.place($$e[7], $$b.branchNodes($$s2, 7, (count > 1) ? 0 : -1, [$$body2]));
+    const $$portal3 = (() => {
       let $$html = '';
       const $$s5 = $$b.createScope(5, $$s2, undefined, 1);
-      const $$e = $$b.clone($$t1), $$f = $$e[2];
+      const $$e = $$b.clone($$t2), $$f = $$e[2];
       $$b.nameComment($$e[0], "P" + $$s5);
       $$b.appendText($$s5, 0, $$e[1], (count));
       return $$f;
     })();
-    $$b.addPortal($$portal1);
-    $$html += $$b.component(OffscreenChild, { "value": (count) }, undefined, $$s2, 8);
+    $$b.addPortal($$portal3);
+    $$b.place($$e[8], $$b.componentNodes(OffscreenChild, { "value": (count) }, undefined, $$s2, 8));
     $$b.setSlots($$s2, [draft]);
-    $$html += "<!--/b-->";
-  } else {
-    $$html += "<!--b" + $$s1 + ":6:-1--><!--/b-->";
-  }
-  if (tab === 'b') {
-    $$html += "<!--b" + $$s1 + ":7:1-->";
-    const $$s6 = $$b.createScope(6, $$s1);
-    $$html += "<section b-c-1oupne3 class=\"panel-b\">B <!--t" + $$s6 + ":0-->" + $$b.insert((count)) + "<!--/t--></section><!--/b-->";
-  } else {
-    $$html += "<!--b" + $$s1 + ":7:-1--><!--/b-->";
-  }
-  const $$body2 = () => {
-    let $$html = '';
-    const $$s7 = $$b.createScope(7, $$s1);
-    if (tab === 'a') {
-      $$html += "<!--b" + $$s7 + ":0:1-->";
-      const $$s8 = $$b.createScope(8, $$s7);
-      $$html += "<p b-c-1oupne3 class=\"removable\">Removable</p><!--/b-->";
-    } else {
-      $$html += "<!--b" + $$s7 + ":0:-1--><!--/b-->";
-    }
-    return $$html;
+    return $$f;
   };
-  $$html += $$b.nodes($$b.branchNodes($$s1, 8, (exists) ? 0 : -1, [$$body2])) + "</main>";
+  const $$body4 = () => {
+    let $$html = '';
+    const $$s6 = $$b.createScope(6, $$s1, undefined, 1);
+    const $$e = $$b.clone($$t4), $$f = $$e[1];
+    $$b.appendText($$s6, 0, $$e[0], (count));
+    return $$f;
+  };
+  const $$e = $$b.clone($$t5), $$f = $$e[9];
+  $$b.keep($$s1, 0, $$e[0]);
+  $$b.keep($$s1, 1, $$e[1]);
+  $$b.keep($$s1, 2, $$e[2]);
+  $$b.keep($$s1, 3, $$e[3]);
+  $$b.keep($$s1, 4, $$e[4]);
+  $$b.keep($$s1, 5, $$e[5]);
+  $$b.place($$e[6], $$b.offscreenNodes($$s1, 6, (tab === 'a'), $$body0));
+  $$b.place($$e[7], $$b.offscreenNodes($$s1, 7, (tab === 'b'), $$body4));
   $$b.setSlots($$s1, [tab, count, inner, exists, look]);
-  return $$html;
+  $$b.fillBranch($$e[8], $$s1, 8, (exists) ? 0 : -1, [$$r7]);
+  return $$f;
 }
 Offscreen.brumateId = "Offscreen_1oupne3";
 

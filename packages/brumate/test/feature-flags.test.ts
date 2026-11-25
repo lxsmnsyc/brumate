@@ -50,7 +50,7 @@ it('finds the children that the browser renders, the templates that it calls, ti
 <ul>{row('Cat', picked % 2 === 0)}</ul>
 `);
   expect(called.templates).toBe(true);
-  // A `#head` block and a template clone in the browser. A `#try` renders HTML.
+  // A `#head` block, a template and a `#try` clone in the browser.
   expect(titled.clientHTML).toBe(false);
   expect(templated.clientHTML).toBe(false);
   const tried = use(`<script>
@@ -66,7 +66,7 @@ it('finds the children that the browser renders, the templates that it calls, ti
   }
 }
 `);
-  expect(tried.clientHTML).toBe(true);
+  expect(tried.clientHTML).toBe(false);
   expect(joinFeatures([plain, titled, templated])).toEqual({
     ...noFeatures(),
     templates: true,

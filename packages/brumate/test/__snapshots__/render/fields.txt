@@ -64,17 +64,21 @@ export function a2($$s, $$item, $$index) {
 export function u7($$s) {
   $$b.content($$s, 0, $$b.get($$s, 0));
 }
+const $$k2 = $$b.template("<!--x0--><label b-x=\"1\"></label><input b-x=\"2\"><!--/i-->", 3);
 export function r2($$p, $$item, $$index) {
   let $$html = '';
   const name = $$item;
-  const $$s2 = $$b.createScope(2, $$p);
-  $$html += "<!--i" + $$s2 + "-->";
+  const $$s2 = $$b.createScope(2, $$p, undefined, 1);
   const field = $$b.makeId($$s2, 0);
-  $$html += "<label" + $$b.attribute("for", (field)) + " b-b=\"" + $$s2 + ":0\">" + $$b.insert((name)) + "</label><input" + $$b.attribute("id", (field)) + ">";
   $$b.setSlots($$s2, [name, field]);
   $$b.setItem($$s2, $$item);
-  $$html += "<!--/i-->";
-  return $$html;
+  const $$e = $$b.clone($$k2), $$f = $$e[3];
+  $$b.nameComment($$e[0], "i" + $$s2);
+  $$b.setAttr($$e[1], "for", (field));
+  $$b.keep($$s2, 0, $$e[1]);
+  $$b.setContent($$e[1], (name), $$s2);
+  $$b.setAttr($$e[2], "id", (field));
+  return $$f;
 }
 
 # Render module

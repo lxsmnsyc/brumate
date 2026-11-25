@@ -3336,11 +3336,7 @@ export class Emitter {
    * clone. `branchNodes` and `listNodes` write its markers, when it has them.
    */
   private emitNodesBlock(block: Block, scope: Scope): boolean {
-    if (
-      this.options.mode !== 'client' ||
-      !this.options.hoist ||
-      (block.kind === 'for' && block.window !== undefined)
-    ) {
+    if (this.options.mode !== 'client' || !this.options.hoist) {
       return false;
     }
     const anchor = this.anchor(scope, block);
@@ -3377,6 +3373,10 @@ export class Emitter {
       );
       return true;
     }
+    if (block.kind === 'for' && block.window !== undefined && anchor) {
+      this.emitWindowNodes(block, block.window, anchor);
+      return true;
+    }
     if (block.kind === 'for' || block.kind === 'repeat') {
       const item = this.unique('item');
       const index = this.unique('index');
@@ -3399,7 +3399,97 @@ export class Emitter {
       );
       return true;
     }
+    if (block.kind === 'offscreen') {
+      // The marker says which of the two it is: 1 for a body that renders, and -1 for one that
+      // has not rendered yet.
+      const body = this.bodyFunction(
+        '',
+        () => this.emitBody(block.body),
+        this.plan.bodyScopes.get(block.body),
+      );
+      this.code(
+        `$$b.nodes($$b.offscreenNodes(${marks}, ${this.expression(block.visible)}, ${body}))`,
+        this.settledMemos([block.visible], scope),
+      );
+      return true;
+    }
     return false;
+  }
+
+  /**
+   * In the browser, a windowed `#for` renders its first items, between spacers that give it the
+   * height of the rest, and starts the window of the browser. See `windowStart` of the core.
+   */
+  private emitWindowNodes(
+    block: Block & { kind: 'for' },
+    windowed: NonNullable<(Block & { kind: 'for' })['window']>,
+    anchor: { scope: string; index: number },
+  ): void {
+    const list = this.unique('list');
+    const shown = this.unique('shown');
+    // In the browser, the tag is known where the list is.
+    const spacer = this.parentSpacer() ?? 'div';
+    this.line('{');
+    this.line(`const ${list} = $$b.toList(${this.expression(block.list)});`);
+    this.line(
+      `const ${shown} = Math.min(${list}.length, ${windowed.count ? this.expression(windowed.count) : '20'});`,
+    );
+    const item = this.unique('item');
+    const index = this.unique('index');
+    const body = this.bodyFunction(
+      `${item}, ${index}`,
+      () => this.emitItem(block, item, index),
+      this.plan.bodyScopes.get(block.body),
+    );
+    const fallback = block.fallback;
+    const other =
+      fallback &&
+      this.bodyFunction('', () => this.emitBody(fallback), this.plan.bodyScopes.get(fallback));
+    this.html(
+      `<${spacer} data-window="before" aria-hidden="true" style="height: 0px"></${spacer}>`,
+    );
+    this.code(
+      `$$b.nodes($$b.listNodes(${anchor.scope}, ${anchor.index}, ${list}.slice(0, ${shown}), ${body}, ${other ?? 'undefined'}))`,
+    );
+    this.html(`<${spacer} data-window="after" aria-hidden="true" style="height: `);
+    this.code(`((${list}.length - ${shown}) * (${this.expression(windowed.height)}))`);
+    this.html(`px"></${spacer}><template b-b="`);
+    this.code(anchor.scope);
+    this.html(`:${anchor.index}" b-client="load=${this.plan.id}#w${anchor.index}"></template>`);
+    this.close();
+  }
+
+  /**
+   * In the browser, a `#try` that renders where it is gives its body and its `#catch` body as
+   * functions, so the markup around it and both bodies can clone. `tryNodes` runs the body, and
+   * the `#catch` body when it throws.
+   */
+  private emitTryNodes(block: Block & { kind: 'try' }, scope: Scope): void {
+    const body = this.bodyFunction(
+      '',
+      () => this.emitBody(block.body),
+      this.plan.bodyScopes.get(block.body),
+    );
+    const error = this.unique('error');
+    const fallback = this.bodyFunction(
+      error,
+      () => {
+        if (block.error) {
+          this.line(`const ${block.error.name} = ${error};`);
+        }
+        if (block.reset) {
+          this.line(`const ${block.reset.name} = undefined;`);
+        }
+        this.emitBody(block.fallback);
+      },
+      this.plan.bodyScopes.get(block.fallback),
+    );
+    // A wait of the body that fails ends in the boundary of the `#try`, and `fail` shows the
+    // `#catch` body in its place, as for any error of client code in the body.
+    const caught = this.plan.anchors.has(block) && tryCatchesClient(this.plan.graph.model, block);
+    this.open(scope, block);
+    this.code(`$$b.nodes($$b.tryNodes(${body}, ${fallback}${caught ? ', 1' : ''}))`);
+    this.end(block);
   }
 
   /** The tag of a spacer in the element around, for a row of a table or an item of a list. */
@@ -3536,6 +3626,10 @@ export class Emitter {
         return;
       }
       case 'try': {
+        if (this.options.mode === 'client' && this.options.hoist) {
+          this.emitTryNodes(block, scope);
+          return;
+        }
         const before = this.unique('before');
         const error = this.unique('error');
         const server = this.options.mode === 'server';

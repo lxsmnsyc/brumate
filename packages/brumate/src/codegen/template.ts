@@ -72,9 +72,10 @@ export type Write =
   /** A text insert at the end of the marked element, which needs no comment. */
   | { kind: 'last'; scope: string; anchor: number; value: string; at?: string; promise?: string }
   /** A nested block, whose start comment the clone marks, and which a call fills. */
-  | { kind: 'block'; scope: string; anchor: number }
+  | { kind: 'block'; scope: string; anchor: number; order?: number }
   /** A child component or a dynamic tag, which renders in the place of a marked comment. */
-  | { kind: 'component'; call: string; settled?: Settled }
+  /** `order`: how many code parts of the markup come before it, to keep portals in order. */
+  | { kind: 'component'; call: string; settled?: Settled; order?: number }
   /** The attributes of spreads on the marked element, and then its `b-on`. */
   | { kind: 'call'; call: string; promise?: string }
   /** A comment whose data names a scope, such as the start of an item, `i` and the scope. */
@@ -380,6 +381,13 @@ export function clonedTemplate(
     writes[index]!.push(write);
   }
   const list = [...parts];
+  // The number of code parts before each part.
+  const ordinals: number[] = [];
+  let codes = 0;
+  for (const part of list) {
+    ordinals.push(codes);
+    codes += 'code' in part ? 1 : 0;
+  }
   for (let index = 0; index < list.length; index++) {
     const part = list[index]!;
     if ('static' in part) {
@@ -493,6 +501,7 @@ export function clonedTemplate(
           kind: 'component',
           call: code.replace(COMPONENT, '$$$$b.componentNodes('),
           settled: part.settled,
+          order: ordinals[index],
         },
       ]);
       reader.append(`<!--x${mark}-->`);
@@ -502,7 +511,9 @@ export function clonedTemplate(
     const nodes = NODES.exec(code);
     if (nodes && !reader.inTag && !reader.raw) {
       const mark = writes.length;
-      writes.push([{ kind: 'component', call: nodes[1]!, settled: part.settled }]);
+      writes.push([
+        { kind: 'component', call: nodes[1]!, settled: part.settled, order: ordinals[index] },
+      ]);
       reader.append(`<!--x${mark}-->`);
       continue;
     }
@@ -513,7 +524,7 @@ export function clonedTemplate(
       const call = foreign
         ? code.replace(DYNAMIC, `$$$$b.foreignNodes(${JSON.stringify(foreign)}, `)
         : code.replace(DYNAMIC, '$$$$b.dynamicNodes(');
-      writes.push([{ kind: 'component', call }]);
+      writes.push([{ kind: 'component', call, order: ordinals[index] }]);
       reader.append(`<!--x${mark}-->`);
       continue;
     }
@@ -529,7 +540,9 @@ export function clonedTemplate(
     ) {
       reader.takeBack(BLOCK_START, 'text');
       const mark = writes.length;
-      writes.push([{ kind: 'block', scope: code, anchor: Number(blockEnd[1]) }]);
+      writes.push([
+        { kind: 'block', scope: code, anchor: Number(blockEnd[1]), order: ordinals[index] },
+      ]);
       reader.append(`<!--x${mark}--><!--/b-->`);
       list[index + 1] = { static: nextStatic!.slice(blockEnd[0].length) };
       continue;
@@ -737,7 +750,41 @@ export function cloneLines(
   }
   const dropped = new Set<number>();
   const declared = new Set<string>();
+  // The portals between the writes, which run where they are in the source, so the renders that
+  // come before them in the source go first. `before`: how many code parts come before.
+  const portals: { start: number; end: number; before: number }[] = [];
   for (let at = 0; at < source.length; at++) {
+    if (portals.some((portal) => at >= portal.start && at <= portal.end)) {
+      continue;
+    }
+    if (
+      at > first &&
+      at < last &&
+      isTop(at) &&
+      /^const \$\$portal\d+ = \(\(\) => \{$/.test(source[at]!.trim())
+    ) {
+      let end = at + 1;
+      while (end < source.length && !(isTop(end) && source[end]!.trim() === '})();')) {
+        end++;
+      }
+      // The call that adds it.
+      end++;
+      if (end < source.length && /^\$\$b\.add(?:Portal|Head)\(/.test(source[end]!.trim())) {
+        let before = 0;
+        for (const flush of tops) {
+          if (flush.line < at) {
+            for (const part of flush.parts) {
+              before += 'code' in part ? 1 : 0;
+            }
+          }
+        }
+        portals.push({ start: at, end, before });
+        for (let line = at; line <= end; line++) {
+          dropped.add(line);
+        }
+        continue;
+      }
+    }
     if (flushLines.has(at) || !isTop(at)) {
       if (at > first && at < last && isControl(at)) {
         return false;
@@ -764,7 +811,10 @@ export function cloneLines(
       const reference = /^(?:if \(typeof .+ !== 'function'\) )?[\w$]+ = \$\$b\.elementAt\(/.test(
         line,
       );
-      if (line !== '});' && line !== '};' && !line.startsWith('$$b.') && !reference) {
+      // An id that the markup between the writes reads, which the clone writes too.
+      const id = /^const [\w$]+ = \$\$b\.makeId\(/.test(line);
+      // The close of a function that runs where it is, such as the content of a portal.
+      if (!['});', '};', '})();'].includes(line) && !line.startsWith('$$b.') && !reference && !id) {
         return false;
       }
     }
@@ -804,16 +854,21 @@ export function cloneLines(
   // The calls that fill the nested blocks, after the slots of the body are set, which the
   // renders of the blocks read.
   const fills: string[] = [];
+  // The order of the lines that render other markup, by the line, for the portals around them.
+  const orders = new Map<string, number>();
   // The writes that read memos which never change, by the scope that reports their rejection
   // and the memos they read. They wait for those memos to settle, so one that loads longer
   // holds back only the writes that read it.
   const settled = new Map<
     string,
-    { scope: string; names: string[]; writes: string[]; pend?: true }
+    { scope: string; names: string[]; writes: string[]; pend?: true; order?: number }
   >();
-  function addLine(line: string, memos: Settled | undefined): void {
+  function addLine(line: string, memos: Settled | undefined, order?: number): void {
     if (!memos) {
       lines.push(`${indent}${line}`);
+      if (order !== undefined) {
+        orders.set(`${indent}${line}`, order);
+      }
       return;
     }
     // A write of code that can wait on its own waits apart, so a stop does not repeat the others.
@@ -824,6 +879,9 @@ export function cloneLines(
       settled.set(key, group);
     }
     group.writes.push(line);
+    if (order !== undefined) {
+      group.order = Math.min(group.order ?? order, order);
+    }
   }
   let missing = false;
   for (const [index, writes] of found.writes.entries()) {
@@ -884,7 +942,7 @@ export function cloneLines(
           write.settled,
         );
       } else if (write.kind === 'component') {
-        addLine(`$$b.place($$e[${index}], ${write.call});`, write.settled);
+        addLine(`$$b.place($$e[${index}], ${write.call});`, write.settled, write.order);
       } else if (write.kind === 'comment') {
         lines.push(`${indent}$$b.nameComment($$e[${index}], ${write.data});`);
       } else if (write.kind === 'put') {
@@ -915,7 +973,11 @@ export function cloneLines(
         if (call === undefined) {
           missing = true;
         } else {
-          fills.push(`${indent}${call.replace('$$m', () => `$$e[${index}]`)};`);
+          const fill = `${indent}${call.replace('$$m', () => `$$e[${index}]`)};`;
+          fills.push(fill);
+          if (write.order !== undefined) {
+            orders.set(fill, write.order);
+          }
         }
       } else {
         addLine(
@@ -935,14 +997,32 @@ export function cloneLines(
     const names = group.names.join(', ');
     const writes = group.writes.join(' ');
     const body = group.pend ? `$$b.fillPend(${group.scope}, () => { ${writes} });` : writes;
-    lines.push(
+    const line =
       group.pend && names === ''
         ? `${indent}${body}`
-        : `${indent}$$b.fillSettled(${group.scope}, [${names}], (${names}) => { ${body} });`,
-    );
+        : `${indent}$$b.fillSettled(${group.scope}, [${names}], (${names}) => { ${body} });`;
+    lines.push(line);
+    if (group.order !== undefined) {
+      orders.set(line, group.order);
+    }
   }
   if (missing) {
     return false;
+  }
+  for (const portal of portals) {
+    // A fill runs after the places, so no place for a portal after a fill and before a place
+    // keeps the order.
+    let filled = false;
+    for (const fill of fills) {
+      filled ||= (orders.get(fill) ?? -1) >= 0 && orders.get(fill)! < portal.before;
+    }
+    let placed = false;
+    for (const line of lines) {
+      placed ||= (orders.get(line) ?? -1) >= portal.before;
+    }
+    if (filled && placed) {
+      return false;
+    }
   }
   // The scopes that the render makes keep their nodes in arrays of the right size from the start.
   const sizes = new Map<string, number>();
@@ -966,26 +1046,52 @@ export function cloneLines(
     }
   }
   // The clone and its writes go where the last `$$html +=` was, after the values they read.
+  const level: Level = { fn, control: false };
+  // Each portal runs after the renders before it in the source, and before those after it.
+  // `src` is the line of the source that a line came from.
+  interface Out {
+    text: string;
+    level: Level;
+    order: number;
+    src?: number;
+  }
+  const firstFrom = (list: Out[], before: number): number => {
+    const found = list.findIndex((item) => item.order >= before);
+    return found === -1 ? list.length : found;
+  };
+  const cloneOut: Out[] = lines.map((text) => ({ text, level, order: orders.get(text) ?? -1 }));
+  const fillOut: Out[] = fills.map((text) => ({ text, level, order: orders.get(text) ?? -1 }));
+  for (const portal of portals) {
+    const group: Out[] = [];
+    for (let at = portal.start; at <= portal.end; at++) {
+      group.push({ text: source[at]!, level: levels[at]!, order: -1, src: at });
+    }
+    const filledBefore = fillOut.some((item) => item.order >= 0 && item.order < portal.before);
+    const target = filledBefore ? fillOut : cloneOut;
+    target.splice(firstFrom(target, portal.before), 0, ...group);
+  }
   const result: string[] = [];
   const resultLevels: Level[] = [];
   const moved = new Map<number, number>();
-  const level: Level = { fn, control: false };
+  function add(items: Out[]): void {
+    for (const item of items) {
+      if (item.src !== undefined) {
+        moved.set(item.src, result.length);
+      }
+      result.push(item.text);
+      resultLevels.push(item.level);
+    }
+  }
   for (const [at, line] of source.entries()) {
     if (at === last) {
-      result.push(...lines);
-      for (const _ of lines) {
-        resultLevels.push(level);
-      }
+      add(cloneOut);
     } else if (!flushLines.has(at) && !dropped.has(at)) {
       moved.set(at, result.length);
       result.push(line);
       resultLevels.push(levels[at]!);
     }
   }
-  result.push(...fills);
-  for (const _ of fills) {
-    resultLevels.push(level);
-  }
+  add(fillOut);
   source.splice(0, source.length, ...result);
   levels.splice(0, levels.length, ...resultLevels);
   // The lines of the other `$$html +=` and plain blocks, such as of a function inside, moved.

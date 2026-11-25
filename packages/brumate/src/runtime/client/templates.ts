@@ -187,7 +187,12 @@ export function keep(scope: ScopeId, anchor: number, element: Element, named?: b
     (found.n ??= [])[anchor] = element;
   }
   // `named`: elements inside it have handlers and find their scope from it with `closest`.
-  if (named || element.parentNode?.nodeType === 11 || element.hasAttribute('b-on')) {
+  if (
+    named ||
+    element.parentNode?.nodeType === 11 ||
+    element.hasAttribute('b-on') ||
+    element.hasAttribute('b-client')
+  ) {
     element.setAttribute('b-b', `${scope}:${anchor}`);
   }
 }
@@ -406,6 +411,20 @@ export function listNodes(
     content.append(bodyNodes(fallback()));
   }
   return blockNodes(scope, anchor, `b${scope}:${anchor}`, content);
+}
+
+/**
+ * Renders an `#offscreen` where it is: its body between its markers when `visible`, marked 1,
+ * and nothing marked -1 until it shows, which `offscreen` does later.
+ */
+export function offscreenNodes(
+  scope: ScopeId | undefined,
+  anchor: number | undefined,
+  visible: unknown,
+  body: () => string | DocumentFragment,
+): DocumentFragment {
+  const content = visible ? bodyNodes(body()) : document.createDocumentFragment();
+  return blockNodes(scope, anchor, `b${scope}:${anchor}:${visible ? 1 : -1}`, content);
 }
 
 /** Writes attributes that code of a start tag gave as their text, as HTML has them. */

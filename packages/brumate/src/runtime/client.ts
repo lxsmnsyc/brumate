@@ -73,6 +73,7 @@ export {
   loading,
   reveal,
   started,
+  tryNodes,
   wait,
 } from './client/waits.ts';
 export { guess, optimisticStore, track } from './client/guesses.ts';
@@ -112,6 +113,7 @@ export {
   listNodes,
   markBlock,
   nodes,
+  offscreenNodes,
   putText,
   setAttr,
   setAttrText,

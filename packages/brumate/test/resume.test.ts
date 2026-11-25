@@ -9410,6 +9410,19 @@ describe('a constant async memo in a body that the browser clones', () => {
   });
 });
 
+describe('a #try body that throws in the browser', () => {
+  it('shows the #catch body and keeps no scope of the body', async () => {
+    await resume('tryScopes', {});
+    const client = await import('../src/runtime/client.ts');
+    const before = client.scopes.size;
+    click(document.querySelector('.go')!);
+    await waitFor(() => expect(texts('.caught')).toEqual(['Error: boom']));
+    expect(texts('.value')).toEqual([]);
+    // The scopes of the `#if` and `#catch` bodies and the button's; the thrown body's is 4 with it.
+    expect(client.scopes.size - before).toBe(3);
+  });
+});
+
 describe('#loading in markup that the browser renders', () => {
   function userLoads(): UserLoad[] {
     return ((globalThis as { userLoads?: UserLoad[] }).userLoads ??= []);

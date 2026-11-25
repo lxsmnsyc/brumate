@@ -251,7 +251,8 @@ const $$t2 = $$b.template("<li b-x=\"0\"><!--x1-->. </li>", 2);
 const $$t3 = $$b.template("<li>Empty</li>", 0);
 const $$t4 = $$b.template("<span b-x=\"0\"></span>", 1);
 const $$t5 = $$b.template("<!--x0-->", 1);
-const $$t6 = $$b.template("Dynamic", 0);
+const $$t6 = $$b.template("<p b-x=\"0\"></p>", 1);
+const $$t7 = $$b.template("Dynamic", 0);
 
 export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): string | DocumentFragment {
   let $$html = '';
@@ -317,30 +318,30 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
     $$b.fillValue($$s1, "x0", (row(n)), ($$v) => $$b.putText($$e[0], $$v, $$s1));
     return $$f;
   };
-  $$html += $$b.nodes($$b.listNodes(undefined, undefined, Array.from({ length: ( 2) }, (_, index) => index), $$body11, undefined)) + "<!--b" + $$s1 + ":5-->";
-  const $$before12 = $$html;
-  try {
-    const $$body14 = () => {
-      let $$html = '';
-      const $$s9 = $$b.createScope(9, $$s1);
-      const $$e = $$b.clone($$t5), $$f = $$e[1];
-      $$b.place($$e[0], $$b.componentNodes(Broken, {  }, undefined, $$s9));
-      return $$f;
-    };
-    $$html += $$b.nodes($$b.attempt($$body14));
-  } catch ($$error13) {
-    $$html = $$before12;
+  $$html += $$b.nodes($$b.listNodes(undefined, undefined, Array.from({ length: ( 2) }, (_, index) => index), $$body11, undefined));
+  const $$body12 = () => {
+    let $$html = '';
+    const $$s9 = $$b.createScope(9, $$s1);
+    const $$e = $$b.clone($$t5), $$f = $$e[1];
+    $$b.place($$e[0], $$b.componentNodes(Broken, {  }, undefined, $$s9));
+    return $$f;
+  };
+  const $$body14 = ($$error13) => {
+    let $$html = '';
     const error = $$error13;
-    const $$s10 = $$b.createScope(10, $$s1);
-    $$html += "<p b-b=\"" + $$s10 + ":0\">" + $$b.insert((String(error))) + "</p>";
+    const $$s10 = $$b.createScope(10, $$s1, undefined, 1);
+    const $$e = $$b.clone($$t6), $$f = $$e[1];
+    $$b.keep($$s10, 0, $$e[0]);
+    $$b.setContent($$e[0], (String(error)), $$s10);
     $$b.setSlots($$s10, [error]);
-  }
-  $$html += "<!--/b--><template b-b=\"" + $$s1 + ":6\" b-client=\"idle=Blocks_jlmev2#k11\"></template><!--b" + $$s1 + ":6--><!--/b-->";
+    return $$f;
+  };
+  $$html += "<!--b" + $$s1 + ":5-->" + $$b.nodes($$b.tryNodes($$body12, $$body14, 1)) + "<!--/b--><template b-b=\"" + $$s1 + ":6\" b-client=\"idle=Blocks_jlmev2#k11\"></template><!--b" + $$s1 + ":6--><!--/b-->";
   {
     const $$s12 = $$b.createScope(12, $$s1);
     const $$children15 = $$b.children($$s12, () => {
       let $$html = '';
-      const $$e = $$b.clone($$t6), $$f = $$e[0];
+      const $$e = $$b.clone($$t7), $$f = $$e[0];
       return $$f;
     });
     $$html += $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "b-b": $$b.internal(`${$$s12}:0`), "b-on": $$b.internal("click=Blocks_jlmev2#h20@" + $$s12) }, $$children15, undefined, $$s12);

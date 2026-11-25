@@ -11,37 +11,12 @@ const forms = {
 };
 
 /**
- * The render functions of the bodies that the browser renders and that still give an HTML
- * string, as `page:function`. Every other `r` and `n` function of the pages in `render/`
- * clones a template, also with `<template>` elements and markers in it. What keeps a body on
- * this list: a `#try` that renders in place between its markers, a `#for` with a window, an
- * `#offscreen` block, or a wait in its script. A body that clones leaves this list; one that
- * cannot must not join it. `#template` functions and children closures are not counted.
+ * Every `r` and `n` function of the pages in `render/` that the browser calls for a body clones a
+ * template, also with `<template>` elements and markers in it. A body that gives an HTML string
+ * fails the test: fix the markup that keeps it from cloning. `#template` functions are not
+ * counted, and they return a fragment.
  */
-const HTML_BODIES = new Set<string>([
-  'awaitInline.brm:r2',
-  'cloneTemplate.brm:r2',
-  'clonedForeignTry.brm:r2',
-  'cloneTry.brm:r2',
-  'fields.brm:r2',
-  'offscreen.brm:r2',
-  'offscreen.brm:r7',
-  'offscreenInChildren.brm:n0',
-  'streamedCatchNested.brm:r2',
-  'tryInChildren.brm:n0',
-  'tryTemplateIf.brm:r3',
-  'tryTemplateNested.brm:r3',
-  'tryTemplatePropIf.brm:r3',
-  'tryWait.brm:r2',
-  'tryWaitKidHost.brm:r2',
-  'tryWaitLoading.brm:r2',
-  'tryWaitNested.brm:r2',
-  'tryWaitRows.brm:r2',
-  'windowedChildren.brm:n0',
-  'windowedNested.brm:r2',
-]);
-
-it('renders every body of the pages as a clone, but the ones that are listed', () => {
+it('renders every body of the pages as a clone', () => {
   const sources = new Map<string, string>();
   for (const name of readdirSync(input)) {
     if (name.endsWith('.brm')) {
@@ -49,7 +24,7 @@ it('renders every body of the pages as a clone, but the ones that are listed', (
     }
   }
   const liveProps = analyzeProject(sources);
-  const found = new Set<string>();
+  const found: string[] = [];
   let bodies = 0;
   for (const [name, source] of sources) {
     const { client, parts } = compile(source, {
@@ -65,11 +40,11 @@ it('renders every body of the pages as a clone, but the ones that are listed', (
       for (const match of code.matchAll(/^export function ([rn]\d+)\(.*\{\n([\s\S]*?)^\}/gm)) {
         bodies++;
         if (/^ {2}return \$\$html;$/m.test(match[2]!)) {
-          found.add(`${name}:${match[1]}`);
+          found.push(`${name}:${match[1]}`);
         }
       }
     }
   }
   expect(bodies).toBeGreaterThan(200);
-  expect([...found].sort()).toEqual([...HTML_BODIES].sort());
+  expect(found.sort()).toEqual([]);
 }, 60000);
