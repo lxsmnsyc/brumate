@@ -28,9 +28,6 @@ Nitro uses `src/entry-server.ts` for each request that is not a file of the buil
 // src/entry-server.ts
 import { handle } from 'virtual:brumate/routes';
 import { handle as handleCall } from 'virtual:brumate/server';
-import client from './client.ts?assets=client';
-
-const scripts = `${import.meta.env.DEV ? '<script type="module" src="/@vite/client"></script>' : ''}<script type="module" async src="${client.entry}"></script>`;
 
 export default {
   // Nitro's request has `ip`, the address of the socket, for rate limits.
@@ -42,9 +39,7 @@ export default {
         return answer;
       }
     }
-    return (
-      (await handle(request, { scripts, address })) ?? new Response('Not found', { status: 404 })
-    );
+    return (await handle(request, { address })) ?? new Response('Not found', { status: 404 });
   },
 };
 ```
@@ -53,8 +48,8 @@ export default {
 - `vite build` writes `.output`. `node .output/server/index.mjs` serves it, and `vite preview` too.
 - `NITRO_PRESET`, or `preset` in the options of `nitro()`, builds for another host, such as `cloudflare-module` or `vercel`. The example is tested with the default Node preset. Brumate needs no Node APIs at runtime, so no compatibility flag is needed.
 - Pass the address of the client as `address`, for rate limits and `clientAddress`: `request.ip` on Nitro, which is the address of the socket, or the `cf-connecting-ip` header on Cloudflare. Without it, a rate limit with no `key` throws in production. Behind a proxy, name it with `configureRateLimit({ proxies })`. See [Rate limiting](./security.md#rate-limiting).
-- A host that stops a function when its response ends, such as Cloudflare Workers, gives `fetch` a context with `waitUntil`. Pass it on, as `handle(request, { scripts, waitUntil: (promise) => context.waitUntil(promise) })`, and `event.waitUntil` keeps work going on the host.
-- `client.ts?assets=client` gives the URL of the client entry, in development and in the build. Add `nitro/vite/types` to the `types` of `tsconfig.json` for its type.
+- A host that stops a function when its response ends, such as Cloudflare Workers, gives `fetch` a context with `waitUntil`. Pass it on, as `handle(request, { waitUntil: (promise) => context.waitUntil(promise) })`, and `event.waitUntil` keeps work going on the host.
+- The page loads the client with no `scripts` option: brumate adds the script tags itself, the Vite client and the start module in development and the hashed client entry in the build. The build reads the entry from the client's `.vite/manifest.json`, so build the client first, and set `clientOutDir` in the options of `brumate()` when the client builds to another directory.
 - Keep the results of [`cached`](./server-functions.md#results-that-requests-share) and the pages that the server keeps in Nitro's storage, so every instance of the app shares them: `setCacheStore(storageStore(useStorage('cache')))` at the top of the entry, with `useStorage` from `nitro/storage`. Configure the `cache` mount with a driver such as Redis in the options of `nitro()`.
 - Nitro is in beta. The example uses version `3.0.260903-beta`.
 
