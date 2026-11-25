@@ -1,7 +1,7 @@
 ---
 id: no-client-html
 title: Drop the HTML-string machinery from the client
-status: active
+status: done
 priority: should
 type: refactor
 outline: false
@@ -15,7 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-03
-spent:
+spent: 501285
 owns: []
 shared:
   - packages/brumate/src/codegen/**
