@@ -1,5 +1,27 @@
 // Builds the route tree of `virtual:brumate/routes` from the files of a routes directory.
 
+/** `import 'virtual:brumate/start'` in the client entry starts the loader. */
+export const START_MODULE = 'virtual:brumate/start';
+
+/** The URL that the dev server serves the start module at. */
+export const START_URL: string = `/@id/__x00__${START_MODULE}`;
+
+/** The scripts of a page on the dev server: the client of Vite, and the loader, under the base. */
+export function devScripts(base = '/'): string {
+  // The dev server serves the path of a base that is a URL. A relative base is the root.
+  let path = base;
+  if (/^[a-z][a-z\d+.-]*:\/\/|^\/\//i.test(base)) {
+    path = new URL(base, 'http://localhost').pathname;
+  }
+  const prefix = path.startsWith('/') ? path.replace(/\/$/, '') : '';
+  return `<script type="module" src="${prefix}/@vite/client"></script><script type="module" src="${prefix}${START_URL}"></script>`;
+}
+
+/** The script of a page in a build: the entry of the client build, which loads async. */
+export function entryScript(base: string, file: string): string {
+  return `<script type="module" async src="${base}${file}"></script>`;
+}
+
 /** A folder of routes, with the files as paths. The runtime `RouteNode` has loaders instead. */
 export interface RouteFiles {
   layout?: string;
@@ -108,6 +130,8 @@ export function routeModule(
   hints: string[] = [],
   /** The chunks of the bundle of each root component, by ID, from the client build. */
   bundleHints: Record<string, string[]> = {},
+  /** The scripts of a page when the caller of `handle` passes none. */
+  scripts = '',
 ): string {
   // Static imports in a build, because the server registry of server functions imports every
   // file anyway. In development, a route loads when a request needs it, so a file that does not
@@ -170,7 +194,7 @@ export function routeModule(
     ...imports,
     `export const routes = ${routes};`,
     'export function handle(request, options) {',
-    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions, fileMiddleware${middleware ? ', middleware, onError, onTrace' : ''}${dev ? ', dev: true' : ''}${build === undefined ? '' : `, build: ${JSON.stringify(build)}`}${hints.length > 0 ? `, hints: ${JSON.stringify(hints)}` : ''}${Object.keys(bundleHints).length > 0 ? `, bundleHints: ${JSON.stringify(bundleHints)}` : ''}, ...options });`,
+    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions, fileMiddleware${middleware ? ', middleware, onError, onTrace' : ''}${dev ? ', dev: true' : ''}${build === undefined ? '' : `, build: ${JSON.stringify(build)}`}${hints.length > 0 ? `, hints: ${JSON.stringify(hints)}` : ''}${Object.keys(bundleHints).length > 0 ? `, bundleHints: ${JSON.stringify(bundleHints)}` : ''}, ...options${scripts ? `, scripts: options?.scripts ?? ${JSON.stringify(scripts)}` : ''} });`,
     '}',
   ].join('\n');
 }

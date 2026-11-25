@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { entryScript } from './routes.ts';
 
 export interface PrerenderOptions {
   /** The paths to render first. Defaults to `['/']`. */
@@ -106,7 +107,7 @@ export async function prerender(
   const { handle } = (await import(pathToFileURL(routes).href)) as { handle: Handle };
   const document = {
     head: options.head?.(manifest) ?? '',
-    scripts: `<script type="module" async src="${base}${entry.file}"></script>`,
+    scripts: entryScript(base, entry.file),
     // Every page renders from one place, with no client, so rate limits do not count.
     prerender: true,
   };

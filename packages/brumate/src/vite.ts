@@ -3,7 +3,7 @@ import { parseSync } from 'oxc-parser';
 import type { Site } from './model.ts';
 import type { oxc } from './oxc.ts';
 import { existsSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -90,8 +90,15 @@ import type { HotUpdate } from './runtime/hot.ts';
 import type { SourceMap } from './sourcemap.ts';
 import { buildReport, formatBuildReport } from './report.ts';
 import type { Budget, ReportChunk } from './report.ts';
-import type { PrerenderOptions } from './prerender.ts';
-import { routeFiles, routeModule, routeTypes } from './routes.ts';
+import type { ManifestChunk, PrerenderOptions } from './prerender.ts';
+import {
+  START_MODULE,
+  devScripts,
+  entryScript,
+  routeFiles,
+  routeModule,
+  routeTypes,
+} from './routes.ts';
 import type { RouteFiles } from './routes.ts';
 
 export interface BrumateOptions {
@@ -158,6 +165,12 @@ export interface BrumateOptions {
    */
   prerender?: boolean | PrerenderOptions;
   /**
+   * The output directory of the client build, relative to the root. The server build reads its
+   * manifest, build ID and hints from it. Defaults to `prerender.client`, then to the output
+   * of the client environment when it differs from the server's, then to `dist/client`.
+   */
+  clientOutDir?: string;
+  /**
    * Skew protection: a page that was open before a deploy keeps working.
    * Each build has an ID, which the page carries and sends with its calls.
    * A call to a function that is gone, or a page of another build, makes
@@ -197,7 +210,6 @@ export interface BrumateOptions {
   trace?: boolean | 'auto';
 }
 
-/** `import 'virtual:brumate/start'` in the client entry starts the loader. */
 /** How many files a build reads or compiles at once, so a large project does not run out of file handles. */
 const BATCH = 32;
 
@@ -215,7 +227,8 @@ async function inBatches<T, R>(list: T[], run: (item: T) => Promise<R>): Promise
   return results;
 }
 
-const START = 'virtual:brumate/start';
+/** `import 'virtual:brumate/start'` in the client entry starts the loader. */
+const START = START_MODULE;
 /**
  * On the dev server, a client entry that imports `start` from `brumate/loader` gets this module
  * in its place. It sets up the hot updates and the devtools around `start`.
@@ -1328,6 +1341,13 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
 
   /** The hints of the client build of this process, for a server build that follows it. */
   let builtHints: ClientHints | undefined;
+  /** Whether the plugin turned the manifest of the client build on, which the project did not ask for. */
+  let ownManifest = false;
+  /** The config of the build that wrote `builtHints`, so a later build of another config does not use it. */
+  let builtIn: ResolvedConfig | undefined;
+  /** The server environments that started, and those that finished, since the client built. */
+  const startedServers = new Set<string>();
+  const closedServers = new Set<string>();
 
   /** The IDs of the components in each bundle of the client build, by root, for `hints.json`. */
   const bundleMembers = new Map<string, string[]>();
@@ -1570,16 +1590,112 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     if (builtHints && !isServe) {
       return builtHints;
     }
-    const file = path.join(clientBuildDirectory(root, options.prerender), HINTS_FILE);
-    if (isServe || !existsSync(file)) {
+    if (isServe) {
+      return { all: [], bundles: {} };
+    }
+    const file = path.join(clientDirectory(), HINTS_FILE);
+    if (!existsSync(file)) {
       return { all: [], bundles: {} };
     }
     const read = JSON.parse(readFileSync(file, 'utf8')) as string[] | ClientHints;
     return Array.isArray(read) ? { all: read, bundles: {} } : read;
   }
 
+  /** The directory of the client build: the output of the client environment, such as Nitro's. */
+  function clientDirectory(): string {
+    const pages = options.prerender;
+    if (options.clientOutDir) {
+      return path.resolve(root, options.clientOutDir);
+    }
+    if (typeof pages === 'object' && pages.client) {
+      return clientBuildDirectory(root, pages);
+    }
+    const client = resolvedConfig?.environments?.client?.build.outDir;
+    // A server build that shares the output of the client has no environment of its own to tell.
+    if (client && path.resolve(root, client) !== outDir) {
+      return path.resolve(root, client);
+    }
+    return clientBuildDirectory(root, pages);
+  }
+
+  /** The manifest file of the client build. */
+  function manifestFile(): string {
+    const named =
+      resolvedConfig?.environments?.client?.build.manifest ?? resolvedConfig?.build.manifest;
+    return path.join(clientDirectory(), typeof named === 'string' ? named : '.vite/manifest.json');
+  }
+
+  /**
+   * Whether a module loads for a server: the load says so, or the environment is a server one.
+   * Nitro's server environment loads with `ssr` unset.
+   */
+  function isServerModule(
+    loadOptions: { ssr?: boolean } | undefined,
+    environment: { config: { consumer: string } } | undefined,
+  ): boolean {
+    return Boolean(loadOptions?.ssr) || environment?.config.consumer === 'server';
+  }
+
+  /** The file of the entry in the manifest of the client build, as the output names it. */
+  let builtEntry: { file: string } | { error: string } | undefined;
+
+  /** Reads the entry of the client build from its manifest, or says why there is none. */
+  function readEntry(): { file: string } | { error: string } {
+    const client = clientDirectory();
+    const where = path.relative(root, client) || '.';
+    const file = manifestFile();
+    if (!existsSync(file)) {
+      return {
+        error: `No client manifest at ${path.relative(root, file)}, so the pages have no client entry to load. Build the client first, or set \`clientOutDir\` to the output directory of the client build`,
+      };
+    }
+    let chunks: Record<string, ManifestChunk>;
+    try {
+      chunks = JSON.parse(readFileSync(file, 'utf8')) as Record<string, ManifestChunk>;
+    } catch {
+      return { error: `The client manifest in ${where} is not valid JSON. Build the client again` };
+    }
+    for (const chunk of Object.values(chunks)) {
+      if (chunk.isEntry) {
+        return { file: chunk.file };
+      }
+    }
+    return {
+      error: `The client manifest in ${where} has no entry. Build the client first, or set \`clientOutDir\` to the output directory of the client build`,
+    };
+  }
+
+  /**
+   * The scripts that `handle` sends when its caller passes none. The dev server gets the client
+   * of Vite and the loader. A server build gets the entry of the client build, which must exist.
+   */
+  function defaultScripts(fail: (message: string) => never, warn: (message: string) => void) {
+    if (isServe) {
+      return devScripts(base);
+    }
+    builtEntry ??= readEntry();
+    if ('error' in builtEntry) {
+      return fail(builtEntry.error);
+    }
+    // The entry comes from the client output, so the build ID of the server must be its own.
+    const client = clientDirectory();
+    const found = readBuildId(client);
+    if (found !== undefined && buildId !== undefined && buildId !== found) {
+      warn(
+        `The build ID ${buildId} is not the ${found} of ${path.relative(root, client)}, so the client entry of the pages is of another build. Build the client first, or set BRUMATE_BUILD, for skew protection`,
+      );
+    }
+    return entryScript(base, builtEntry.file);
+  }
+
   /** The route tree module. A DOM test gets the server version of each component in it. */
-  function routeTree(server = false): string {
+  function routeTree(
+    server = false,
+    fail: (message: string) => never = (message) => {
+      throw new Error(message);
+    },
+    warn: (message: string) => void = () => {},
+  ): string {
     const env = envFile();
     const hints = clientHints();
     const entry = middlewareFile();
@@ -1594,6 +1710,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       buildId,
       hints.all,
       hints.bundles,
+      // A DOM test mounts the components itself, so its pages need no scripts.
+      server ? '' : defaultScripts(fail, warn),
     );
     // The variables are checked when the server starts, before any route loads.
     const serial = serialImports().join('\n');
@@ -1950,7 +2068,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         start: `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${path.basename(file, '.brm')}</title></head><body>`,
         end: '</body></html>',
         // The client of Vite and the loader, as the entry of an app starts it.
-        scripts: `<script type="module" src="/@vite/client"></script><script type="module" src="/@id/__x00__${START}"></script>`,
+        scripts: devScripts(base),
       });
       const reader = stream.getReader();
       for (;;) {
@@ -2258,11 +2376,20 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         const preload = config.build?.modulePreload;
         // The files of earlier builds stay, and the build removes the ones that are too old itself.
         const keep = options.skew?.keep ? { build: { emptyOutDir: false } } : {};
+        // The server build reads the manifest, for the entry that pages load by default. Only
+        // the client environment writes it, so a build of several environments adds no other.
+        const manifest =
+          config.build?.manifest === undefined &&
+          config.environments?.client?.build?.manifest === undefined
+            ? { environments: { client: { build: { manifest: true } } } }
+            : {};
+        ownManifest = 'environments' in manifest;
         if (preload === false) {
-          return { ...shared, ...keep };
+          return { ...shared, ...manifest, ...keep };
         }
         return {
           ...shared,
+          ...manifest,
           build: {
             ...keep.build,
             modulePreload: {
@@ -2573,6 +2700,11 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         // server after the client, with the hints of that client.
         if (hasManifest) {
           builtHints = clientOutput;
+          builtIn = resolvedConfig;
+          // A new client build starts a round: its servers read its entry and its manifest.
+          builtEntry = undefined;
+          startedServers.clear();
+          closedServers.clear();
         }
         await writeFile(path.join(outDir, HINTS_FILE), JSON.stringify(clientOutput));
         if (buildId !== undefined) {
@@ -2600,16 +2732,48 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       if (!chunk) {
         return;
       }
-      const settings = options.prerender === true ? {} : options.prerender;
+      const settings = {
+        ...(options.prerender === true ? {} : options.prerender),
+        client: clientDirectory(),
+      };
       const written = await prerender(path.join(outDir, chunk.fileName), root, base, settings);
       this.info(`Prerendered ${written.length} pages`);
     },
 
+    // A build of several environments in one process, such as with Nitro, writes the client
+    // into the public directory. The manifest was only for the server environments, so it goes
+    // after the last of them, which each read it once their routes loaded.
+    async closeBundle() {
+      const name = this.environment?.name;
+      if (this.environment?.config.consumer !== 'server' || !ownManifest || !name) {
+        return;
+      }
+      if (builtIn !== resolvedConfig) {
+        return;
+      }
+      closedServers.add(name);
+      // Only the servers that started this round count: one that never builds must not hold it.
+      for (const other of startedServers) {
+        if (!closedServers.has(other)) {
+          return;
+        }
+      }
+      await rm(manifestFile(), { force: true });
+    },
+
     async buildStart() {
+      if (builtIn !== resolvedConfig) {
+        builtEntry = undefined;
+      } else if (!isServe && this.environment?.config.consumer === 'server') {
+        // The first server of a round reads the entry, so the manifest can go before the last
+        // one starts. Every server of the round names the same entry.
+        startedServers.add(this.environment.name);
+        builtEntry ??= readEntry();
+      }
       if (!isServe) {
         if (isSsrBuild) {
           // The server build names the build of the client, which must come first.
-          const client = clientBuildDirectory(root, options.prerender);
+          const client = clientDirectory();
           buildId = process.env.BRUMATE_BUILD || readBuildId(client);
           if (buildId === undefined) {
             this.warn(
@@ -2798,10 +2962,14 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
       if (id === `\0${SERVER}`) {
         // A DOM test gets the server code of each file too, so its calls can run in the test.
-        return serverRegistry(!loadOptions?.ssr);
+        return serverRegistry(!isServerModule(loadOptions, this.environment));
       }
       if (id === `\0${ROUTES}`) {
-        return routeTree(!loadOptions?.ssr);
+        return routeTree(
+          !isServerModule(loadOptions, this.environment),
+          (message) => this.error(message),
+          (message) => this.warn(message),
+        );
       }
       if (id === `\0${TESTING}`) {
         const entry = middlewareFile();

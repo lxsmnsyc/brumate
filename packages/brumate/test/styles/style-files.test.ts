@@ -316,7 +316,7 @@ beforeAll(async () => {
   for (const damage of ['missing', 'reordered'] as const) {
     const damaged: InlineConfig = {
       ...config,
-      plugins: [...sheets(damage), brumate({ merge: 0 })],
+      plugins: [...sheets(damage), brumate({ merge: 0, clientOutDir: `${damage}/client` })],
     };
     await build({
       ...damaged,
@@ -340,7 +340,11 @@ beforeAll(async () => {
   }
   // The same app with a relative base, which keeps the inline stylesheets. A plugin of its own,
   // as a project has one base: the plugin keeps what it compiled across the builds of a process.
-  const relative: InlineConfig = { ...config, base: './', plugins: [brumate({ merge: 0 })] };
+  const relative: InlineConfig = {
+    ...config,
+    base: './',
+    plugins: [brumate({ merge: 0, clientOutDir: 'relative/client' })],
+  };
   await build({
     ...relative,
     build: { outDir: 'relative/client', rolldownOptions: { input: 'src/client.ts' } },
