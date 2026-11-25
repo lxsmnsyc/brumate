@@ -1,8 +1,8 @@
 # Deploying
 
-A brumate app builds into client files and a server bundle. The server renders pages and answers server function calls. A site without server functions can also be prerendered to static files.
+A brumate app builds into client files and a server bundle. The server renders pages and answers server function calls. Pages without data can also be prerendered to static files.
 
-[Nitro](https://nitro.build) builds the app for a host, such as Node, Bun, Deno, Cloudflare or Vercel, without a server of your own. See [Deploying with Nitro](#deploying-with-nitro). The sections after it describe a server that you write yourself.
+[Nitro](https://nitro.build) is the production server. It builds the app for a host, such as Node, Bun, Deno, Cloudflare or Vercel. See [Deploying with Nitro](#deploying-with-nitro). brumate has no adapters of its own. An app that needs its own Node server uses `toNodeHandler` from `srvx/node`, as in [A server of your own](#a-server-of-your-own).
 
 ## Deploying with Nitro
 
@@ -49,13 +49,59 @@ export default {
 - `NITRO_PRESET`, or `preset` in the options of `nitro()`, builds for another host, such as `cloudflare-module` or `vercel`. The example is tested with the default Node preset. Brumate needs no Node APIs at runtime, so no compatibility flag is needed.
 - Pass the address of the client as `address`, for rate limits and `clientAddress`: `request.ip` on Nitro, which is the address of the socket, or the `cf-connecting-ip` header on Cloudflare. Without it, a rate limit with no `key` throws in production. Behind a proxy, name it with `configureRateLimit({ proxies })`. See [Rate limiting](./security.md#rate-limiting).
 - A host that stops a function when its response ends, such as Cloudflare Workers, gives `fetch` a context with `waitUntil`. Pass it on, as `handle(request, { waitUntil: (promise) => context.waitUntil(promise) })`, and `event.waitUntil` keeps work going on the host.
-- The page loads the client with no `scripts` option: brumate adds the script tags itself, the Vite client and the start module in development and the hashed client entry in the build. The build reads the entry from the client's `.vite/manifest.json`, so build the client first, and set `clientOutDir` in the options of `brumate()` when the client builds to another directory.
+- The entry writes no script tags. `handle` adds them: the Vite client and `virtual:brumate/start` in development, and the hashed client entry in the build. The server environment reads the entry from the manifest of the client environment, which `vite build` builds first. Set `clientOutDir` in the options of `brumate()` when the client builds to another directory. See [The script tags](#the-script-tags).
 - Keep the results of [`cached`](./server-functions.md#results-that-requests-share) and the pages that the server keeps in Nitro's storage, so every instance of the app shares them: `setCacheStore(storageStore(useStorage('cache')))` at the top of the entry, with `useStorage` from `nitro/storage`. Configure the `cache` mount with a driver such as Redis in the options of `nitro()`.
+- For a Content Security Policy, pass a new `nonce` to `handle` for each request and send it in the policy. The script tags get it. See [Content Security Policy](./reference-security.md#content-security-policy).
+- `prerender` in the options of `brumate()` writes pages to `.output/public` in the same build. See [Prerendering](#prerendering).
 - Nitro is in beta. The example uses version `3.0.260903-beta`.
 
-[`examples/nitro`](https://github.com/lxsmnsyc/brumate/tree/main/examples/nitro) is a complete app.
+[`examples/nitro`](https://github.com/lxsmnsyc/brumate/tree/main/examples/nitro) is a complete app. The examples `tracker`, `hackernews`, `ui`, `kit-app` and `browser-async` run on Nitro too. [`examples/tracker`](https://github.com/lxsmnsyc/brumate/tree/main/examples/tracker) adds a nonce policy and prerendered pages.
 
-## Build
+## A server of your own
+
+A server of your own serves the app on Node without Nitro. `toNodeHandler` from [`srvx/node`](https://srvx.h3.dev) turns a function from web `Request` to `Response` into a Node request listener. brumate then gets the request with its method, headers and body. [`examples/todos`](https://github.com/lxsmnsyc/brumate/tree/main/examples/todos) is a complete app built this way.
+
+```bash
+pnpm add srvx
+```
+
+### In development
+
+Vite runs in middleware mode inside the server. Vite serves the client modules and answers server function calls, and the server renders the pages:
+
+```ts
+// server.ts
+import { createServer as createHTTPServer } from 'node:http';
+import type { RequestListener } from 'node:http';
+import { errorPage } from 'brumate/vite';
+import { toNodeHandler } from 'srvx/node';
+import { createServer } from 'vite';
+
+const vite = await createServer({ server: { middlewareMode: true }, appType: 'custom' });
+
+const render = toNodeHandler(async (request) => {
+  try {
+    const { handle } = await vite.ssrLoadModule('virtual:brumate/routes');
+    return (await handle(request)) ?? new Response('Not found', { status: 404 });
+  } catch (error) {
+    return new Response(errorPage(error, vite), {
+      status: 500,
+      headers: { 'content-type': 'text/html' },
+    });
+  }
+}) as RequestListener;
+
+createHTTPServer((request, response) => {
+  vite.middlewares(request, response, () => render(request, response));
+}).listen(5173);
+```
+
+- With `middlewareMode`, the plugin leaves the pages to this server. It does not answer them itself, as it does under `vite dev`.
+- `handle` adds the script tags of development, as under `vite dev`.
+- `errorPage` answers with the Errors tab of the devtools when a page fails to render. See [`errorPage`](./reference-plugin.md#errorpageerror-server).
+- `toNodeHandler` returns a union of handler types. `as RequestListener` makes it callable from `node:http`.
+
+### Build
 
 The client and the server build separately, the client first:
 
@@ -64,21 +110,7 @@ vite build --outDir dist/client
 vite build --ssr src/server.ts --outDir dist/server
 ```
 
-The Vite config needs the manifest of the client build, so the server can find the client entry:
-
-```ts
-// vite.config.ts
-import brumate from 'brumate/vite';
-import { defineConfig } from 'vite';
-
-export default defineConfig({
-  plugins: [brumate()],
-  build: {
-    manifest: true,
-    rolldownOptions: { input: 'src/client.ts' },
-  },
-});
-```
+The server build reads the file of the client entry from the manifest of the client build, which the plugin turns on. A server build that finds no client manifest fails with "Build the client first". When the client builds to a directory other than `dist/client`, set `clientOutDir` in the options of `brumate()`.
 
 The server entry exports the two request handlers that the plugin builds:
 
@@ -90,68 +122,74 @@ export { handle } from 'virtual:brumate/server';
 export { handle as route } from 'virtual:brumate/routes';
 ```
 
-## A production server
+### In production
 
-Any server that speaks web `Request` and `Response` can serve the build. A request goes to the server functions first, then to the client files, then to the routes:
+A request goes to the server functions first, then to the client files, then to the routes:
 
 ```ts
 // server.prod.ts
 import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
+import type { RequestListener } from 'node:http';
 import path from 'node:path';
-import { send, toRequest } from './node.ts';
+import { toNodeHandler } from 'srvx/node';
 
 const client = path.resolve('dist/client');
 const server = await import(path.resolve('dist/server/server.js'));
-const manifest = JSON.parse(await readFile(path.join(client, '.vite/manifest.json'), 'utf8'));
-const entry = `/${manifest['src/client.ts'].file}`;
 
-createServer(async (incoming, outgoing) => {
-  const request = await toRequest(incoming);
-  const { pathname } = new URL(request.url);
-  const address = incoming.socket.remoteAddress;
-
+const render = toNodeHandler(async (request: Request) => {
   // Server function calls.
   if (request.method === 'POST') {
-    const answer = await server.handle(request, { address });
+    const answer = await server.handle(request);
     if (answer) {
-      return send(answer, outgoing);
+      return answer;
     }
   }
+  // Pages, streamed.
+  return (await server.route(request)) ?? new Response('Not found', { status: 404 });
+}) as RequestListener;
+
+createServer(async (request, response) => {
+  const { pathname } = new URL(request.url ?? '/', 'http://localhost');
   // The built client files.
   if (pathname.startsWith('/assets/')) {
-    outgoing.setHeader('cache-control', 'public, max-age=31536000, immutable');
-    outgoing.end(await readFile(path.join(client, path.normalize(pathname))));
+    response.setHeader('cache-control', 'public, max-age=31536000, immutable');
+    response.end(await readFile(path.join(client, path.normalize(pathname))));
     return;
   }
-  // Pages, streamed.
-  send(
-    await server.route(request, {
-      scripts: `<script type="module" async src="${entry}"></script>`,
-      address,
-      earlyHints: (link) => outgoing.writeEarlyHints({ link }),
-    }),
-    outgoing,
-  );
+  await render(request, response);
 }).listen(3000);
 ```
 
-`toRequest` and `send` turn Node's request and response into web ones. [`examples/todos`](https://github.com/lxsmnsyc/brumate/tree/main/examples/todos) has them in `node.ts`, with the full server in `server.prod.ts`, which also sets content types and refuses paths outside `dist/client`.
+`server.prod.ts` of `examples/todos` also sets content types, refuses paths outside `dist/client` and sends early hints.
 
-- `route` returns `undefined` when no route matches and there is no root `_error.brm`. `send` answers with a 404 then.
-- `send` writes the headers with `toNodeHeaders` from `brumate/server`, which keeps each `set-cookie` apart. `Object.fromEntries(answer.headers)` would join them, and the browser would keep only one cookie.
-- Load the client entry with `async`, so it starts while `#loading` content is still streaming.
+- `route` adds the script tag of the client entry, read from the manifest at build time. The server reads no manifest.
+- `route` returns `undefined` when no route matches and there is no root `_error.brm`. The server answers with a 404 then.
+- `toNodeHandler` writes each `set-cookie` header apart, so the browser keeps every cookie.
+- Pass the address of the client as `address`, such as `request.ip` of srvx, for rate limits. See [Rate limiting](./security.md#rate-limiting).
 - Files under `/assets/` have hashes in their names, so they can be cached for a long time.
 
-### Early hints
+### The script tags
 
-The client build writes the URLs of the loader and the core, which every page loads, to `dist/client/.brumate/hints.json`. The routes of the server build read it, so a page gets them three ways:
+`handle` of `virtual:brumate/routes` writes the script tags of each page when its options have no `scripts`. In development, they are the Vite client and `virtual:brumate/start`. In a build, the tag is the client entry, with `async`, so it starts while `#loading` content still streams. An explicit `scripts` replaces the default tags, and is written as given. Pass `''` for pages that load no client code, or your own tags, such as an entry other than the one in the manifest. Your own tags in development list the Vite client too. Under a nonce policy, pass `nonce` instead of writing the tags: the default tags carry it.
+
+## Early hints
+
+The client build writes the URLs of the loader and the core, which every page loads, to `.brumate/hints.json` in its output. The routes of the server build read it, so a page gets them three ways:
 
 - A `<link rel="modulepreload">` for each at the start of its head, so the browser loads the core with the HTML.
 - `Link` headers with the same URLs. Hosts such as Cloudflare turn them into `103 Early Hints` for the next visits.
 - `earlyHints`, a callback that receives the `Link` values before the page renders. Node's `writeEarlyHints` sends them as a `103` response at once, so the browser loads the modules while the server renders.
 
-Client navigation and requests for `#defer` bodies get none, since the page has the modules already. Development has none. With a client build in another folder, set it with `prerender: { client }` in the plugin options, or pass `hints` to `route` yourself.
+On Node, under Nitro or `toNodeHandler`, the request reaches the Node response:
+
+```ts
+const answer = await handle(request, {
+  earlyHints: (link) => request.runtime?.node?.res?.writeEarlyHints({ link }),
+});
+```
+
+Client navigation and requests for `#defer` bodies get none, since the page has the modules already. Development has none. With a client build in another folder, set `clientOutDir` in the plugin options, or pass `hints` to `route` yourself.
 
 The server runtime uses only web APIs, such as `Request`, `Response` and `crypto.subtle`, so it runs on Node, Deno, Bun and edge hosts such as Cloudflare Workers.
 
@@ -176,6 +214,7 @@ return new Response(html.pipeThrough(new TextEncoderStream()), {
 - The first part of the page is sent as soon as it renders. `#loading` content follows as its data arrives.
 - Pass `request`, so components and the server functions that their memos call can read it with `getEvent()`.
 - `nonce` sets a Content Security Policy nonce on the inline scripts that the stream adds.
+- `renderToStream` adds no script tags of its own, so pass the tag of the client entry in `scripts`.
 - A root component that renders only part of a page takes `start` and `end` markup around it.
 
 `render` returns the parts of a page instead of a stream. Use it to read the headers and the status that the page set before you send anything:
@@ -201,33 +240,54 @@ One loader serves every root on the page.
 
 ## Prerendering
 
-A site with no server functions, such as documentation, can be written to static files at build time:
+Pages without data, such as documentation or an about page, can be written to static files at build time:
 
 ```ts
-brumate({ prerender: { paths: ['/'] } });
+brumate({ prerender: { paths: ['/about', '/docs'] } });
 ```
 
-```bash
-vite build --outDir dist/client && vite build --ssr src/server.ts --outDir dist/server
-```
-
-- After the server build, each path renders to an `index.html` in a folder of its path in `dist/client`.
+- Each path renders to an `index.html` in a folder of its path.
 - Links on a rendered page lead to more pages, which render too. `crawl: false` renders only the listed paths.
 - The root `_error.brm` renders as `404.html`, which most static hosts show for a missing page.
 - Pages that answer with another status, or with a redirect, are not written. Endpoints are not written either.
 - Client navigation and layouts that keep their state work on a static host too.
+- The build writes the hashes of the inline scripts to `.brumate/prerender.json`, for a Content Security Policy. See [Content Security Policy for prerendered pages](#content-security-policy-for-prerendered-pages).
 
-Upload `dist/client` to the host. [Plugin options](./reference-plugin.md#prerenderoptions) lists every prerender option.
+[Plugin options](./reference-plugin.md#prerenderoptions) lists every prerender option.
+
+### Under Nitro
+
+`vite build` prerenders after the server environment, in the same build:
+
+- The routes must build in their own server environment, so the server entry, `src/entry-server.ts`, imports `virtual:brumate/routes`.
+- Plain pages go to `.output/public` as files. Nitro serves a file there before the entry sees the request, so these pages get no headers and no nonce from the entry.
+- A page with a `#defer` block goes to Nitro's server assets, not to `.output/public`. `handle` reads it and sends it as the shell, then the `#defer` bodies in the same response. The entry needs no code for it. See [`#defer` on prerendered pages](#defer-on-prerendered-pages).
+- `prerender.client` is not needed. The pages go to the output of the client environment, or to `clientOutDir`.
+
+brumate prerenders the pages itself, not with Nitro's `prerender`. Nitro's builds the app a second time, and writes no `404.html`, no shells and no `.brumate/prerender.json`.
+
+### With two builds
+
+With [a server of your own](#a-server-of-your-own), the pages render after the `--ssr` build:
+
+```bash
+vite build --outDir dist/client
+vite build --ssr src/server.ts --outDir dist/server
+```
+
+Every page goes to `dist/client`, also a page with a `#defer` block. Upload `dist/client` to a static host, or serve its files from the server.
 
 ### `#defer` on prerendered pages
 
-The body of a [`#defer`](./async-data.md#defer) block renders on the server, also on a prerendered page, such as a line that names the user who is signed in. A server that has the prerendered file passes it to the routes as `shell`:
+The body of a [`#defer`](./async-data.md#defer) block renders on the server, also on a prerendered page, such as a line that names the user who is signed in. A page with such a body is prerendered as a shell, or stays out of `paths`.
+
+Under Nitro, `handle` passes the shell itself. A server of your own that has the prerendered file passes it to the routes as `shell`:
 
 ```ts
 const html = await readFile(path.join('dist/client', url.pathname, 'index.html'), 'utf8').catch(
   () => undefined,
 );
-const answer = await handle(request, html === undefined ? { scripts } : { shell: html });
+const answer = await route(request, html === undefined ? {} : { shell: html });
 ```
 
 - The routes send the shell at once, then the body of each `#defer` block with the `load` or `idle` trigger, in the same response, as a `#loading` body streams. The browser does not ask for them.
@@ -238,7 +298,7 @@ const answer = await handle(request, html === undefined ? { scripts } : { shell:
 
 ### Content Security Policy for prerendered pages
 
-A prerendered page is rendered once, so its inline scripts have no nonce. The build writes the SHA-256 hashes of each page's inline scripts to `dist/client/.brumate/prerender.json`:
+A prerendered file is rendered once, so its inline scripts have no nonce. The build writes the SHA-256 hashes of each page's inline scripts to `.brumate/prerender.json` in the client output, `.output/public` under Nitro:
 
 ```json
 {
@@ -251,6 +311,7 @@ A prerendered page is rendered once, so its inline scripts have no nonce. The bu
 
 - `pages` has the hashes of each page. The error page is `404`.
 - `scripts` has the hashes of every page, once each.
+- A page with `shell: true` is a shell in Nitro's server assets. `handle` gives its scripts the nonce of the request, so it needs no hashes.
 
 Send a policy with the hashes:
 
@@ -261,9 +322,11 @@ const hashes = prerendered.scripts.map((hash) => `'${hash}'`).join(' ');
 const policy = `script-src 'self' ${hashes}`;
 ```
 
-Use the hashes of every page in one policy. The client router keeps the policy of the page that the browser loaded, and runs the scripts of the next page under it. A policy that requires Trusted Types adds `trusted-types brumate`. See [Trusted Types](./reference-security.md#trusted-types).
+`'self'` allows the client entry, which a file loads with no nonce. Use the hashes of every page in one policy. The client router keeps the policy of the page that the browser loaded, and runs the scripts of the next page under it. A policy that requires Trusted Types adds `trusted-types brumate`. See [Trusted Types](./reference-security.md#trusted-types).
 
-A policy with hashes cannot cover a page that the server renders on each request. When a server of your own sends both kinds of pages, give the prerendered files a nonce as it sends them, and use the nonce policy for every page:
+Under Nitro, the entry does not see the request for a file in `.output/public`, so it cannot set the policy of that file. Set it where the files are served, such as in the header rules of the host.
+
+A policy with hashes cannot cover a page that the server renders on each request. When a server of your own sends both kinds of pages, give the prerendered files a nonce as it sends them, and use the nonce policy for every page. A `shell` that the server passes is sent as given, so it needs the nonce too:
 
 ```ts
 const html = (await readFile(file, 'utf8')).replaceAll('<script', `<script nonce="${nonce}"`);
@@ -273,7 +336,7 @@ const html = (await readFile(file, 'utf8')).replaceAll('<script', `<script nonce
 
 A resumable page lives long. A page that was open before a deploy can load code after it, such as the code of a component that a block renders, and calls server functions that the new build may have changed. Skew protection keeps such a page working, or loads it again:
 
-- Each build has an ID. The client build writes it to `dist/client/.brumate/build.json`, and the server build reads it, so build the client first. `BRUMATE_BUILD` in the environment names the ID for both builds, such as the commit in CI.
+- Each build has an ID. The client build writes it to `.brumate/build.json` in its output, and the server build reads it, so build the client first. A Nitro build does this in one `vite build`. `BRUMATE_BUILD` in the environment names the ID for both builds, such as the commit in CI.
 - The page state carries the ID, and the browser sends it with each server function call and each request for a `#defer` body. A call to a function that still exists runs. A call to a function that is gone answers 409 with the build of the server, and the browser loads the next page in full. A form of `$action` posts again without scripts, and the page that answers is of the new build.
 - A form that posts to a server function carries the ID in its URL, as `__build`, so a post without scripts is checked too. A post from another build to a function that is gone answers 303 to its page, from `Referer`, or to `/` when the page is on another site. The page then loads with the new build.
 - When the code of a handler fails to load, the browser asks the server for its build. When it differs, the files of the old build may be gone, and the page loads again. Any other error, such as a module that throws when it loads, goes to the nearest `#try`, as the error of a handler does.
@@ -294,8 +357,9 @@ The dev server has no build ID, so nothing is checked there.
 
 ## Checklist
 
-- Build the client before the server.
-- Serve `dist/client/assets` with long cache headers.
+- Build the client before the server. `vite build` does it under Nitro.
+- Write no script tags. `handle` adds them, and passes `nonce` on to them.
+- On a server of your own, serve `dist/client/assets` with long cache headers. Nitro does this itself.
 - Send server function calls, `POST` requests to `/_brumate/…` by default, to `handle`.
 - Set `origins` in the plugin options if pages on another origin of yours call server functions. See [Security](./reference-security.md).
 - Check what each route ships with `report: true` or a `budget`. See [Inspect](./inspect.md).

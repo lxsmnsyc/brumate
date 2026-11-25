@@ -86,18 +86,23 @@ A page runs two kinds of inline scripts:
 - The state records, one or more per render.
 - The scripts that swap in `#loading` bodies.
 
-Give them a nonce with the `nonce` option of `render`, `renderToStream` or the `handle` of `virtual:brumate/routes`:
+Give them a nonce with the `nonce` option of `render`, `renderToStream` or the `handle` of `virtual:brumate/routes`. Make a new nonce for each response:
 
 ```ts
-const nonce = crypto.randomUUID();
-const response = await handle(request, {
-  nonce,
-  scripts: `<script type="module" async src="/assets/client.js" nonce="${nonce}"></script>`,
-});
-response?.headers.set('content-security-policy', `script-src 'self' 'nonce-${nonce}'`);
+const nonce = btoa(crypto.randomUUID());
+const answer = await handle(request, { nonce });
+answer?.headers.set(
+  'content-security-policy',
+  `script-src 'nonce-${nonce}' 'strict-dynamic'; object-src 'none'; base-uri 'none'`,
+);
 ```
 
-The client code loads as modules from your origin, which `'self'` allows.
+- `handle` writes the nonce on the script tags that it adds: the client entry in a build, the Vite client and the loader in development. The inline scripts and the `<style>` and `<link>` elements of the render get it too.
+- `'strict-dynamic'` lets the client entry load the modules that it imports, so the policy needs no `'self'`.
+- An explicit `scripts` is written as given. Its tags need the nonce from you.
+- `renderToStream` adds no script tags, so the tags in its `scripts` need the nonce from you.
+- A prerendered file has no nonce. See [Content Security Policy for prerendered pages](./deploying.md#content-security-policy-for-prerendered-pages).
+- From brumate 0.9.1, a page that the server keeps with [`cache`](./routing.md#caching-pages) gets the nonce of each request. Before, it kept the nonce of its first render.
 
 A component that writes an inline script of its own with `raw()` gives it `getEvent().nonce`, which is the nonce of the render, or undefined without one.
 
@@ -112,7 +117,7 @@ A prerendered page is the exception. Its scripts are known at build time, and th
 A policy with `require-trusted-types-for 'script'` refuses a string in `innerHTML` and in the text of a script. The core inserts the markup that it renders, such as a body that an `#if` opens, and copies the scripts of a `#defer` body or of a page that the client router loads, so it needs a Trusted Types policy. It makes one named `brumate`, once, when it first inserts markup, and only where the browser has Trusted Types. Allow it next to the nonce:
 
 ```
-script-src 'self' 'nonce-…'; require-trusted-types-for 'script'; trusted-types brumate
+script-src 'nonce-…' 'strict-dynamic'; require-trusted-types-for 'script'; trusted-types brumate
 ```
 
 The policy passes markup and scripts as they are: the markup is what brumate's own render code made, with every value escaped, and the scripts came from the server with the page. HTML that an app inserts with `raw` goes through it too, so the app stays responsible for what it holds. Without `trusted-types brumate`, the core logs which directive is missing, and the inserts fail as the browser refuses them.

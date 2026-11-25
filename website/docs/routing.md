@@ -314,6 +314,7 @@ The server also keeps each public page, in the store of [`cached`](./server-func
 - Middleware runs first, so a check of access still runs for each request. A request that read the user before the page, such as in middleware, gets a page rendered for it.
 - A page records the tags of the `cached` functions that it called. `revalidate(tag)` drops the pages that used the tag, with the results.
 - A kept page is used until `max-age` ends. `stale-while-revalidate` is for the CDN or the browser: the server renders again after `max-age`.
+- A kept page gets the `nonce` of each request on its scripts, from brumate 0.9.1, so it works under a nonce policy. A page whose nonce shows anywhere else, such as in the text of a script, renders on each request and is not kept. See [Content Security Policy](./reference-security.md#content-security-policy).
 - `handle(request, { pageCache: false })` turns it off, such as when a CDN keeps the pages.
 
 ## Links
@@ -337,12 +338,15 @@ Links are plain `<a>` elements. `href` from `brumate/routes` writes the URL of a
 `virtual:brumate/routes` exports `handle(request, options)`, which answers a web `Request` with the page, endpoint or middleware answer for its path:
 
 ```ts
-const { handle } = await vite.ssrLoadModule('virtual:brumate/routes');
-const response = await handle(request, {
-  scripts: '<script type="module" async src="/src/client.ts"></script>',
-});
+import { handle } from 'virtual:brumate/routes';
+
+const response = await handle(request);
 ```
 
-It returns `undefined` when no route matches and the app has no entry middleware, and the root has neither `_error.brm` nor `_middleware.ts`, so the server can answer with its own 404. [Deploying](./deploying.md) shows a full server for development and production.
+- `vite dev` calls it for you. Under Nitro, or on a server of your own, the server entry calls it.
+- It adds the script tags of the client to each page, so the server writes none.
+- It returns `undefined` when no route matches and the app has no entry middleware, and the root has neither `_error.brm` nor `_middleware.ts`, so the server can answer with its own 404.
+
+[Deploying](./deploying.md) shows the server entry under Nitro, and a server of your own for development and production.
 
 [`examples/todos`](https://github.com/lxsmnsyc/brumate/tree/main/examples/todos) has a layout, an `@aside` slot, a dynamic route, an endpoint and a 404 page. [`examples/tracker`](https://github.com/lxsmnsyc/brumate/tree/main/examples/tracker) adds middleware that guards a page, a session, and a page prerendered next to dynamic ones.

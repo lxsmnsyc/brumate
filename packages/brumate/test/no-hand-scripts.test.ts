@@ -9,13 +9,6 @@ const repo = fileURLToPath(new URL('../../..', import.meta.url));
 const ROOTS = ['examples', 'website/docs', 'benchmarks', 'website/scripts'];
 /** Folders that hold no source, and the benchmark that is pinned to brumate 0.3.0. */
 const SKIPPED = new Set(['node_modules', 'dist', '.output', '.vite', 'brumate-0.3']);
-/**
- * Occurrences of the Vite client tag that are known, by file: the number of times each file has it.
- * getting-started.md has the tag in the server example and in the bullet under it. The node
- * client-scripts-docs rewrites that page and removes both, and then this list is empty.
- */
-const KNOWN = new Map([['website/docs/getting-started.md', 2]]);
-
 function listFiles(directory: string, found: string[]): string[] {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     if (SKIPPED.has(entry.name)) {
@@ -49,7 +42,7 @@ it('writes no /@vite/client tag in the examples, the docs, the benchmarks or the
       }
     }
   }
-  expect(Object.fromEntries(found)).toEqual(Object.fromEntries(KNOWN));
+  expect(Object.fromEntries(found)).toEqual({});
 });
 
 it('writes no entry script tag and reads no client manifest in the code of the examples', () => {
