@@ -32,21 +32,6 @@ depends_on:
   - on: client-scripts
     kind: hard
     why: the must feature of 0.10.0
-  - on: clone-remaining-bodies
-    kind: hard
-    why: a should of the 0.10.0 cut (the maintainer, 2026-11-25)
-  - on: no-client-html
-    kind: hard
-    why: a should of the 0.10.0 cut
-  - on: fixed-walks
-    kind: hard
-    why: a should of the 0.10.0 cut
-  - on: part-guides
-    kind: hard
-    why: a should of the 0.10.0 cut
-  - on: state-dedupe-spike
-    kind: hard
-    why: a should of the 0.10.0 cut; a no-go closes it without code
 ---
 
 # Release brumate 0.10.0
@@ -57,7 +42,7 @@ Promote `release/0.10` to `main` and publish brumate 0.10.0 and @brumate/ui, wit
 
 ## Context
 
-- The cut was settled in chat on 2026-11-25, with no debate: one must story (client-scripts) and the should nodes above. i18n was dropped (Paraglide), brumate-node was dropped (Nitro and `srvx/node`), images and markdown-plugin stay in the backlog.
+- The cut was settled in chat on 2026-11-25, with no debate: one must story (client-scripts), and should nodes clone-remaining-bodies, no-client-html, fixed-walks, part-guides and state-dedupe-spike. A should node still open when this node starts moves to the next milestone. i18n was dropped (Paraglide), brumate-node was dropped (Nitro and `srvx/node`), images and markdown-plugin stay in the backlog.
 - `release/0.10` was cut from `main` at b3311eb1 when release-0.9 ended.
 - Same checks as release-0.9. Todos gzip JS before `load` is recorded against 0.9.0 (14.6 kB), not gated.
 - The promotion goes to `main` as a pull request, and the Version Packages pull request follows. The orchestrator merges neither (`gate: true`).
