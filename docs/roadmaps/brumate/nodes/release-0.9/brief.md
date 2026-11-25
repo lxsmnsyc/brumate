@@ -1,7 +1,7 @@
 ---
 id: release-0.9
 title: Release brumate 0.9.0
-status: active
+status: released
 priority: must
 type: release
 story:
@@ -88,9 +88,9 @@ Promote `release/0.9` to `main` and publish brumate 0.9.0 and @brumate/ui, with 
 
 ## Acceptance
 
-- [ ] Open should and could nodes of 0.9.0 are moved to the next milestone, and the changesets on `release/0.9` are merged.
-- [ ] All checks pass; the results and the todos size are in the outcome.
-- [ ] The maintainer merges the promotion and the Version Packages pull requests, and brumate 0.9.0 is on npm.
+- [x] Open should and could nodes of 0.9.0 are moved to the next milestone, and the changesets on `release/0.9` are merged.
+- [x] All checks pass; the results and the todos size are in the outcome.
+- [x] The maintainer merges the promotion and the Version Packages pull requests, and brumate 0.9.0 is on npm.
 
 ## Sizing
 

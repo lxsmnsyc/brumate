@@ -1,7 +1,7 @@
 ---
 id: module-async-memo
 title: Async $memo at the top level of a module
-status: active
+status: done
 priority: must
 type: feature
 story:

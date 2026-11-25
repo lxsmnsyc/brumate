@@ -21,14 +21,15 @@ branches:
   # own branch, `release/<major>.<minor>`, cut from `main`. 0.8.0 work targets `release/0.8`; `main` is
   # merged into it after every patch release from `main`.
   # After 0.8.0 merged (the maintainer, 2026-11-18): 0.9.0 work targets `release/0.9`, cut from `main`.
-  feature: release/0.9
-  fix: release/0.9
-  docs: release/0.9
-  chore: release/0.9
-  refactor: release/0.9
-  spike: release/0.9
+  # After 0.9.0 merged (the maintainer, 2026-11-25): 0.10.0 work targets `release/0.10`, cut from `main`.
+  feature: release/0.10
+  fix: release/0.10
+  docs: release/0.10
+  chore: release/0.10
+  refactor: release/0.10
+  spike: release/0.10
   hotfix: main
-  promote: release/0.9 -> main
+  promote: release/0.10 -> main
 ---
 
 # brumate
