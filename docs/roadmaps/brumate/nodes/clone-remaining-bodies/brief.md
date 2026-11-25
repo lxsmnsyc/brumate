@@ -39,6 +39,8 @@ depends_on:
 
 ## Goal
 
+> 2026-11-25: split by the orchestrator, as the Context allows. This node covers the block bodies (in-place `#try`, `#offscreen`, windowed `#for`, the fields body). `#template` functions and children moved to template-fragment-return, so the `$$b.raw` part of the first acceptance item belongs there.
+
 Finish what no-html-string-fallback started: no body that the browser renders falls back to an HTML string. After it, 20 bodies of the test pages still render from `$$html` (listed in packages/brumate/test/clone-bodies.test.ts), and so do `#template` functions (`$$b.raw`) and children closures.
 
 - An in-place `#try` (markers plus a rollback of `$$html`): needs a nodes form of `#try`, such as a `tryNodes` helper.

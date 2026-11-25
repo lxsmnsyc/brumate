@@ -30,6 +30,9 @@ depends_on:
   - on: clone-remaining-bodies
     kind: hard
     why: every body clones first
+  - on: template-fragment-return
+    kind: hard
+    why: #template functions and children must clone too (split from clone-remaining-bodies, 2026-11-25)
 ---
 
 # Drop the HTML-string machinery from the client
