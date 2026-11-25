@@ -1,7 +1,7 @@
 ---
 id: script-nonce
 title: The default script tags carry the nonce of the render
-status: todo
+status: active
 priority: 
 type: fix
 story: client-scripts

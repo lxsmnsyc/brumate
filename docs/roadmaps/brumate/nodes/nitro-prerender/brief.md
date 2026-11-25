@@ -1,7 +1,7 @@
 ---
 id: nitro-prerender
 title: Prerendering works in a Nitro build
-status: active
+status: done
 priority: 
 type: fix
 story: client-scripts
@@ -21,7 +21,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-26
-spent:
+spent: 423643
 owns:
   - docs/roadmaps/brumate/nodes/nitro-prerender/**
 shared:
