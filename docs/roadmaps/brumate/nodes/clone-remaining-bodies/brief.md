@@ -1,7 +1,7 @@
 ---
 id: clone-remaining-bodies
 title: The bodies that still render from an HTML string clone their template
-status: active
+status: done
 priority: should
 type: refactor
 outline: false
@@ -15,7 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-03
-spent:
+spent: 441386
 owns: []
 shared:
   - packages/brumate/src/codegen/**

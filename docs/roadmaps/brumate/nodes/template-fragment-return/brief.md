@@ -1,7 +1,7 @@
 ---
 id: template-fragment-return
 title: "#template functions and children return cloned nodes"
-status: todo
+status: active
 priority: should
 type: refactor
 story:
