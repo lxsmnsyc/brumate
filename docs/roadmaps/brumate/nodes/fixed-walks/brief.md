@@ -1,7 +1,7 @@
 ---
 id: fixed-walks
 title: The walk of a cloned template is code
-status: todo
+status: active
 priority: should
 type: refactor
 story:
