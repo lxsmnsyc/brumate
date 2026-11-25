@@ -33,6 +33,12 @@ depends_on:
   - on: examples-glue
     kind: hard
     why: the docs show the examples as they end up
+  - on: script-nonce
+    kind: hard
+    why: the docs describe the nonce on the default tags
+  - on: nitro-prerender
+    kind: hard
+    why: the docs describe prerendering under Nitro
 ---
 
 # Docs: vite dev serves pages, scripts are a default
