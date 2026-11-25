@@ -55,7 +55,7 @@ None. Every question was settled by reading the source.
 - `vite dev` serving pages is in scope, because the goal names plain `vite dev` and it serves no pages today (A2 ruling, J4).
 - Breaking `handle()` options and the example layout need no deprecation period (J8, from GOAL.md constraints).
 - Targets the next minor, because release/0.9 has only its release node left (J8).
-- `brumate/node` is in scope, because production servers still need `toRequest`/`send` once `server.ts` goes (P8 ruling).
+- `brumate/node` is in scope, because production servers still need `toRequest`/`send` once `server.ts` goes (P8 ruling). Reversed by the maintainer on 2026-11-25: `docs/decisions.md` already says brumate has no adapters of its own, so production runs on Nitro and an own server uses `srvx/node`. Node brumate-node is dropped.
 
 ## Answers from the user
 

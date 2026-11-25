@@ -34,7 +34,7 @@ depends_on: []
 
 ## Goal
 
-A brumate app never writes the `/@vite/client` tag or the client entry script, in dev or production, whether it runs plain `vite dev`, Nitro or its own server. Plain `vite dev` serves pages, so the five Node examples lose their `server.ts`, `node.ts` and the dev half of `server.prod.ts`.
+A brumate app never writes the `/@vite/client` tag or the client entry script, in dev or production, whether it runs plain `vite dev`, Nitro or its own server. Plain `vite dev` serves pages, so the five Node examples lose their `server.ts`, `node.ts` and `server.prod.ts`, and run on Nitro in production. Brumate ships no Node adapter (brumate-node dropped 2026-11-25).
 
 ## Children
 
@@ -43,11 +43,10 @@ A brumate app never writes the `/@vite/client` tag or the client entry script, i
 | default-scripts     | M    | `handle` defaults `scripts`: the dev pair under `vite dev`, the built entry tag in production; a missing client manifest is a build error |
 | dev-pages           | M    | Plain `vite dev` serves pages through a post middleware; `appType: 'custom'`; skipped under `middlewareMode` and Nitro                    |
 | nitro-scripts       | S    | The Nitro entry drops `?assets=client` and the DEV ternary; e2e in dev and build                                                          |
-| brumate-node        | S    | `brumate/node` exports `toRequest` and `send`                                                                                             |
 | examples-glue       | M    | Delete the hand-written tags and example glue, repoint the e2e, guard test                                                                |
 | client-scripts-docs | S    | getting-started, deploying, reference-plugin and the skill                                                                                |
 
-default-scripts goes first. dev-pages and nitro-scripts follow it (both edit `vite.ts` or rely on its default). brumate-node has no dependency and can run at any time. examples-glue waits for the first four, and the docs wait for examples-glue.
+default-scripts goes first. dev-pages and nitro-scripts follow it (both edit `vite.ts` or rely on its default). examples-glue waits for the first three, and the docs wait for examples-glue.
 
 ## Decisions
 

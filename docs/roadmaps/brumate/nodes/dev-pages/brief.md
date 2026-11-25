@@ -48,7 +48,7 @@ depends_on:
 - A throw answers 500 with `errorPage(error, server)` after `server.ssrFixStacktrace(error)`, and logs when headers were already sent, as the preview page does (`vite.ts:1680-1688`).
 - Under a root `_error.brm`, `handle` never returns undefined, so unknown paths render the 404 page. That matches today's hand-written servers and is accepted (debate open risks).
 
-The Node conversion is the same as `toRequest`/`send` in the examples' `node.ts`. If brumate-node has landed, import it; otherwise write it in the plugin and leave a note for brumate-node to share it.
+The Node conversion is private to the plugin, with no new dependency (brumate-node was dropped 2026-11-25). Start from the examples' `node.ts` and fix what it misses, comparing idlip's dev bridge ([plugin.ts](https://github.com/lxsmnsyc/idlip/blob/16b6e3f/packages/idlip/src/vite/plugin.ts#L412-L460)): the URL from `originalUrl` and the `Host` header; header arrays joined; a streamed body (`duplex: 'half'`) for every method but GET and HEAD; the request's `signal` aborts when the client leaves; `toNodeHeaders` so each `set-cookie` stays its own header (idlip's `setHeader` loop keeps only the last); and `pipeline` so a client that leaves cancels the stream and a stream error destroys the response instead of crashing `vite`.
 
 ## Acceptance
 

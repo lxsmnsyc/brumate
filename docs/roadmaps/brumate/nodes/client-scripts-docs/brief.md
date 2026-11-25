@@ -39,8 +39,8 @@ depends_on:
 
 ## Goal
 
-- getting-started "Serve pages in development" becomes: run `vite dev`. The own-server code moves to deploying.md as the advanced path, with `brumate/node` and no `scripts`.
-- deploying.md: the production server uses `brumate/node` and no manifest read; one paragraph says `scripts` overrides the default (for example a nonce or `''`).
+- getting-started "Serve pages in development" becomes: run `vite dev`. The own-server code moves to deploying.md as the advanced path, with `toNodeHandler` from `srvx/node` and no `scripts`.
+- deploying.md: Nitro is the production server, and the own-server section uses `srvx/node`, with no manifest read and no `node.ts`; one paragraph says `scripts` overrides the default (for example a nonce or `''`).
 - reference-plugin: `appType: 'custom'` default, the `middlewareMode` and Nitro skips, the warning for `spa`/`mpa`.
 - The brumate skill: no hand-written script tags in its server examples.
 
