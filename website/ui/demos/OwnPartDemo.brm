@@ -1,0 +1,87 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $signal } from 'brumate/signals';
+  import { focusRing } from '@brumate/ui/focus.brm.ts';
+  import { hover } from '@brumate/ui/hover.brm.ts';
+  import { press } from '@brumate/ui/press.brm.ts';
+  import type { PressEvent } from '@brumate/ui/events.ts';
+
+  let picks = $signal(0);
+  let last = $signal('');
+
+  function picked(event: PressEvent) {
+    picks++;
+    last = event.pointerType;
+  }
+
+  const {
+    pressed,
+    onPointerDown: pressPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel,
+    onLostPointerCapture,
+    onKeyDown: pressKeyDown,
+    onKeyUp,
+    onClick,
+    onBlur: pressBlur,
+  } = press(false, picked, undefined, undefined, undefined, undefined);
+  const { hovered, onPointerEnter, onPointerLeave } = hover(false, undefined, undefined, undefined);
+  const {
+    focusVisible,
+    onFocus,
+    onBlur: ringBlur,
+    onKeyDown: ringKeyDown,
+    onPointerDown: ringPointerDown,
+  } = focusRing(undefined, undefined, undefined);
+
+  // Two of the modules need the same events, so one handler calls both.
+  function pointerDown(event: PointerEvent & { currentTarget: HTMLElement }) {
+    ringPointerDown();
+    pressPointerDown(event);
+  }
+
+  function keyDown(event: KeyboardEvent & { currentTarget: HTMLElement }) {
+    ringKeyDown(event);
+    pressKeyDown(event);
+  }
+
+  function blur(event: FocusEvent & { currentTarget: HTMLElement }) {
+    pressBlur(event);
+    ringBlur(event);
+  }
+</script>
+
+<div
+  class="ui-button own-card"
+  role="button"
+  tabindex="0"
+  data-pressed=(pressed || undefined)
+  data-hovered=(hovered || undefined)
+  data-focus-visible=(focusVisible || undefined)
+  onPointerDown=pointerDown
+  {onPointerMove}
+  {onPointerUp}
+  {onPointerCancel}
+  {onLostPointerCapture}
+  {onPointerEnter}
+  {onPointerLeave}
+  onKeyDown=prevent(keyDown, 'Space')
+  onKeyUp=prevent(onKeyUp, 'Space')
+  {onClick}
+  {onFocus}
+  onBlur=blur
+>
+  <strong>Weekly plan</strong>
+  <span>Pick it with a pointer, Enter or Space.</span>
+</div>
+<p>Picked {picks === 1 ? 'once' : `${picks} times`}{last ? `, last with ${last}` : ''}.</p>
+
+<style global>
+  .own-card {
+    display: grid;
+    gap: 0.25rem;
+    max-width: 18rem;
+    font-weight: 400;
+  }
+</style>

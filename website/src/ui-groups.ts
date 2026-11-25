@@ -5,7 +5,17 @@
 export const groups: { title: string; pages: string[] }[] = [
   {
     title: 'Start',
-    pages: ['introduction', 'styling', 'state', 'resuming', 'layers', 'influences'],
+    pages: [
+      'introduction',
+      'styling',
+      'state',
+      'resuming',
+      'layers',
+      'keyboard-and-focus',
+      'async-content',
+      'your-own-parts',
+      'influences',
+    ],
   },
   {
     title: 'Buttons',

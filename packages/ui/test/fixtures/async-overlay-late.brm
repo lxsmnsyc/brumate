@@ -1,0 +1,16 @@
+<script>
+  import { $memo } from 'brumate/signals';
+
+  // A value that arrives a little after the component renders in the browser.
+  function wait(text: string): Promise<string> {
+    return new Promise((resolve) => setTimeout(() => resolve(text), 30));
+  }
+
+  const late = $memo(wait('Ready'));
+</script>
+
+#loading {
+  <button class="late-field" autofocus>{late}</button>
+} #else {
+  <p class="late-fallback">Loading…</p>
+}
