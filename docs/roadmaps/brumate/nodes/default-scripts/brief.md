@@ -1,7 +1,7 @@
 ---
 id: default-scripts
 title: handle defaults scripts in dev and production
-status: todo
+status: active
 priority: 
 type: feature
 story: client-scripts

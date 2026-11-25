@@ -1,7 +1,7 @@
 ---
 id: client-scripts
 title: Apps never write the client scripts
-status: todo
+status: active
 priority: must
 type: story
 story: 
