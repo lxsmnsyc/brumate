@@ -1,7 +1,7 @@
 ---
 id: state-dedupe-spike
 title: "Spike: leave out state strings the markup already printed"
-status: todo
+status: active
 priority: should
 type: experiment
 story:

@@ -1,7 +1,7 @@
 ---
 id: part-guides
 title: Guides for building a part, keyboard and focus, and async content
-status: active
+status: done
 priority: should
 type: docs
 outline: false
@@ -14,6 +14,7 @@ verify: pnpm --filter @brumate/ui exec vitest run test/async-overlay.test.ts
 exclusive: []
 fulfilled_by: 
 gate: false
+spent: 186549
 added: 
 owns:
   - website/ui/your-own-parts.md
