@@ -46,6 +46,7 @@ A brumate app never writes the `/@vite/client` tag or the client entry script, i
 | examples-glue       | M    | Delete the hand-written tags and example glue, repoint the e2e, guard test                                                                |
 | script-nonce        | S    | The default script tags carry the nonce of the render; `handle` options typed as `RouteOptions` (found by examples-glue)                  |
 | nitro-prerender     | M    | Prerendering works in a Nitro build (found by examples-glue)                                                                              |
+| dev-client-entry    | S    | The app's own client entry runs in development (found by client-scripts-docs)                                                             |
 | client-scripts-docs | S    | getting-started, deploying, reference-plugin and the skill                                                                                |
 
 default-scripts goes first. dev-pages and nitro-scripts follow it (both edit `vite.ts` or rely on its default). examples-glue waits for the first three, and the docs wait for examples-glue.

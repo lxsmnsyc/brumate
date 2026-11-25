@@ -32,6 +32,9 @@ depends_on:
   - on: client-scripts
     kind: hard
     why: the must feature of 0.10.0
+  - on: release-0.9.1
+    kind: hard
+    why: the 0.10.0 docs say kept pages get the request's nonce from 0.9.1 (kept-page-nonce)
 ---
 
 # Release brumate 0.10.0

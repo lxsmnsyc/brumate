@@ -1,7 +1,7 @@
 ---
 id: client-scripts-docs
 title: Docs: vite dev serves pages, scripts are a default
-status: active
+status: done
 priority: 
 type: docs
 story: client-scripts
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-23
-spent:
+spent: 212505
 owns:
   - website/docs/getting-started.md
   - website/docs/reference-plugin.md
