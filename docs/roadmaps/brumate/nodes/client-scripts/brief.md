@@ -62,7 +62,7 @@ The settled structure, budget, rejected alternatives and prior art are in the de
 ## Acceptance
 
 - [ ] `grep -rn '@vite/client' examples website/docs benchmarks website/scripts` finds only `benchmarks/brumate-0.3` (pinned to 0.3.0) and the doc of the `scripts` override; a test enforces it.
-- [ ] `pnpm dev` in todos, hackernews, tracker, ui, kit-app and browser-async runs `vite` and serves pages, and their e2e suites pass.
+- [ ] `pnpm dev` in hackernews, tracker, ui, kit-app and browser-async runs `vite` and serves pages, and their e2e suites pass. todos keeps its own `middlewareMode` server as the own-server case (debate step 5).
 - [ ] examples/nitro passes its e2e in dev and build with no script tag in its entry.
 - [ ] Root `pnpm test` and the e2e suites pass.
 
