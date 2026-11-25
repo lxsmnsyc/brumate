@@ -1,7 +1,7 @@
 ---
 id: dev-pages
 title: Plain vite dev serves pages
-status: todo
+status: active
 priority: 
 type: feature
 story: client-scripts
