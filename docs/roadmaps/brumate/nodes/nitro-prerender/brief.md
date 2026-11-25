@@ -1,7 +1,7 @@
 ---
 id: nitro-prerender
 title: Prerendering works in a Nitro build
-status: todo
+status: active
 priority: 
 type: fix
 story: client-scripts

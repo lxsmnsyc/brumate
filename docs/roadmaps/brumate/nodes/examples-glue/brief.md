@@ -1,7 +1,7 @@
 ---
 id: examples-glue
 title: The examples drop their hand-written servers and tags
-status: active
+status: done
 priority: 
 type: chore
 story: client-scripts
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-23
-spent:
+spent: 364117
 owns:
   - examples/todos/**
   - examples/hackernews/**
