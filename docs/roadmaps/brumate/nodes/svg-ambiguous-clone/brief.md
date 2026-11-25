@@ -45,6 +45,7 @@ Found by the template-fragment-return review (2026-11-26), on the base too (a09f
 
 - Repro: `<svg>{#if (on) { <a href="#x">t</a> }}<Comp/>{#for (x of [n]) { <a>…</a> }}</svg>`, with `Comp` rendering a top `<a>`; log `namespaceURI` in a browser render and after a resume update.
 - template-fragment-return kept the HTML path for `#template` functions with such a top tag, so the insert picks the namespace (`hasAmbiguousTop` in `codegen/markup.ts`). Block bodies and components need the same: pick the template's namespace from the foreign context of the place they are inserted into, or keep the HTML path for those bodies.
+- Also from the no-client-html review (2026-11-26), on the base: a nested template's `<em>` inside an ambiguous SVG `<a>` template gets the HTML namespace when the browser renders it. Cover it with the same test.
 - Prove it on `main` first, fix it from `main` (0.9.1), then merge into `release/0.10`.
 
 ## Acceptance
