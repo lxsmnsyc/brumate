@@ -39,6 +39,8 @@ depends_on:
 
 ## Goal
 
+> 2026-11-26: template-fragment-return makes `#template` functions clone, but its `rawNodes` still goes through `holdPlace` (a `<!--fN-->` string parsed by `insertHTML`), so `clientHTML` turns on for every page with a template. Read its outcome for the list of what this node must change first (`Raw` carrying a DocumentFragment; `insert`, `linkCalls` and the content/fill paths placing nodes; then deleting `holdPlace`, `placed`, the `<!--fN-->` parse and the `rawNodes(` clause in features.ts; the remaining `return $$html;` functions).
+
 Item 5 of the client audit (docs/roadmaps/brumate/nodes/client-audit/outcome.md): once every body clones (clone-remaining-bodies), `#template` calls and children return fragments, and the HTML-string parse path and the `CLIENT_HTML` flag go (about 80 runtime lines, an estimate).
 
 ## Acceptance
