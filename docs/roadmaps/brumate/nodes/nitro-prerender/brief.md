@@ -50,6 +50,7 @@ Found by examples-glue (2026-11-26). The plugin prerenders only for `vite build 
 - Find where the plugin starts prerendering (`vite.ts`, `prerender.ts`) and run it after the server environment of a Nitro build, writing into the directory Nitro serves (`.output/public`, from the client environment's outDir or `clientOutDir`), so Nitro serves the files as static assets.
 - Check how Nitro's own prerender (`nitro.prerender` routes) relates. If Nitro can prerender brumate's routes by crawling, compare that with brumate's own, and use the one that keeps `shell` mode and the prerender options as documented. Say why in the outcome.
 - Keep the two-step `vite build --ssr` path working as it does today.
+- When tracker prerenders again, check that `README.md:64`, `website/docs/routing.md:348` and `e2e/README.md` describe it truly (examples-glue review, 2026-11-26). The navigation bench's `tracker-server` pair serves tracker's Nitro build; keep it working.
 
 ## Acceptance
 

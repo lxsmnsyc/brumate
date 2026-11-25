@@ -49,6 +49,7 @@ depends_on:
 - deploying.md: Nitro is the production server, and the own-server section uses `srvx/node`, with no manifest read and no `node.ts`; one paragraph says `scripts` overrides the default (for example a nonce or `''`).
 - reference-plugin: `appType: 'custom'` default, the `middlewareMode` and Nitro skips, the warning for `spa`/`mpa`.
 - The brumate skill: no hand-written script tags in its server examples.
+- From the examples-glue review (2026-11-26): `website/docs/deploying.md:139` still says `examples/todos` has `toRequest`/`send` in `node.ts`, which is deleted; point it at `server.prod.ts` and `toNodeHandler`. The getting-started server example (about line 110) writes a hand-written tag; the guard test exempts that one occurrence until this node removes it. The five examples now run on Nitro, todos on `srvx/node` (see examples-glue's outcome).
 
 ## Acceptance
 
