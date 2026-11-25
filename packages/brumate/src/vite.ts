@@ -6,6 +6,8 @@ import { existsSync, readFileSync, readdirSync, realpathSync, writeFileSync } fr
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 import {
   isRunnableDevEnvironment,
@@ -382,6 +384,71 @@ function toList(value: unknown): string[] {
 /** Skips the `node_modules` and hidden directories of a package of components. */
 function packageExclude(directory: string): boolean {
   return directory === 'node_modules' || directory.startsWith('.');
+}
+
+/** Turns a Node request into a web Request. The request signal aborts when the client leaves. */
+function toWebRequest(request: IncomingMessage, response: ServerResponse): Request {
+  const connection = request.socket as { encrypted?: boolean };
+  const protocol = connection.encrypted ? 'https' : 'http';
+  // The URL after Vite removed `base`, which the routes know nothing of.
+  const target = request.url ?? '/';
+  let url: URL;
+  try {
+    url = new URL(target, `${protocol}://${request.headers.host ?? 'localhost'}`);
+  } catch {
+    // A malformed Host header.
+    url = new URL(target, `${protocol}://localhost`);
+  }
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(request.headers)) {
+    // HTTP/2 pseudo headers are not fields.
+    if (value === undefined || name.startsWith(':')) {
+      continue;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        headers.append(name, item);
+      }
+    } else {
+      headers.append(name, value);
+    }
+  }
+  const controller = new AbortController();
+  response.on('close', () => {
+    if (!response.writableFinished) {
+      controller.abort();
+    }
+  });
+  const method = request.method ?? 'GET';
+  const init: RequestInit & { duplex?: 'half' } = { method, headers, signal: controller.signal };
+  if (method !== 'GET' && method !== 'HEAD') {
+    // A stream, so a large upload is not held in memory.
+    init.body = Readable.toWeb(request) as ReadableStream;
+    init.duplex = 'half';
+  }
+  return new Request(url, init);
+}
+
+/** Sends a web Response as it streams. A client that leaves cancels the stream. */
+async function sendWebResponse(
+  answer: Response,
+  request: IncomingMessage,
+  response: ServerResponse,
+): Promise<void> {
+  // Each cookie stays a header of its own.
+  const headers = toNodeHeaders(answer.headers);
+  if (answer.statusText) {
+    response.writeHead(answer.status, answer.statusText, headers);
+  } else {
+    response.writeHead(answer.status, headers);
+  }
+  if (!answer.body || request.method === 'HEAD') {
+    await answer.body?.cancel();
+    response.end();
+    return;
+  }
+  // The pipeline destroys the response when the stream fails, and the stream when the client leaves.
+  await pipeline(Readable.fromWeb(answer.body as never), response);
 }
 
 /** Reads a request body as bytes, so files in form data stay intact. */
@@ -2110,6 +2177,80 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     return recording;
   }
 
+  /** Renders a page of the routes in the SSR environment, so a plain `vite dev` serves them. */
+  async function servePage(
+    server: ViteDevServer,
+    request: IncomingMessage,
+    response: ServerResponse,
+    next: (error?: unknown) => void,
+  ): Promise<void> {
+    const ssr = server.environments.ssr;
+    if (!ssr || !isRunnableDevEnvironment(ssr)) {
+      next();
+      return;
+    }
+    try {
+      const { handle } = (await ssr.runner.import(ROUTES)) as {
+        handle(
+          request: Request,
+          options?: { address?: string },
+        ): Promise<Response | undefined> | Response | undefined;
+      };
+      const answer = await handle(toWebRequest(request, response), {
+        address: request.socket.remoteAddress,
+      });
+      if (!answer) {
+        next();
+        return;
+      }
+      await sendWebResponse(answer, request, response);
+    } catch (error) {
+      // Once the page has started, its status is sent, and a second document would land inside
+      // the first. The error goes to the terminal and the response is destroyed.
+      if (response.headersSent) {
+        // A client that leaves mid-stream is not an error of the page.
+        if ((error as { code?: string } | undefined)?.code !== 'ERR_STREAM_PREMATURE_CLOSE') {
+          server.config.logger.error(
+            error instanceof Error ? (error.stack ?? error.message) : String(error),
+          );
+        }
+        response.destroy();
+        return;
+      }
+      if (error instanceof Error) {
+        server.ssrFixStacktrace(error);
+      }
+      response.statusCode = 500;
+      response.setHeader('content-type', 'text/html; charset=utf-8');
+      response.end(errorPage(error, server));
+    }
+  }
+
+  let warnedAppType = false;
+
+  /** The middleware that serves the pages, unless the server is not Vite's to answer with. */
+  function pagesMiddleware(server: ViteDevServer): (() => void) | undefined {
+    // An own server, or Nitro, owns the requests.
+    if (server.config.server.middlewareMode || server.environments.nitro) {
+      return undefined;
+    }
+    const appType = server.config.appType;
+    if (appType !== 'custom') {
+      if (!warnedAppType) {
+        warnedAppType = true;
+        server.config.logger.warn(
+          `brumate pages need \`appType: 'custom'\`, and the config sets '${appType}', so \`vite dev\` does not serve them`,
+        );
+      }
+      return undefined;
+    }
+    return () => {
+      server.middlewares.use((request, response, next) => {
+        void servePage(server, request, response, next);
+      });
+    };
+  }
+
   async function handleDevRPC(
     server: ViteDevServer,
     request: IncomingMessage,
@@ -2341,6 +2482,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }
       }
       const shared = packageConfig(config);
+      // Vite's fallback to `index.html` would rewrite the URL of a page before the middleware.
+      if (env.command === 'serve' && !env.isPreview && config.appType === undefined) {
+        shared.appType = 'custom';
+      }
       if (bridgePackages.length > 0) {
         // The import names of the packages, not the bridge names, which can carry a version.
         const names = [...new Set(bridgePackages.map((item) => item.package))];
@@ -3381,6 +3526,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }
         next();
       });
+      // After the middlewares of Vite and the ones above, so only a request that no file or
+      // call answers reaches a page.
+      return pagesMiddleware(server);
     },
 
     // A server environment that runs apart from Vite, such as Nitro's worker, keeps the code
