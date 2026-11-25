@@ -230,6 +230,30 @@ export async function run({ browser, url, runner }) {
     },
   );
 
+  await step('/from, /titles: Nitro serves the prerendered pages as files', async () => {
+    for (const pathname of ['/from', '/titles', '/titles/other']) {
+      // oxlint-disable-next-line no-await-in-loop -- One path at a time keeps the message clear.
+      const answer = await page.request.get(`${url}${pathname}`);
+      const headers = answer.headers();
+      // A file has an etag and a length. A rendered page streams, with neither.
+      assert(
+        headers.etag && headers['last-modified'] && headers['content-length'],
+        `${pathname} was rendered on the request, not served as a file`,
+      );
+    }
+    // A prerendered page with a #defer block is a shell: the entry sends it, with the bodies after it.
+    for (const pathname of ['/about', '/team']) {
+      // oxlint-disable-next-line no-await-in-loop -- One path at a time keeps the message clear.
+      const answer = await page.request.get(`${url}${pathname}`);
+      const text = await answer.text();
+      assert(
+        !answer.headers().etag,
+        `${pathname} was served as a file, so no server sees its #defer`,
+      );
+      assert(text.includes(' b-hole'), `${pathname} is not sent as a shell`);
+    }
+  });
+
   await step('/from?from=docs: the page keeps its query string', async () => {
     await page.goto(`${url}/from?from=docs`);
     await page.locator('.from', { hasText: 'Opened from docs.' }).waitFor({ timeout: TIMEOUT });

@@ -2,7 +2,15 @@ import { createHash } from 'node:crypto';
 import { parseSync } from 'oxc-parser';
 import type { Site } from './model.ts';
 import type { oxc } from './oxc.ts';
-import { existsSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
@@ -1415,6 +1423,51 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   /** The server environments that started, and those that finished, since the client built. */
   const startedServers = new Set<string>();
   const closedServers = new Set<string>();
+  /** Whether the project has Nitro, which serves the files of the client before the entry. */
+  let usesNitro = false;
+  /** Where a build of several environments writes the pages that need the server, for Nitro to bundle. */
+  let shellsId = `${process.pid}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  /** A directory for each build, so builds from one package root at the same time do not share one. */
+  function shellDirectory(appRoot: string): string {
+    return path.resolve(appRoot, 'node_modules/.brumate/shells', shellsId);
+  }
+  /** Removes the shells of this build, and the directories that older builds left behind. */
+  function clearShells(appRoot: string): void {
+    const parent = path.resolve(appRoot, 'node_modules/.brumate/shells');
+    rmSync(shellDirectory(appRoot), { recursive: true, force: true });
+    if (!existsSync(parent)) {
+      return;
+    }
+    const day = 24 * 60 * 60 * 1000;
+    for (const name of readdirSync(parent)) {
+      const old = path.join(parent, name);
+      if (Date.now() - statSync(old).mtimeMs > day) {
+        rmSync(old, { recursive: true, force: true });
+      }
+    }
+  }
+  /** The environments that skipped prerendering, which the build said once. */
+  const skippedPrerender = new Set<string>();
+  /**
+   * Whether the pages of a build of several environments can render in Node: Nitro, or a server
+   * environment with no worker condition. The build imports its bundle to render them.
+   */
+  function rendersInNode(environment: {
+    config: { webCompatible?: boolean; resolve: { conditions?: string[] } };
+  }): boolean {
+    if (usesNitro) {
+      return true;
+    }
+    const conditions = environment.config.resolve.conditions ?? [];
+    for (const name of ['workerd', 'worker', 'edge-light', 'deno']) {
+      if (conditions.includes(name)) {
+        return false;
+      }
+    }
+    return environment.config.webCompatible !== true;
+  }
+  /** The server environments of this build that got the route handler as an entry, to prerender with. */
+  const prerenderEntries = new Set<string>();
 
   /** The IDs of the components in each bundle of the client build, by root, for `hints.json`. */
   const bundleMembers = new Map<string, string[]>();
@@ -1779,6 +1832,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       hints.bundles,
       // A DOM test mounts the components itself, so its pages need no scripts.
       server ? '' : defaultScripts(fail, warn),
+      // A Nitro build serves files before the entry, so the shells of its pages are server assets.
+      !server && !isServe && Boolean(options.prerender) && usesNitro,
     );
     // The variables are checked when the server starts, before any route loads.
     const serial = serialImports().join('\n');
@@ -2529,12 +2584,24 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
             ? { environments: { client: { build: { manifest: true } } } }
             : {};
         ownManifest = 'environments' in manifest;
+        // Nitro bundles the pages that need the server as its server assets. Without Nitro, the
+        // key is unused.
+        shellsId = `${process.pid}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+        const nitroConfig =
+          options.prerender && env.command === 'build'
+            ? {
+                nitro: {
+                  serverAssets: [{ baseName: 'brumate', dir: shellDirectory(appRoot) }],
+                },
+              }
+            : {};
         if (preload === false) {
-          return { ...shared, ...manifest, ...keep };
+          return { ...shared, ...manifest, ...keep, ...nitroConfig };
         }
         return {
           ...shared,
           ...manifest,
+          ...nitroConfig,
           build: {
             ...keep.build,
             modulePreload: {
@@ -2600,6 +2667,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       relativeUrls =
         config.base === './' || config.base === '' || !!config.experimental.renderBuiltUrl;
       isSsrBuild = Boolean(config.build.ssr);
+      usesNitro = config.plugins.some((item) => item.name.startsWith('nitro:'));
     },
 
     async generateBundle(_output, bundle) {
@@ -2708,8 +2776,45 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
     },
 
-    async writeBundle(_output, bundle) {
+    async writeBundle(output, bundle) {
+      const environment = this.environment;
+      if (
+        options.prerender &&
+        !isSsrBuild &&
+        environment?.config.consumer === 'server' &&
+        prerenderEntries.delete(environment.name)
+      ) {
+        // The pages go to the client directory, which a host such as Nitro serves as files.
+        let chunk: (typeof bundle)[string] | undefined;
+        for (const item of Object.values(bundle)) {
+          if (item.type === 'chunk' && item.isEntry && item.name === PRERENDER_ENTRY) {
+            chunk = item;
+            break;
+          }
+        }
+        if (chunk && output.dir) {
+          const settings = {
+            ...(options.prerender === true ? {} : options.prerender),
+            client: clientDirectory(),
+          };
+          const written = await prerender(
+            path.join(output.dir, chunk.fileName),
+            root,
+            base,
+            settings,
+            usesNitro ? shellDirectory(root) : undefined,
+          );
+          this.info(`Prerendered ${written.length} pages`);
+        }
+        return;
+      }
       if (!isSsrBuild) {
+        // A server environment of a build of several environments has no client files to describe.
+        if (environment?.config.consumer === 'server') {
+          return;
+        }
+        // The files go to the output of this environment, which the server reads as the client directory.
+        const clientOut = output.dir ?? outDir;
         // The modules that every page loads early, for the `Link` headers of the server build.
         const chunks = new Map<string, Extract<(typeof bundle)[string], { type: 'chunk' }>>();
         for (const item of Object.values(bundle)) {
@@ -2826,7 +2931,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
             this.error(`The client build has no chunk for the bundle of ${root}`);
           }
         }
-        await mkdir(path.join(outDir, '.brumate'), { recursive: true });
+        await mkdir(path.join(clientOut, '.brumate'), { recursive: true });
         const all: string[] = [];
         for (const name of hints) {
           all.push(`${base}${name}`);
@@ -2851,13 +2956,13 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           startedServers.clear();
           closedServers.clear();
         }
-        await writeFile(path.join(outDir, HINTS_FILE), JSON.stringify(clientOutput));
+        await writeFile(path.join(clientOut, HINTS_FILE), JSON.stringify(clientOutput));
         if (buildId !== undefined) {
           const written: string[] = [];
           for (const item of Object.values(bundle)) {
             written.push(item.fileName);
           }
-          const removed = pruneBuilds(outDir, buildId, written, options.skew?.keep ?? 0);
+          const removed = pruneBuilds(clientOut, buildId, written, options.skew?.keep ?? 0);
           if (removed.length > 0) {
             this.info(`Removed the files of ${removed.length} older builds`);
           }
@@ -2915,6 +3020,16 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         startedServers.add(this.environment.name);
         builtEntry ??= readEntry();
       }
+      // The shells of an earlier build must not ship with this one.
+      if (
+        !isServe &&
+        !isSsrBuild &&
+        options.prerender &&
+        usesNitro &&
+        this.environment?.config.consumer !== 'server'
+      ) {
+        clearShells(root);
+      }
       if (!isServe) {
         if (isSsrBuild) {
           // The server build names the build of the client, which must come first.
@@ -2931,7 +3046,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
               `No ${HINTS_FILE} in ${path.relative(root, client)}, so the pages of this server load no client code. Build the client first`,
             );
           }
-        } else {
+        } else if (this.environment?.config.consumer !== 'server' || buildId === undefined) {
+          // The servers of a build of several environments keep the ID of the client before them.
           buildId =
             process.env.BRUMATE_BUILD || `${Date.now().toString(36)}${hash(String(Math.random()))}`;
         }
@@ -3110,6 +3226,34 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         return serverRegistry(!isServerModule(loadOptions, this.environment));
       }
       if (id === `\0${ROUTES}`) {
+        // A build of several environments, such as Nitro's, has no `--ssr` entry to add the route
+        // handler to. The server environment that loads the routes emits it as an entry too.
+        const environment = this.environment;
+        if (
+          options.prerender &&
+          !isServe &&
+          !isSsrBuild &&
+          environment?.config.consumer === 'server' &&
+          !prerenderEntries.has(environment.name)
+        ) {
+          if (!rendersInNode(environment)) {
+            if (!skippedPrerender.has(environment.name)) {
+              skippedPrerender.add(environment.name);
+              this.warn(
+                `Prerendering is skipped for the ${environment.name} environment: it does not run in Node, and the build renders the pages in Node. Prerender with a server build that runs in Node`,
+              );
+            }
+          } else if (usesNitro && environment.name === 'nitro') {
+            // Nitro lists its public files and server assets while this environment bundles, so
+            // the pages that the build writes afterward would not ship.
+            this.error(
+              'The routes load in the nitro environment, so the prerendered pages would be written after Nitro lists its files. Put the entry of the server in src/entry-server.ts, so the routes build in their own environment before Nitro bundles',
+            );
+          } else {
+            prerenderEntries.add(environment.name);
+            this.emitFile({ type: 'chunk', id: ROUTES, name: PRERENDER_ENTRY });
+          }
+        }
         return routeTree(
           !isServerModule(loadOptions, this.environment),
           (message) => this.error(message),

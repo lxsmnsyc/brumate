@@ -42,7 +42,7 @@ Each check is a named step. Any uncaught error, console error or failed request 
 - Signing the guestbook calls a server function and refreshes the list. An empty name shows the error.
 - A link clicked before the core loads navigates, and the page works after it.
 
-`tracker` serves the Nitro build of `examples/tracker` with `serveNitro`: `node .output/server/index.mjs` behind a proxy that adds `require-trusted-types-for 'script'; trusted-types brumate` to each page. It checks Trusted Types only, since the script tag that brumate writes has no nonce. The story node `script-nonce` restores the nonce checks. `/about` renders on each request, since the plugin does not prerender under Nitro; the node `nitro-prerender` restores the prerendered page and the step about the stylesheet of a `#defer` body.
+`tracker` serves the Nitro build of `examples/tracker` with `serveNitro`: `node .output/server/index.mjs` behind a proxy that adds `require-trusted-types-for 'script'; trusted-types brumate` to each page. It checks Trusted Types only, since the script tag that brumate writes has no nonce. The story node `script-nonce` restores the nonce checks. The build prerenders `/about`, `/from`, `/team` and the pages of `/titles`. `/from` and `/titles` are files in `.output/public`. `/about` and `/team` have a `#defer` block, so they are written to the server assets, and the routes send them as the `shell`.
 
 - The list renders, and the activity feed streams in.
 - The search and the status filter the list.
@@ -56,6 +56,7 @@ Each check is a named step. Any uncaught error, console error or failed request 
 - A related issue that is gone shows the `#catch` of its `#try`.
 - Links and the back button load pages without a full page load, and `/about` opens from a link and directly.
 - The `#defer` line of `/about` renders on the server for the user who signed in, after a link and directly.
+- `/from` and the pages of `/titles` are served as files, with an etag and a length. `/about` and `/team` are sent as shells.
 - No page is wider than 320 px on a phone.
 - Without scripts, signing in works, and a short title shows its error with the title kept.
 
