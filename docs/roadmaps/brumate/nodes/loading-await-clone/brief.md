@@ -1,7 +1,7 @@
 ---
 id: loading-await-clone
 title: "A #loading body with an await clones its template"
-status: todo
+status: active
 priority: should
 type: refactor
 story:
