@@ -43,8 +43,11 @@ function writeApp(): void {
   mkdirSync(`${app}src/routes`, { recursive: true });
   writeFileSync(
     `${app}src/client.ts`,
-    "import { start } from 'brumate/loader';\nimport { load } from 'virtual:brumate/manifest';\nstart({ load });\n",
+    "import { start } from 'brumate/loader';\nimport { load } from 'virtual:brumate/manifest';\n(globalThis as Record<string, unknown>).clientEntryMarker = true;\nstart({ load });\n",
   );
+  writeFileSync(`${app}src/zeta.ts`, "console.log('zeta');\n");
+  writeFileSync(`${app}src/alpha.ts`, "console.log('alpha');\n");
+  writeFileSync(`${app}page.html`, '<!doctype html><html><body></body></html>\n');
   writeFileSync(`${app}src/server.ts`, "export { handle } from 'virtual:brumate/routes';\n");
   writeFileSync(
     `${app}src/routes/index.brm`,
@@ -131,6 +134,98 @@ describe('the scripts of the dev server', () => {
     expect(html).toContain(devScripts());
     // The scripts come after the page state, in the tail of the page.
     expect(html.indexOf('/@vite/client')).toBeGreaterThan(html.indexOf('Count'));
+  });
+
+  it('load the client entry of the app, and the start module when it has none', async () => {
+    const withEntry = await createServer({
+      ...config,
+      appType: 'custom',
+      server: { middlewareMode: true },
+      build: { rolldownOptions: { input: 'src/client.ts' } },
+    });
+    try {
+      const { handle } = (await withEntry.ssrLoadModule('virtual:brumate/routes')) as {
+        handle: Handle;
+      };
+      const html = await text(handle);
+      // The tag names the entry, so its own code runs in the browser.
+      expect(html).toContain('<script type="module" src="/src/client.ts"></script>');
+      expect(html).not.toContain(START_URL);
+      expect(html).toContain('/@vite/client');
+      const served = await withEntry.environments.client.transformRequest('/src/client.ts');
+      expect(served?.code).toContain('clientEntryMarker');
+    } finally {
+      await withEntry.close();
+    }
+    // Without an entry, the start module runs, and it has no code of the app.
+    dev ??= await createServer({ ...config, appType: 'custom', server: { middlewareMode: true } });
+    const { handle } = (await dev.ssrLoadModule('virtual:brumate/routes')) as { handle: Handle };
+    expect(await text(handle)).toContain(`src="${START_URL}"`);
+  });
+
+  it('load the entry of each form of input, the first that is not an HTML page', async () => {
+    const forms: [string, InlineConfig, string][] = [
+      [
+        'a virtual module',
+        { build: { rolldownOptions: { input: 'virtual:brumate/start' } } },
+        START_URL,
+      ],
+      [
+        'a list, zeta first',
+        { build: { rolldownOptions: { input: ['src/zeta.ts', 'src/alpha.ts'] } } },
+        '/src/zeta.ts',
+      ],
+      [
+        'a list, alpha first',
+        { build: { rolldownOptions: { input: ['src/alpha.ts', 'src/zeta.ts'] } } },
+        '/src/alpha.ts',
+      ],
+      [
+        'an HTML page first',
+        { build: { rolldownOptions: { input: ['page.html', 'src/zeta.ts'] } } },
+        '/src/zeta.ts',
+      ],
+      ['only an HTML page', { build: { rolldownOptions: { input: 'page.html' } } }, START_URL],
+      [
+        'an object',
+        { build: { rolldownOptions: { input: { main: 'src/zeta.ts' } } } },
+        '/src/zeta.ts',
+      ],
+      [
+        'the input of the environment',
+        { environments: { client: { input: 'src/alpha.ts' } } },
+        '/src/alpha.ts',
+      ],
+      [
+        'the input of the environment before that of the build',
+        {
+          environments: { client: { input: 'src/alpha.ts' } },
+          build: { rolldownOptions: { input: 'src/zeta.ts' } },
+        },
+        '/src/alpha.ts',
+      ],
+    ];
+    for (const [, extra, url] of forms) {
+      // oxlint-disable-next-line no-await-in-loop -- Each server closes before the next starts.
+      const server = await createServer({
+        ...config,
+        ...extra,
+        appType: 'custom',
+        server: { middlewareMode: true },
+      });
+      try {
+        // oxlint-disable-next-line no-await-in-loop -- As above.
+        const { handle } = (await server.ssrLoadModule('virtual:brumate/routes')) as {
+          handle: Handle;
+        };
+        // oxlint-disable-next-line no-await-in-loop -- As above.
+        const html = await text(handle);
+        expect(html).toContain(`<script type="module" src="${url}"></script>`);
+      } finally {
+        // oxlint-disable-next-line no-await-in-loop -- As above.
+        await server.close();
+      }
+    }
   });
 
   it('carry the nonce of the render, and only then', async () => {
@@ -233,6 +328,62 @@ describe('the scripts of a build', () => {
     expect(html).toMatch(
       /<script type="module" async src="\/assets\/client-[\w-]+\.js"><\/script>/,
     );
+  });
+
+  it('name the entry that dev loads, in any order of the inputs', async () => {
+    const cases: [string[], string][] = [
+      [['src/zeta.ts', 'src/alpha.ts'], 'zeta'],
+      [['src/alpha.ts', 'src/zeta.ts'], 'alpha'],
+      [['page.html', 'src/zeta.ts'], 'zeta'],
+    ];
+    let round = 0;
+    for (const [input, marker] of cases) {
+      round += 1;
+      rmSync(`${app}out`, { recursive: true, force: true });
+      // oxlint-disable-next-line no-await-in-loop -- Each case builds into the same folders.
+      await build({
+        ...customConfig(),
+        build: { outDir: 'out/public', rolldownOptions: { input } },
+      });
+      // oxlint-disable-next-line no-await-in-loop -- As above.
+      await build({
+        ...customConfig(),
+        build: {
+          outDir: 'out/server',
+          ssr: 'src/server.ts',
+          rolldownOptions: { input },
+        },
+      });
+      // oxlint-disable-next-line no-await-in-loop -- As above.
+      const { handle } = (await import(
+        `${pathToFileURL(`${app}out/server/server.js`).href}?round=${round}`
+      )) as { handle: Handle };
+      // oxlint-disable-next-line no-await-in-loop -- As above.
+      const html = await text(handle);
+      const file = /src="\/(assets\/[^"]+)"/.exec(html)?.[1] ?? '';
+      expect(readFileSync(`${app}out/public/${file}`, 'utf8')).toContain(marker);
+    }
+    // The input of the environment is the entry as well.
+    rmSync(`${app}out`, { recursive: true, force: true });
+    await build({
+      ...customConfig(),
+      environments: { client: { input: ['src/zeta.ts', 'src/alpha.ts'] } },
+      build: { outDir: 'out/public' },
+    });
+    await build({
+      ...customConfig(),
+      environments: { client: { input: ['src/zeta.ts', 'src/alpha.ts'] } },
+      build: {
+        outDir: 'out/server',
+        ssr: true,
+        rolldownOptions: { input: { server: 'src/server.ts' } },
+      },
+    });
+    const { handle } = (await import(
+      `${pathToFileURL(`${app}out/server/server.js`).href}?round=env`
+    )) as { handle: Handle };
+    const file = /src="\/(assets\/[^"]+)"/.exec(await text(handle))?.[1] ?? '';
+    expect(readFileSync(`${app}out/public/${file}`, 'utf8')).toContain('zeta');
   });
 
   it('warn when the build ID of the server is not the one of the client build', async () => {

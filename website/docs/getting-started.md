@@ -98,7 +98,7 @@ pnpm vite dev
 Open `http://localhost:5173`. The page shows before any script runs, and the click handler loads with the page.
 
 - The plugin answers each request that Vite and the server functions leave, of any method, with `handle` from `virtual:brumate/routes`. Pages stream, and forms post to their routes.
-- brumate adds the script tags at the end of each page: the Vite client, which updates components when you edit them, and the loader.
+- brumate adds the script tags at the end of each page: the Vite client, which updates components when you edit them, and your client entry, the `input` of the client build. An app with no client entry gets the loader.
 - A page that fails to render, such as after a compile error, answers with the Errors tab of the devtools. It shows the lines of the file around the error, and the page loads again when you fix it.
 - A path that no route matches gets Vite's 404, unless the root has an `_error.brm`.
 - The plugin sets `appType: 'custom'` when the config leaves it unset. See [The dev server](./reference-plugin.md#the-dev-server).
@@ -114,7 +114,7 @@ The dev server updates the page when you save a component, and keeps its state w
 - An edit of the markup, or one that adds or removes a value, renders the page again without reloading it. The server renders the new markup, and each signal of the component's script keeps its value, by its name. Signals in blocks, such as in a `#for` body, start again.
 - A file that does not compile reloads the page, which shows the error. See [`errorPage`](./reference-plugin.md#errorpageerror-server).
 
-A client entry that calls `start` from `brumate/loader` itself gets the same updates and the devtools. The plugin sets them up on the dev server, so the entry only calls `start({ load })`. Under `vite dev`, the script tags that brumate adds load `virtual:brumate/start`, not the client entry. Such an entry runs in the build, or on [a server of your own](./deploying.md#a-server-of-your-own) that passes `scripts`.
+A client entry that calls `start` from `brumate/loader` itself gets the same updates and the devtools. The plugin sets them up on the dev server, so the entry only calls `start({ load })`. Under `vite dev`, the script tags that brumate adds load that entry, so its own code runs, as it does in the build.
 
 Rendering again uses the client router. With [`navigate: false`](./navigation.md#links-that-the-browser-loads), the page reloads instead.
 

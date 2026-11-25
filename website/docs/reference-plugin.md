@@ -56,7 +56,7 @@ Under `vite dev`, the plugin serves the pages. Its middleware runs after Vite's 
 - With Nitro's dev environment, the plugin serves no pages. Nitro calls the entry.
 - With an `appType` of `'spa'` or `'mpa'`, the plugin serves no pages and warns once: "brumate pages need `appType: 'custom'`".
 
-`handle` adds the script tags of each page. Under the dev server, they are the Vite client and `virtual:brumate/start`. In a build, the tag is the client entry from the manifest. See [The script tags](./deploying.md#the-script-tags).
+`handle` adds the script tags of each page. Under the dev server, they are the Vite client and the client entry, the `input` of the client build, or `virtual:brumate/start` when the app has no entry. In a build, the tag is the client entry from the manifest. See [The script tags](./deploying.md#the-script-tags).
 
 ## `errorPage(error, server)`
 

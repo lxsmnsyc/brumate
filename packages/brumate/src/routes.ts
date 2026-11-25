@@ -6,15 +6,19 @@ export const START_MODULE = 'virtual:brumate/start';
 /** The URL that the dev server serves the start module at. */
 export const START_URL: string = `/@id/__x00__${START_MODULE}`;
 
-/** The scripts of a page on the dev server: the client of Vite, and the loader, under the base. */
-export function devScripts(base = '/'): string {
+/**
+ * The scripts of a page on the dev server: the client of Vite, and the client entry of the app
+ * when it has one, under the base. `entry` is a URL path of the dev server, such as `/src/client.ts`.
+ * An app with no entry gets the start module.
+ */
+export function devScripts(base = '/', entry?: string): string {
   // The dev server serves the path of a base that is a URL. A relative base is the root.
   let path = base;
   if (/^[a-z][a-z\d+.-]*:\/\/|^\/\//i.test(base)) {
     path = new URL(base, 'http://localhost').pathname;
   }
   const prefix = path.startsWith('/') ? path.replace(/\/$/, '') : '';
-  return `<script type="module" src="${prefix}/@vite/client"></script><script type="module" src="${prefix}${START_URL}"></script>`;
+  return `<script type="module" src="${prefix}/@vite/client"></script><script type="module" src="${prefix}${entry ?? START_URL}"></script>`;
 }
 
 /** The script of a page in a build: the entry of the client build, which loads async. */

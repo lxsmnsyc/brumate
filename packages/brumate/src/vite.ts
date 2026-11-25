@@ -686,6 +686,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   let isServe = false;
   /** The resolved config, for the CSS pipeline of the inline styles. */
   let resolvedConfig: ResolvedConfig | undefined;
+  /** The dev server, which resolves the client entry. */
+  let devServer: ViteDevServer | undefined;
   /** Component IDs to absolute file paths. */
   const files = new Map<string, string>();
   const compiled = new Map<string, { source: string; result: CompileResult }>();
@@ -1775,6 +1777,16 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     } catch {
       return { error: `The client manifest in ${where} is not valid JSON. Build the client again` };
     }
+    // The chunk of the entry that dev loads. The manifest lists its keys in alphabetical order.
+    const input = clientEntryInput();
+    if (input !== undefined) {
+      const wanted = normalizePath(path.relative(root, path.resolve(root, input)));
+      for (const [key, chunk] of Object.entries(chunks)) {
+        if (chunk.isEntry && (key === wanted || chunk.src === wanted)) {
+          return { file: chunk.file };
+        }
+      }
+    }
     for (const chunk of Object.values(chunks)) {
       if (chunk.isEntry) {
         return { file: chunk.file };
@@ -1786,12 +1798,70 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   }
 
   /**
-   * The scripts that `handle` sends when its caller passes none. The dev server gets the client
-   * of Vite and the loader. A server build gets the entry of the client build, which must exist.
+   * The client entry of the app: the first input of the client environment that is not an HTML
+   * page of Vite. Dev loads it, and the build names its chunk. Vite reads `input` of the
+   * environment before the input of the build.
    */
-  function defaultScripts(fail: (message: string) => never, warn: (message: string) => void) {
+  function clientEntryInput(): string | undefined {
+    const client = resolvedConfig?.environments?.client;
+    const input = client?.input ?? client?.build.rolldownOptions?.input;
+    let inputs: string[] = [];
+    if (typeof input === 'string') {
+      inputs = [input];
+    } else if (Array.isArray(input)) {
+      inputs = input;
+    } else if (input) {
+      inputs = Object.values(input);
+    }
+    for (const item of inputs) {
+      if (!item.endsWith('.html')) {
+        return item;
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * The URL path that the dev server serves the client entry at, or undefined when the app has
+   * none. The input goes through the resolvers of the client, so a virtual module or a package
+   * works too.
+   */
+  async function clientEntryUrl(server: ViteDevServer): Promise<string | undefined> {
+    const input = clientEntryInput();
+    if (input === undefined) {
+      return undefined;
+    }
+    const resolved = await server.environments.client.pluginContainer.resolveId(input, undefined, {
+      isEntry: true,
+    });
+    if (!resolved || resolved.external) {
+      return undefined;
+    }
+    // A virtual module is served by its id, with the NUL character spelled out.
+    if (resolved.id.startsWith('\0')) {
+      return `/@id/__x00__${resolved.id.slice(1)}`;
+    }
+    const file = normalizePath(resolved.id);
+    const relative = normalizePath(path.relative(root, file));
+    // A file outside the root is served by its path on disk.
+    if (relative.startsWith('../') || path.isAbsolute(relative)) {
+      return `/@fs/${file.replace(/^\//, '')}`;
+    }
+    return `/${relative}`;
+  }
+
+  /**
+   * The scripts that `handle` sends when its caller passes none. The dev server gets the client
+   * of Vite and the client entry, or the start module when the app has no entry. A server build
+   * gets the entry of the client build, which must exist.
+   */
+  function defaultScripts(
+    fail: (message: string) => never,
+    warn: (message: string) => void,
+    devEntry?: string,
+  ) {
     if (isServe) {
-      return devScripts(base);
+      return devScripts(base, devEntry);
     }
     builtEntry ??= readEntry();
     if ('error' in builtEntry) {
@@ -1815,6 +1885,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       throw new Error(message);
     },
     warn: (message: string) => void = () => {},
+    devEntry?: string,
   ): string {
     const env = envFile();
     const hints = clientHints();
@@ -1831,7 +1902,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       hints.all,
       hints.bundles,
       // A DOM test mounts the components itself, so its pages need no scripts.
-      server ? '' : defaultScripts(fail, warn),
+      server ? '' : defaultScripts(fail, warn, devEntry),
       // A Nitro build serves files before the entry, so the shells of its pages are server assets.
       !server && !isServe && Boolean(options.prerender) && usesNitro,
     );
@@ -2189,8 +2260,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       const stream = (renderToStream as typeof RenderToStream)(component, props, {
         start: `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${path.basename(file, '.brm')}</title></head><body>`,
         end: '</body></html>',
-        // The client of Vite and the loader, as the entry of an app starts it.
-        scripts: devScripts(base),
+        // The client of Vite and the entry of the app, as its pages load them.
+        scripts: devScripts(base, await clientEntryUrl(server)),
       });
       const reader = stream.getReader();
       for (;;) {
@@ -3258,6 +3329,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           !isServerModule(loadOptions, this.environment),
           (message) => this.error(message),
           (message) => this.warn(message),
+          isServe && devServer ? await clientEntryUrl(devServer) : undefined,
         );
       }
       if (id === `\0${TESTING}`) {
@@ -3471,6 +3543,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
 
     configureServer(server) {
+      devServer = server;
       // Vite watches the root. An edit of a linked package, such as one of a workspace, updates the page too.
       const linked: string[] = [];
       for (const item of packages) {

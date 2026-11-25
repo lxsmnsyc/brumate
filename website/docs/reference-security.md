@@ -97,7 +97,7 @@ answer?.headers.set(
 );
 ```
 
-- `handle` writes the nonce on the script tags that it adds: the client entry in a build, the Vite client and the loader in development. The inline scripts and the `<style>` and `<link>` elements of the render get it too.
+- `handle` writes the nonce on the script tags that it adds: the client entry in a build, the Vite client and the client entry in development. The inline scripts and the `<style>` and `<link>` elements of the render get it too.
 - `'strict-dynamic'` lets the client entry load the modules that it imports, so the policy needs no `'self'`.
 - An explicit `scripts` is written as given. Its tags need the nonce from you.
 - `renderToStream` adds no script tags, so the tags in its `scripts` need the nonce from you.
