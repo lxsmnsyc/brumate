@@ -1,16 +1,19 @@
 // The production build of examples/browser-async. Each block opens in the browser, and the
 // test settles its promises from the page (window.gates), so no step depends on timing.
 import path from 'node:path';
-import { assert, repo, serveBuild, watch, watchPolicy } from '../../lib.mjs';
+import { assert, repo, serveNitro, watch, watchPolicy } from '../../lib.mjs';
 
 const root = path.join(repo, 'examples/browser-async');
 const TIMEOUT = 5000;
 
-export const build = [['pnpm', ['--filter', 'example-browser-async', 'build']]];
+// NODE_ENV=production, because Nitro builds for development under another value.
+export const build = [
+  ['pnpm', ['--filter', 'example-browser-async', 'build'], { env: { NODE_ENV: 'production' } }],
+];
 
-/** Serves the build as examples/browser-async/server.prod.ts does, with a nonce for each page. */
+/** Serves the Nitro build of examples/browser-async behind a Trusted Types policy. */
 export function start() {
-  return serveBuild(root);
+  return serveNitro(root);
 }
 
 const count = (page, selector) => page.locator(selector).count();

@@ -1,16 +1,19 @@
 // The production build of examples/kit-app, which renders the components of
 // examples/ui-kit, a package of components.
 import path from 'node:path';
-import { assert, repo, serveBuild, watch, watchPolicy } from '../lib.mjs';
+import { assert, repo, serveNitro, watch, watchPolicy } from '../lib.mjs';
 
 const root = path.join(repo, 'examples/kit-app');
 const TIMEOUT = 5000;
 
-export const build = [['pnpm', ['--filter', 'example-kit-app', 'build']]];
+// NODE_ENV=production, because Nitro builds for development under another value.
+export const build = [
+  ['pnpm', ['--filter', 'example-kit-app', 'build'], { env: { NODE_ENV: 'production' } }],
+];
 
-/** Serves the build as examples/kit-app/server.prod.ts does, with a nonce for each page. */
+/** Serves the Nitro build of examples/kit-app behind a Trusted Types policy. */
 export function start() {
-  return serveBuild(root);
+  return serveNitro(root);
 }
 
 const text = async (page, selector) => (await page.textContent(selector)).trim();

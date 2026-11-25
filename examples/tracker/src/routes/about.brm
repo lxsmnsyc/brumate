@@ -14,10 +14,9 @@
   renders every page, and the browser loads the code of a button only when it is used.
 </p>
 <p>
-  This page has no data, so the build writes it as a static file. The other pages render on
-  each request.
+  This page has no data. Its line about the user is a #defer block.
 </p>
-<!-- The static file is the same for everyone, so the server renders the line about the user later. -->
+<!-- The page is the same for everyone, so the server renders the line about the user later. -->
 #defer ('load') {
   <p class="who">{user ? `You are signed in as ${user}.` : 'You are not signed in.'}</p>
 } #else {

@@ -256,6 +256,9 @@ importers:
       '@types/node':
         specifier: ^24.19.2
         version: 24.19.2
+      nitro:
+        specifier: 3.0.260903-beta
+        version: 3.0.260903-beta
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -297,6 +300,9 @@ importers:
       happy-dom:
         specifier: ^20.14.6
         version: 20.14.6
+      nitro:
+        specifier: 3.0.260903-beta
+        version: 3.0.260903-beta
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -325,6 +331,9 @@ importers:
       happy-dom:
         specifier: ^20.14.6
         version: 20.14.6
+      nitro:
+        specifier: 3.0.260903-beta
+        version: 3.0.260903-beta
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -365,6 +374,9 @@ importers:
       brumate:
         specifier: workspace:*
         version: link:../../packages/brumate
+      srvx:
+        specifier: 1.0.6
+        version: 1.0.6
     devDependencies:
       '@brumate/tsc':
         specifier: workspace:*
@@ -419,6 +431,9 @@ importers:
       happy-dom:
         specifier: ^20.14.6
         version: 20.14.6
+      nitro:
+        specifier: 3.0.260903-beta
+        version: 3.0.260903-beta
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -444,6 +459,9 @@ importers:
       '@types/node':
         specifier: ^24.19.2
         version: 24.19.2
+      nitro:
+        specifier: 3.0.260903-beta
+        version: 3.0.260903-beta
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

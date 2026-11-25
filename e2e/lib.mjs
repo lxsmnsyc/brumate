@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
-import { createServer as createHttpServer } from 'node:http';
+import { createServer as createHttpServer, request as sendHttpRequest } from 'node:http';
 import { createServer } from 'node:net';
 import path from 'node:path';
 import { Readable } from 'node:stream';
@@ -187,6 +187,69 @@ export async function serveBuild(root) {
         http.closeAllConnections();
         http.close(resolve);
       }),
+  };
+}
+
+/** The policy of a page that Nitro serves. It has no nonce, so only Trusted Types are required. */
+const NITRO_POLICY = "require-trusted-types-for 'script'; trusted-types brumate";
+
+/**
+ * Serves the Nitro build of an example in `root` with `node .output/server/index.mjs`, behind a
+ * proxy that adds the Trusted Types policy to each page. Nitro owns the script tags, so there
+ * is no nonce for a script-src policy: a string in an HTML or script sink that skips the policy
+ * still fails.
+ */
+export async function serveNitro(root) {
+  assert(
+    existsSync(path.join(root, '.output/server/index.mjs')),
+    `${path.relative(repo, root)}/.output is missing. Run without --no-build.`,
+  );
+  const port = await freePort();
+  const target = `http://localhost:${port}`;
+  const stopApp = await startProcess(process.execPath, ['.output/server/index.mjs'], {
+    cwd: root,
+    env: { PORT: String(port), NODE_ENV: 'production' },
+    url: target,
+  });
+  const http = createHttpServer((request, response) => {
+    const upstream = sendHttpRequest(
+      `${target}${request.url}`,
+      { method: request.method, headers: request.headers },
+      (answer) => {
+        const headers = { ...answer.headers };
+        if ((headers['content-type'] ?? '').includes('html')) {
+          headers['content-security-policy'] = NITRO_POLICY;
+        }
+        response.writeHead(answer.statusCode, headers);
+        answer.pipe(response);
+        // A stream that Nitro drops ends the response at once, so a step fails and does not wait.
+        answer.on('error', () => response.destroy());
+        response.on('close', () => answer.destroy());
+      },
+    );
+    // Early hints reach the browser as Nitro sent them.
+    upstream.on('information', (hints) => {
+      if (hints.statusCode === 103 && hints.headers.link) {
+        response.writeEarlyHints({ link: hints.headers.link.split(/,\s*(?=<)/) });
+      }
+    });
+    upstream.on('error', (error) => {
+      response.statusCode = 502;
+      response.end(String(error?.stack ?? error));
+    });
+    response.on('close', () => upstream.destroy());
+    request.pipe(upstream);
+  });
+  await new Promise((resolve) => http.listen(0, resolve));
+  return {
+    url: `http://localhost:${http.address().port}`,
+    stop: async () => {
+      await new Promise((resolve) => {
+        http.closeAllConnections();
+        http.close(resolve);
+      });
+      await stopApp();
+    },
   };
 }
 

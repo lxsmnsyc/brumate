@@ -12,11 +12,7 @@ const http = createHTTPServer((request, response) => {
     try {
       // The route files under src/routes render the page.
       const { handle } = await vite.ssrLoadModule('virtual:brumate/routes');
-      const answer = await handle(await toRequest(request), {
-        // `async`, so the loader starts before the #loading bodies that are still pending.
-        scripts:
-          '<script type="module" src="/@vite/client"></script><script type="module" async src="/src/client.ts"></script>',
-      });
+      const answer = await handle(await toRequest(request));
       send(answer, response);
     } catch (error) {
       // Vite's error overlay shows the error, and the page loads again after a fix.

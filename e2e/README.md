@@ -42,7 +42,7 @@ Each check is a named step. Any uncaught error, console error or failed request 
 - Signing the guestbook calls a server function and refreshes the list. An empty name shows the error.
 - A link clicked before the core loads navigates, and the page works after it.
 
-`tracker` serves the production build of `examples/tracker` under the same policy. The prerendered `/about` is served as a file, without a policy, because its scripts have no nonce.
+`tracker` serves the Nitro build of `examples/tracker` with `serveNitro`: `node .output/server/index.mjs` behind a proxy that adds `require-trusted-types-for 'script'; trusted-types brumate` to each page. It checks Trusted Types only, since the script tag that brumate writes has no nonce. The story node `script-nonce` restores the nonce checks. `/about` renders on each request, since the plugin does not prerender under Nitro; the node `nitro-prerender` restores the prerendered page and the step about the stylesheet of a `#defer` body.
 
 - The list renders, and the activity feed streams in.
 - The search and the status filter the list.
@@ -54,8 +54,8 @@ Each check is a named step. Any uncaught error, console error or failed request 
 - Closing an issue shows before the server answers.
 - Delete opens a dialog that takes the focus. Esc closes it, and confirming deletes the issue.
 - A related issue that is gone shows the `#catch` of its `#try`.
-- Links and the back button load pages without a full page load, and `/about` opens from a link and as a file.
-- The `#defer` line of the prerendered `/about` renders on the server for the user who signed in, after a link and as a file.
+- Links and the back button load pages without a full page load, and `/about` opens from a link and directly.
+- The `#defer` line of `/about` renders on the server for the user who signed in, after a link and directly.
 - No page is wider than 320 px on a phone.
 - Without scripts, signing in works, and a short title shows its error with the title kept.
 
@@ -64,7 +64,7 @@ Each check is a named step. Any uncaught error, console error or failed request 
 - The page resumes, and its counter counts.
 - The form calls a server function and the list of notes refreshes, without loading a new page. An empty note shows the error.
 
-`kit` serves the production build of `examples/kit-app` under the same policy. Its page renders the components of `examples/ui-kit`, a package of components.
+`kit` serves the Nitro build of `examples/kit-app` with `serveNitro`, under Trusted Types only (`script-nonce` restores the nonce checks). Its page renders the components of `examples/ui-kit`, a package of components.
 
 - The components of the package render, with their scoped styles.
 - A handler of a package component resumes, and a memo of its module follows.
@@ -72,12 +72,12 @@ Each check is a named step. Any uncaught error, console error or failed request 
 - A server function of the package answers.
 - The app calls a module of reactive logic of the package.
 
-`ui` serves the production build of `examples/ui`, a page of every part of `@brumate/ui`, under the same policy.
+`ui` serves the Nitro build of `examples/ui`, a page of every part of `@brumate/ui`, with `serveNitro`, under Trusted Types only (`script-nonce` restores the nonce checks).
 
 - `VisuallyHidden`: the link that skips to the content takes no space until Tab reaches it, then shows, and a button with a hidden name has that name for screen readers.
 - axe-core finds no violations on the page.
 
-`browser-async` serves the production build of `examples/browser-async`, under the same policy. Each block opens in the browser, and the test settles its promises from the page, so no step waits on a timer.
+`browser-async` serves the Nitro build of `examples/browser-async` with `serveNitro`, under Trusted Types only (`script-nonce` restores the nonce checks). Each block opens in the browser, and the test settles its promises from the page, so no step waits on a timer.
 
 - `#if` branch and `#for` rows: a `#loading` fallback, an awaited memo and a promise in text, rows settling out of order.
 - Root boundary: a block outside every `#loading` keeps the old content until its memo settles.

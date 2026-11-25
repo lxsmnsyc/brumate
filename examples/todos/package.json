@@ -10,7 +10,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "brumate": "workspace:*"
+    "brumate": "workspace:*",
+    "srvx": "1.0.6"
   },
   "devDependencies": {
     "@brumate/tsc": "workspace:*",

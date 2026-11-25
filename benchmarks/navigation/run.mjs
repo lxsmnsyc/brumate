@@ -86,7 +86,8 @@ const NETWORKS = {
 const LOAD_PAGES = ['/', '/docs/components/'];
 const APPS = {
   website: { root: path.join(repo, 'website'), filter: 'website' },
-  tracker: { root: path.join(repo, 'examples/tracker'), filter: 'example-tracker' },
+  // Nitro apps build to `.output`, and serve with `node .output/server/index.mjs`.
+  tracker: { root: path.join(repo, 'examples/tracker'), filter: 'example-tracker', nitro: true },
 };
 
 const { values } = parseArgs({
@@ -216,11 +217,12 @@ function fail(message) {
 async function build(apps) {
   let missing = false;
   for (const app of apps) {
-    const { root } = APPS[app];
-    if (
-      !existsSync(path.join(root, 'dist/client')) ||
-      !existsSync(path.join(root, 'dist/server/server.js'))
-    ) {
+    const { root, nitro } = APPS[app];
+    const built = nitro
+      ? existsSync(path.join(root, '.output/server/index.mjs'))
+      : existsSync(path.join(root, 'dist/client')) &&
+        existsSync(path.join(root, 'dist/server/server.js'));
+    if (!built) {
       missing = true;
     }
   }
@@ -229,11 +231,13 @@ async function build(apps) {
   }
   const steps = [['pnpm', ['build']]];
   for (const app of apps) {
-    steps.push(['pnpm', ['--filter', APPS[app].filter, 'build']]);
+    // Nitro builds for development under any other NODE_ENV.
+    const env = APPS[app].nitro ? { NODE_ENV: 'production' } : undefined;
+    steps.push(['pnpm', ['--filter', APPS[app].filter, 'build'], { env }]);
   }
-  for (const [command, args] of steps) {
+  for (const [command, args, options] of steps) {
     console.log(`building: ${command} ${args.join(' ')}`);
-    await exec(command, args);
+    await exec(command, args, options);
   }
 }
 
@@ -702,7 +706,10 @@ async function serverFor(pair) {
       key,
       pair.mode === 'static'
         ? await serveStatic()
-        : await serveServer(APPS[pair.app].root, { gzip: values.gzip }),
+        : await serveServer(APPS[pair.app].root, {
+            gzip: values.gzip,
+            nitro: APPS[pair.app].nitro,
+          }),
     );
   }
   return servers.get(key).url;

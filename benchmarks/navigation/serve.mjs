@@ -32,6 +32,25 @@ export async function serveStatic() {
   return { url, stop };
 }
 
+/**
+ * The Nitro build of an app, as `node .output/server/index.mjs` serves it: Nitro renders the
+ * pages and serves the files of the build with a cache that never expires. It does not compress,
+ * so `--gzip` has no effect on it.
+ */
+async function serveNitroBuild(root) {
+  if (!existsSync(path.join(root, '.output/server/index.mjs'))) {
+    throw new Error(`${path.relative(repo, root)}/.output is missing. Run without --no-build.`);
+  }
+  const port = await freePort();
+  const url = `http://localhost:${port}`;
+  const stop = await startProcess(process.execPath, ['.output/server/index.mjs'], {
+    cwd: root,
+    env: { PORT: String(port), NODE_ENV: 'production' },
+    url,
+  });
+  return { url, stop };
+}
+
 function accepts(request) {
   return /\bgzip\b/.test(String(request.headers['accept-encoding'] ?? ''));
 }
@@ -41,7 +60,10 @@ function accepts(request) {
  * deployment with a server does, and the files of `dist/client` are served with a cache that never
  * expires, as a CDN does. There is no content security policy, which the numbers do not depend on.
  */
-export async function serveServer(root, { gzip = false } = {}) {
+export async function serveServer(root, { gzip = false, nitro = false } = {}) {
+  if (nitro) {
+    return serveNitroBuild(root);
+  }
   const client = path.join(root, 'dist/client');
   if (!existsSync(path.join(root, 'dist/server/server.js'))) {
     throw new Error(`${path.relative(repo, root)}/dist is missing. Run without --no-build.`);

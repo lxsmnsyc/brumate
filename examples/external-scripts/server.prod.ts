@@ -3,12 +3,11 @@ import { createServer } from 'node:http';
 import path from 'node:path';
 import { send, toRequest } from './node.ts';
 
-// Serves the production build: `pnpm build` writes dist/client and dist/server.
+// Serves the production build: `pnpm build` writes dist/client and dist/server. Brumate writes the
+// script tag, from the client build.
 const root = path.dirname(new URL(import.meta.url).pathname);
 const client = path.join(root, 'dist/client');
 const server = await import(path.join(root, 'dist/server/server.js'));
-const manifest = JSON.parse(await readFile(path.join(client, '.vite/manifest.json'), 'utf8'));
-const entry = `/${manifest['src/client.ts'].file}`;
 
 const TYPES: Record<string, string> = {
   '.js': 'text/javascript',
@@ -42,7 +41,6 @@ const http = createServer(async (request, response) => {
     }
     // The route files under src/routes render the page.
     const answer = await server.route(webRequest, {
-      scripts: `<script type="module" async src="${entry}"></script>`,
       // The browser starts to load the loader and the core while the page renders.
       earlyHints: (link: string[]) => response.writeEarlyHints({ link }),
     });
