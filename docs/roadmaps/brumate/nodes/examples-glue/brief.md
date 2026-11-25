@@ -1,7 +1,7 @@
 ---
 id: examples-glue
 title: The examples drop their hand-written servers and tags
-status: todo
+status: active
 priority: 
 type: chore
 story: client-scripts
