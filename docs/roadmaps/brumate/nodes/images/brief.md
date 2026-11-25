@@ -2,10 +2,10 @@
 id: images
 title: Images
 status: todo
-priority: should
+priority: later
 type: story
 outline: true
-milestone: 0.10.0
+milestone: backlog
 target:
 from:
 size: L
@@ -26,7 +26,7 @@ depends_on: []
 
 ## Goal
 
-> 2026-11-25: moved to 0.10.0 as should by the maintainer (lives in `brumate`, no new package).
+> 2026-11-25: kept in the backlog by the maintainer: the plugin likely needs its own package (`@brumate/image`, since sharp is a large dependency), deferred for now.
 
 Image imports and an `Image` part, from `@solidjs/image`.
 
