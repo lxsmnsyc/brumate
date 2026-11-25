@@ -1,0 +1,10 @@
+<script>
+  const site = 'Site';
+  const tail = 'tail';
+</script>
+
+#head {
+  <title>{site} | Docs</title>
+}
+<textarea class="area" aria-label="Notes">{tail} end</textarea>
+<p class="z">z</p>

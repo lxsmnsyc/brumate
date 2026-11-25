@@ -66,7 +66,15 @@ export type Write =
   | { kind: 'anchor'; scope: string; anchor: number; named?: boolean }
   /** `promise`: the scope of a value that can be a promise, which is written once it settles. */
   | { kind: 'attribute'; name: string; value: string; settled?: Settled; promise?: string }
-  | { kind: 'content'; value: string; at?: string; settled?: Settled; promise?: string }
+  | {
+      kind: 'content';
+      value: string;
+      at?: string;
+      settled?: Settled;
+      promise?: string;
+      /** The value is a list of the pieces of the text of a `<textarea>` or a `<title>`. */
+      text?: true;
+    }
   /** A text insert, whose place in the clone a marked comment holds. */
   | { kind: 'text'; scope: string; anchor: number; value: string; at?: string; promise?: string }
   /** A text insert at the end of the marked element, which needs no comment. */
@@ -191,6 +199,9 @@ class Reader {
   nameEnd = -1;
   /** Whether the element that started last has a raw text content, such as a `<textarea>`. */
   raw = false;
+  /** The name of the element that started last, and where its content starts in `html`. */
+  rawTag = '';
+  contentAt = 0;
   /** The elements that are open, innermost last. */
   readonly open: number[] = [];
   /** The element around each element, by their numbers. */
@@ -283,6 +294,7 @@ class Reader {
         case 'close':
           if (char === '>') {
             this.state = 'text';
+            this.raw = false;
             this.open.pop();
           }
           break;
@@ -329,6 +341,8 @@ class Reader {
       this.inTag = false;
       this.justOpened = true;
       this.raw = RAW_TEXT.test(this.name.toLowerCase());
+      this.rawTag = this.name.toLowerCase();
+      this.contentAt = this.html.length;
       this.ends.set(this.element, this.nameEnd);
       if (!VOID.test(this.name) && !this.html.endsWith('/>')) {
         this.open.push(this.element);
@@ -439,6 +453,57 @@ export function clonedTemplate(
         promise: part.promise,
       });
       continue;
+    }
+    // Text and values in a `<textarea>` or a `<title>`, up to its end tag, as one text.
+    if (
+      insert &&
+      !reader.inTag &&
+      reader.raw &&
+      holder === reader.element &&
+      /^(?:textarea|title)$/.test(reader.rawTag) &&
+      !part.promise &&
+      !part.settled
+    ) {
+      const pieces: string[] = [];
+      const before = reader.html.slice(reader.contentAt);
+      // Character references and tags in the text would need the parser.
+      let valid = !/[&<]/.test(before);
+      if (before) {
+        pieces.push(JSON.stringify(before));
+      }
+      let at = index;
+      let rest: string | undefined;
+      for (; valid && at < list.length; at++) {
+        const piece = list[at]!;
+        if ('code' in piece) {
+          const found = INSERT.exec(piece.code);
+          valid = found !== null && !piece.promise && !piece.settled;
+          if (valid) {
+            pieces.push(found![1]!);
+          }
+          continue;
+        }
+        const close = piece.static.indexOf('</');
+        const text = close === -1 ? piece.static : piece.static.slice(0, close);
+        valid = !/[&<]/.test(text);
+        if (text) {
+          pieces.push(JSON.stringify(text));
+        }
+        if (close !== -1) {
+          rest = piece.static.slice(close);
+          break;
+        }
+      }
+      if (valid && rest !== undefined) {
+        // A slice by `-0` would empty the HTML, so a value first takes nothing back.
+        if (before) {
+          reader.takeBack(before, 'text');
+        }
+        list[at] = { static: rest };
+        add({ kind: 'content', value: `[${pieces.join(', ')}]`, text: true });
+        index = at - 1;
+        continue;
+      }
     }
     // A text insert: `<!--t`, the scope, `:anchor-->`, the value, then `<!--/t-->`.
     const textEnd = nextStatic === undefined ? null : TEXT_END.exec(nextStatic);
@@ -985,7 +1050,10 @@ export function cloneLines(
             write.promise && (anchored?.kind === 'anchor' ? anchored.scope : write.promise),
             anchored?.kind === 'anchor' ? String(anchored.anchor) : JSON.stringify(`x${index}`),
             write.value,
-            (value) => `$$b.setContent($$e[${index}], ${value}${write.at ? `, ${write.at}` : at})`,
+            (value) =>
+              write.kind === 'content' && write.text
+                ? `$$b.setText($$e[${index}], ${value})`
+                : `$$b.setContent($$e[${index}], ${value}${write.at ? `, ${write.at}` : at})`,
           ),
           write.settled,
         );

@@ -349,6 +349,32 @@ function decodeText(html: string): string {
   return decodeReferences(html);
 }
 
+/** Code that holds a place for nodes in HTML: a component, a dynamic tag or a block. */
+const PLACES = /^\$\$b\.(?:component|dynamic|nodes)\(/;
+
+/** The names of the parameters whose type is text: a string, a number or a boolean. */
+function textParameters(params: oxc.ParamPattern[]): Set<string> {
+  const names = new Set<string>();
+  for (const param of params) {
+    if (param.type !== 'Identifier') {
+      continue;
+    }
+    const type = param.typeAnnotation?.typeAnnotation.type;
+    if (type === 'TSStringKeyword' || type === 'TSNumberKeyword' || type === 'TSBooleanKeyword') {
+      names.add(param.name);
+    }
+  }
+  return names;
+}
+
+/** True when the compiler knows an expression is text: a literal, a template string or a text parameter. */
+function isText(node: oxc.Node, names: Set<string>): boolean {
+  if (node.type === 'Literal' || node.type === 'TemplateLiteral') {
+    return true;
+  }
+  return node.type === 'Identifier' && names.has(node.name);
+}
+
 /** The markup of an inserted literal, such as `{'<b>'}`, or undefined for other code. */
 function literalText(node: oxc.Node): string | undefined {
   if (node.type === 'Literal') {
@@ -441,6 +467,13 @@ export class Emitter {
     this.wait = options.mode === 'server' ? 'await ' : '';
     this.async = options.mode === 'server' ? 'async ' : '';
     this.ctxArgument = options.mode === 'server' ? '$$ctx' : 'undefined';
+    // The mark of an insert that may hold nodes (see `emitTemplate`) has a number that the source
+    // does not hold, so no text of the component reads as one.
+    let number = 0;
+    while (file.source.includes(`$$n${number}:`)) {
+      number++;
+    }
+    this.mark = `/*$$n${number}:`;
     // Only the dev server checks, so a build carries no hint.
     this.inParagraph =
       options.mode === 'server' && !plan.hideNames ? paragraphComponents(file) : new Set();
@@ -1917,6 +1950,19 @@ export class Emitter {
     }
   }
 
+  /**
+   * In the body of a template of the browser, the names of its parameters that are text by their
+   * type. Another value can be children or a template, which an insert renders where it is, so it
+   * gets the scope of its place if the template renders from HTML.
+   */
+  private templateText: Set<string> | undefined;
+
+  /** The start of the mark that an insert that may hold nodes gets in a template. */
+  private readonly mark: string;
+
+  /** The inserts of the template that have a scope, which hold a place when it renders from HTML. */
+  private templateInserts = 0;
+
   emitTemplate(template: TemplateDecl): void {
     const first = template.params[0];
     const last = template.params.at(-1);
@@ -1941,7 +1987,12 @@ export class Emitter {
     const fn = this.currentFn;
     this.line(`let $$html = '';`);
     // A template can render anywhere, so its elements get the style variables.
+    this.templateText =
+      this.options.mode === 'client' ? textParameters(template.params) : undefined;
+    const from = this.lines.length;
+    this.templateInserts = 0;
     this.atTopLevel(() => this.emitBody(template.body));
+    this.templateText = undefined;
     this.flush();
     // The output names the template's scope, which the insert links to where it is called.
     const at = this.plan.scopes.get(scope)!.needsId ? `, ${this.scopeVar(scope)}` : '';
@@ -1953,6 +2004,27 @@ export class Emitter {
       this.options.hoist !== undefined &&
       !hasAmbiguousTop(template.body.children) &&
       cloneLines(this, this.options.hoist, fn, template.body);
+    // The marks of the inserts that may hold nodes: the scope of their place for HTML, none for a clone.
+    const marks = new RegExp(`${this.mark.replace(/[$*/]/g, '\\$&')}([^*]*)\\*/`, 'g');
+    let places = false;
+    for (let index = from; index < this.lines.length; index++) {
+      this.lines[index] = this.lines[index]!.replace(marks, (_, scope: string) => {
+        places ||= !cloned;
+        return cloned ? '' : `, ${scope}`;
+      });
+    }
+    if (!cloned) {
+      // A template that renders from HTML holds a place for the nodes of a component, a dynamic
+      // tag or a block, and for an insert that has a scope. The browser needs the code that
+      // parses them. The parts are code, not the text that the markup writes.
+      for (const flush of this.flushes) {
+        for (const part of flush.parts) {
+          places ||= flush.line >= from && 'code' in part && PLACES.test(part.code);
+        }
+      }
+      places ||= this.templateInserts > 0;
+      this.plan.rawPlaces ||= places && this.options.mode === 'client';
+    }
     this.line(cloned ? `return $$b.rawNodes($$f${at});` : `return $$b.raw($$html${at});`);
     this.close();
   }
@@ -2004,9 +2076,19 @@ export class Emitter {
             : '';
         // A primitive renders as text, so it needs neither the place of the insert nor an await.
         const inner = this.pended(this.expression(node.expression), node.expression, scope);
+        // In a template of the browser, a value that may hold nodes gets a mark, which becomes the
+        // scope of its place when the template renders from HTML: its insert holds a place there.
+        // A template that clones has no insert, so the mark goes.
+        const mark =
+          this.templateText && at === '' && !isText(node.expression.ast, this.templateText)
+            ? `${this.mark}${this.ctxArgument}, ${this.scopeVar(instanceScope(this.plan, scope))}*/`
+            : '';
+        if (this.templateText && (at !== '' || mark !== '')) {
+          this.templateInserts++;
+        }
         const value = this.isPrimitiveInsert(node.expression)
           ? `$$b.insert(${inner})`
-          : this.ready(`$$b.insert(${inner}${at})`);
+          : this.ready(`$$b.insert(${inner}${at}${mark})`);
         // A literal renders when the component compiles.
         const text = literalText(node.expression.ast);
         const settled = this.settledMemos(

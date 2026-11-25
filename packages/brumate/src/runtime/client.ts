@@ -121,6 +121,7 @@ export {
   setContent,
   setOn,
   setSpread,
+  setText,
   template,
 } from './client/templates.ts';
 export { asyncEffect } from './client/async-effect.ts';

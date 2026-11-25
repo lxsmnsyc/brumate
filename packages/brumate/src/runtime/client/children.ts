@@ -1,11 +1,10 @@
 // Children, and the calls of `#template` values: markup that renders where it is inserted.
 
 import { HAS_CHILDREN, HAS_CLIENT_HTML, HAS_TEMPLATES } from '../features.ts';
-import { insertValue, isRaw, raw } from '../html.ts';
-import type { Raw } from '../html.ts';
+import { insertValue, isRaw } from '../html.ts';
 import type { ScopeId } from '../shared.ts';
 import { loadedFunction } from './code.ts';
-import { holdPlace, insertHTML } from './insert.ts';
+import { holdPlace, insertHTML, markCloned, parseHTML } from './insert.ts';
 import { resolve } from './references.ts';
 import type { Handler } from './references.ts';
 import { resolveScope } from './scopes.ts';
@@ -26,7 +25,7 @@ export function templateReference(
     new TemplateCall(ref, scope, args, (at) => {
       const render = loadedFunction(ref);
       // The insert links the template's scope to where it is inserted.
-      return render ? insert(render(scope, ...args), undefined, at) : '';
+      return render ? insertOut(render(scope, ...args), at) : '';
     });
 }
 
@@ -42,15 +41,25 @@ export function templateCall(
   render: (...args: unknown[]) => unknown,
   args: unknown[],
 ): TemplateCall {
-  return new TemplateCall(ref, owner, args, (at) => insert(render(...args), undefined, at));
+  return new TemplateCall(ref, owner, args, (at) => insertOut(render(...args), at));
 }
 
 /**
- * The output of a template that cloned its markup: a place for the clone, which the insert fills,
- * and the template's scope, which the insert links to its call. The insert follows the render
- * at once, as for children, so the clone is still waiting.
+ * The output of a template that cloned its markup: the clone, and the template's scope, which the
+ * insert links to its call.
  */
-export function rawNodes(fragment: DocumentFragment, scope?: ScopeId): Raw {
+class RawNodes {
+  readonly n: DocumentFragment;
+  readonly s?: ScopeId;
+
+  constructor(nodes: DocumentFragment, scope?: ScopeId) {
+    this.n = nodes;
+    this.s = scope;
+  }
+}
+
+/** Gives the output of a template that cloned its markup. See `RawNodes`. */
+export function rawNodes(fragment: DocumentFragment, scope?: ScopeId): RawNodes {
   // The nodes at the top of the clone find the scope, when a replace destroys the scopes in them.
   const owner = scope === undefined ? undefined : scopes.get(scope);
   if (owner) {
@@ -58,27 +67,77 @@ export function rawNodes(fragment: DocumentFragment, scope?: ScopeId): Raw {
       templateNodes.set(node, owner);
     }
   }
-  return raw(holdPlace(fragment), scope);
+  return new RawNodes(fragment, scope);
 }
 
 // Rendering on the client
 
-/** Renders a value inserted in markup. Children render here, at `scope`, for their contexts. */
-export function insert(value: unknown, _ctx?: unknown, scope?: Scope | ScopeId): string {
-  linkCalls(value, scope);
+/**
+ * Renders a value inserted in markup, as nodes where it has them: children, a template and the
+ * clone of a template are not HTML. Children render here, at `scope`, for their contexts.
+ */
+export function insertOut(
+  value: unknown,
+  scope?: Scope | ScopeId,
+  near?: Node,
+): string | DocumentFragment {
   // The calls of templates in a list render each.
   if (HAS_TEMPLATES && Array.isArray(value)) {
-    let out = '';
+    const parts: (string | DocumentFragment)[] = [];
+    let nodes = false;
     for (const item of value) {
-      out += insert(item, undefined, scope);
+      const out = insertOut(item, scope, near);
+      nodes ||= typeof out !== 'string';
+      parts.push(out);
     }
-    return out;
+    if (!nodes) {
+      return parts.join('');
+    }
+    const fragment = document.createDocumentFragment();
+    for (const part of parts) {
+      if (typeof part === 'string') {
+        // HTML next to nodes, which the insert of the clone indexes.
+        markCloned();
+        fragment.append(parseHTML(part, near));
+      } else {
+        fragment.append(part);
+      }
+    }
+    return fragment;
+  }
+  linkCalls(value, scope);
+  if (HAS_TEMPLATES && value instanceof RawNodes) {
+    return value.n;
   }
   if (!((HAS_CHILDREN || HAS_TEMPLATES) && value instanceof Children)) {
     return insertValue(value);
   }
-  const out = value.render(resolveScope(scope));
-  return HAS_CLIENT_HTML ? holdPlace(out) : (out as string);
+  return value.render(resolveScope(scope));
+}
+
+/**
+ * Renders a value inserted in the HTML of a body, which holds a place for nodes that the parse
+ * of the HTML fills.
+ */
+export function insert(value: unknown, _ctx?: unknown, scope?: Scope | ScopeId): string {
+  // The text of a list stays in the HTML, so its parse gives it its context, and each node holds
+  // a place.
+  if (HAS_TEMPLATES && Array.isArray(value)) {
+    let all = '';
+    for (const item of value) {
+      all += insert(item, undefined, scope);
+    }
+    return all;
+  }
+  const out = insertOut(value, scope);
+  if (HAS_CLIENT_HTML) {
+    return holdPlace(out);
+  }
+  if (typeof out !== 'string') {
+    // The feature test found no HTML body here, so nothing parses a place for these nodes.
+    throw new Error('brumate: a body that builds HTML inserted nodes, and clientHTML is off');
+  }
+  return out;
 }
 
 /**
@@ -92,7 +151,8 @@ export function linkCalls(value: unknown, at: Scope | ScopeId | undefined): void
     }
     return;
   }
-  const scope = isRaw(value) && value.s !== undefined ? scopes.get(value.s) : undefined;
+  const id = value instanceof RawNodes || isRaw(value) ? value.s : undefined;
+  const scope = id === undefined ? undefined : scopes.get(id);
   if (scope && at !== undefined) {
     scope.l = resolveScope(at);
   }
@@ -157,7 +217,7 @@ export class TemplateCall extends Children {
     ref: string,
     owner: Scope | undefined,
     args: unknown[],
-    html: (at?: Scope) => string,
+    html: (at?: Scope) => string | DocumentFragment,
   ) {
     super(owner, html);
     this.ref = ref;

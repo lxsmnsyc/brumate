@@ -108,8 +108,11 @@ export function getFeatures(result: CompileResult): Features {
     blocks: /\bb-(?:client|defer)\b/.test(all),
     listeners: /\bb-listen\b/.test(all),
     actions: /\$\$b\.action\(/.test(all),
-    // A render function that gives HTML. One with no markup gives an empty string.
-    clientHTML: /\breturn \$\$html;|\$\$b\.rawNodes\(/.test(client),
+    // A render function that gives HTML, also a template that returns it as `raw` and puts
+    // nodes in it: an insert of children or of a template (it has the scope of its place), a
+    // component, a dynamic tag or a block. Those hold places in the HTML. One with no markup
+    // gives an empty string.
+    clientHTML: /\breturn \$\$html;/.test(client) || result.plan.rawPlaces,
     tries: /\$\$b\.caught\(/.test(result.server) || /\bexport const t = /.test(client),
     // A `$bind` that a component passes on can reach an element through a spread, whose `b-on`
     // entry the server writes at run time, so a passed binding counts too.

@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { expect, it } from 'vitest';
+import { getFeatures } from '../src/features.ts';
 import { analyzeProject, compile } from '../src/index.ts';
 import { resolveFromDisk } from '../src/modules.ts';
 
@@ -11,7 +12,17 @@ const forms = {
 };
 
 /** Templates that render from HTML: their top element is `<a>`, `<title>`, `<style>` or `<script>`, which HTML and SVG both have, so the insert parses them where they go. */
-const RAW_TEMPLATES = new Set(['tplSvgLink.brm:lnk']);
+const RAW_TEMPLATES = new Set([
+  'tplSvgLink.brm:lnk',
+  'tplSvgMixed.brm:lnk',
+  'tplAmbiguousInner.brm:lnk',
+  'tplAmbiguousBox.brm:boxed',
+  'tplChildrenParam.brm:lnk',
+  'tplFunctionText.brm:boxed',
+  'tplMarkText.brm:lnk',
+  'tplSvgWrap.brm:lbl',
+  'tplSvgWrap.brm:wrap',
+]);
 
 /**
  * Every `r` and `n` function of the pages in `render/` that the browser calls for a body clones a
@@ -38,6 +49,15 @@ it('renders every body of the pages as a clone', () => {
         specifier === 'brumate/forms' ? forms : resolveFromDisk(specifier, importer),
       sendableClasses: ['Money'],
     });
+    // The marks of inserts that may hold nodes become a scope, or go with a clone.
+    // The mark has the first number that the source does not hold.
+    let number = 0;
+    while (source.includes(`$$n${number}:`)) {
+      number++;
+    }
+    for (const code of [client, render, ...Object.values(parts)]) {
+      expect(code).not.toContain(`/*$$n${number}:`);
+    }
     for (const code of [client, ...Object.values(parts)]) {
       // The functions that the core calls for a body: `r` for a block, `n` for children.
       for (const match of code.matchAll(/^export function ([rn]\d+)\(.*\{\n([\s\S]*?)^\}/gm)) {
@@ -61,6 +81,61 @@ it('renders every body of the pages as a clone', () => {
   expect(bodies).toBeGreaterThan(200);
   expect(found.sort()).toEqual([]);
 }, 60000);
+
+/**
+ * A page turns `clientHTML` on only when one of its functions builds an HTML string. The body of
+ * a `#loading` that waits, with the start marker of its block before the `await`, is the one
+ * that still does: its HTML and its callback share one string, which a clone cannot split.
+ */
+it('builds HTML in the browser only for a waiting `#loading` body', () => {
+  const sources = new Map<string, string>();
+  for (const name of readdirSync(input)) {
+    if (name.endsWith('.brm')) {
+      sources.set(name, readFileSync(join(input, name), 'utf8'));
+    }
+  }
+  const liveProps = analyzeProject(sources);
+  const found: string[] = [];
+  for (const [name, source] of sources) {
+    const result = compile(source, {
+      filename: name,
+      liveProps: liveProps.get(name),
+      path: join(input, name),
+      resolveModule: (specifier, importer) =>
+        specifier === 'brumate/forms' ? forms : resolveFromDisk(specifier, importer),
+      sendableClasses: ['Money'],
+    });
+    if (getFeatures(result).clientHTML) {
+      found.push(name);
+    }
+  }
+  // The templates with an ambiguous top element that hold places for what they insert build HTML.
+  expect(found).toEqual([
+    'awaitLoadingOn.brm',
+    'tplAmbiguousBox.brm',
+    'tplAmbiguousInner.brm',
+    'tplChildrenParam.brm',
+    'tplFunctionText.brm',
+    'tplMarkText.brm',
+    'tplSvgWrap.brm',
+  ]);
+}, 60000);
+
+/** A `<title>` or a `<textarea>` that starts with a value keeps the markup before it in its template. */
+it('keeps the markup of a template whose title starts with a value', () => {
+  const name = 'tplLeadingValue.brm';
+  const { client, parts, render } = compile(readFileSync(join(input, name), 'utf8'), {
+    filename: name,
+    path: join(input, name),
+    resolveModule: resolveFromDisk,
+  });
+  const code = [client, render, ...Object.values(parts)].join('\n');
+  expect(code).toContain('<title b-x=\\"1\\" b-t></title>');
+  expect(code).toContain(
+    '<textarea b-x=\\"0\\" class=\\"area\\" aria-label=\\"Notes\\"></textarea><p class=\\"z\\">z</p>',
+  );
+  expect(code).toContain('$$b.setText($$e[0], [(tail), " end"])');
+});
 
 /**
  * The constants of templates that update code defines are shared by a key of their code, so an

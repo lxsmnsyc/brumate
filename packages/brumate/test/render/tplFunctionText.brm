@@ -1,0 +1,15 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Card from './Card.brm';
+
+  let open = $signal(false);
+</script>
+
+#template boxed(label: string) {
+  <a href="#y" class="boxed"><Card title="t">{label}</Card> function docs</a>
+}
+
+<button class="open" onClick=(() => (open = true))>Open</button>
+#if (open) {
+  <p class="host">{boxed('go')}</p>
+}

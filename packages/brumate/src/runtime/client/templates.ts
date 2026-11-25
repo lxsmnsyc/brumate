@@ -1,15 +1,13 @@
 // Markup that the browser clones: a template parsed once, the walk to its nodes, and the helpers
 // that fill a clone.
 
-import { HAS_CHILDREN } from '../features.ts';
-import { attributeText, onValue } from '../html.ts';
+import { attributeText, onValue, textValue } from '../html.ts';
 import type { ScopeId } from '../shared.ts';
 import { trustedHTML } from '../trusted.ts';
 import type { Render } from './branches.ts';
-import { Children, TemplateCall, insert } from './children.ts';
+import { insertOut } from './children.ts';
 import { spread } from './handlers.ts';
 import { findForeign, holdPlace, markCloned, parseHTML } from './insert.ts';
-import { resolveScope } from './scopes.ts';
 import { options, scopes } from './state.ts';
 import type { Scope } from './state.ts';
 
@@ -485,6 +483,14 @@ export function setOn(element: Element, on: string[], own: string): void {
   }
 }
 
+/**
+ * Writes the text of an element of cloned markup whose content is text, such as a `<textarea>`
+ * or a `<title>`, from the pieces of its text and its values.
+ */
+export function setText(element: Element, value: unknown): void {
+  element.textContent = textValue(value);
+}
+
 /** Writes the content of an element of cloned markup, as `insert` writes it in HTML. */
 export function setContent(element: Element, value: unknown, at?: ScopeId | Scope): void {
   if (typeof value === 'string' || typeof value === 'number') {
@@ -504,10 +510,7 @@ function insertNodes(
   at: ScopeId | Scope | undefined,
   near: Node,
 ): DocumentFragment {
-  const out =
-    HAS_CHILDREN && value instanceof Children && !(value instanceof TemplateCall)
-      ? value.render(resolveScope(at))
-      : insert(value, undefined, at);
+  const out = insertOut(value, at, near);
   if (typeof out !== 'string') {
     return out;
   }

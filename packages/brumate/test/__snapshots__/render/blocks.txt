@@ -254,6 +254,7 @@ const $$t5 = $$b.template("<span b-x=\"0\"></span>", 1);
 const $$t6 = $$b.template("<!--x0-->", 1);
 const $$t7 = $$b.template("<p b-x=\"0\"></p>", 1);
 const $$t8 = $$b.template("Dynamic", 0);
+const $$t9 = $$b.template("<template b-x=\"0\" b-client=\"idle=Blocks_jlmev2#c4\"></template><template b-x=\"1\" b-listen=\"window\" b-on=\"keydown=Blocks_jlmev2#h6\"></template><input b-x=\"2\" value=\"x\" title=\"a &amp; b\"><!--x3--><ul><!--x4--></ul><!--x5--><!--x6--><!--x7--><!--x8--><!--/b--><template b-x=\"9\" b-client=\"idle=Blocks_jlmev2#k11\"></template><!--x10--><!--/b--><!--x11--><p>&lt;escaped&gt;   <!--x12--></p>", 13, undefined, 1);
 
 export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): string | DocumentFragment {
   let $$html = '';
@@ -272,9 +273,7 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
     $$b.setContent($$e[0], (n * 10));
     return $$b.rawNodes($$f);
   }
-  $$html += "<template b-b=\"" + $$s1 + ":0\" b-client=\"idle=Blocks_jlmev2#c4\"></template><template b-b=\"" + $$s1 + ":1\" b-listen=\"window\" b-on=\"keydown=Blocks_jlmev2#h6\"></template><input";
   input = $$b.elementAt($$s1, 2);
-  $$html += " value=\"x\" title=\"a &amp; b\" b-b=\"" + $$s1 + ":2\">";
   const $$body0 = () => {
     let $$html = '';
     const $$e = $$b.clone($$t1), $$f = $$e[0];
@@ -285,7 +284,6 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
     const $$e = $$b.clone($$t2), $$f = $$e[0];
     return $$f;
   };
-  $$html += $$b.nodes($$b.branchNodes($$s1, 3, (tab === 'a') ? 0 : 1, [$$body0, $$body1])) + "<ul>";
   const $$body4 = ($$item2, $$index3) => {
     let $$html = '';
     const item = $$item2;
@@ -304,7 +302,6 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
     const $$e = $$b.clone($$t4), $$f = $$e[0];
     return $$f;
   };
-  $$html += $$b.nodes($$b.listNodes($$s1, 4, $$b.toList(( list)), $$body4, $$body5)) + "</ul>";
   const $$body8 = ($$item6, $$index7) => {
     let $$html = '';
     const item = $$item6;
@@ -312,7 +309,6 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
     $$b.setContent($$e[0], (item));
     return $$f;
   };
-  $$html += $$b.nodes($$b.listNodes(undefined, undefined, $$b.toList(( ['x', 'y'])), $$body8, undefined));
   const $$body11 = ($$item9, $$index10) => {
     let $$html = '';
     const n = $$index10;
@@ -320,7 +316,6 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
     $$b.fillValue($$s1, "x0", (row(n)), ($$v) => $$b.putText($$e[0], $$v, $$s1));
     return $$f;
   };
-  $$html += $$b.nodes($$b.listNodes(undefined, undefined, Array.from({ length: ( 2) }, (_, index) => index), $$body11, undefined));
   const $$body12 = () => {
     let $$html = '';
     const $$s9 = $$b.createScope(9, $$s1);
@@ -338,19 +333,28 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
     $$b.setSlots($$s10, [error]);
     return $$f;
   };
-  $$html += "<!--b" + $$s1 + ":5-->" + $$b.nodes($$b.tryNodes($$body12, $$body14, 1)) + "<!--/b--><template b-b=\"" + $$s1 + ":6\" b-client=\"idle=Blocks_jlmev2#k11\"></template><!--b" + $$s1 + ":6--><!--/b-->";
-  {
     const $$s12 = $$b.createScope(12, $$s1);
     const $$children15 = $$b.children($$s12, () => {
       let $$html = '';
       const $$e = $$b.clone($$t8), $$f = $$e[0];
       return $$f;
     });
-    $$html += $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "b-b": $$b.internal(`${$$s12}:0`), "b-on": $$b.internal("click=Blocks_jlmev2#h20@" + $$s12) }, $$children15, undefined, $$s12);
-  }
-  $$html += "<p>&lt;escaped&gt;   " + $$b.insert(([1, 2])) + "</p>";
+  const $$e = $$b.clone($$t9), $$f = $$e[13];
+  $$b.keep($$s1, 0, $$e[0]);
+  $$b.keep($$s1, 1, $$e[1]);
+  $$b.keep($$s1, 2, $$e[2]);
+  $$b.place($$e[3], $$b.branchNodes($$s1, 3, (tab === 'a') ? 0 : 1, [$$body0, $$body1]));
+  $$b.place($$e[4], $$b.listNodes($$s1, 4, $$b.toList(( list)), $$body4, $$body5));
+  $$b.place($$e[5], $$b.listNodes(undefined, undefined, $$b.toList(( ['x', 'y'])), $$body8, undefined));
+  $$b.place($$e[6], $$b.listNodes(undefined, undefined, Array.from({ length: ( 2) }, (_, index) => index), $$body11, undefined));
+  $$b.markBlock($$e[7], $$s1, 5, "");
+  $$b.place($$e[8], $$b.tryNodes($$body12, $$body14, 1));
+  $$b.keep($$s1, 6, $$e[9]);
+  $$b.markBlock($$e[10], $$s1, 6, "");
+  $$b.place($$e[11], $$b.dynamicNodes((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "b-b": $$b.internal(`${$$s12}:0`), "b-on": $$b.internal("click=Blocks_jlmev2#h20@" + $$s12) }, $$children15, undefined, $$s12));
+  $$b.putText($$e[12], ([1, 2]));
   $$b.setSlots($$s1, [tab, list, input]);
-  return $$html;
+  return $$f;
 }
 Blocks.brumateId = "Blocks_jlmev2";
 

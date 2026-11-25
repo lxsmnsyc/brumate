@@ -7,7 +7,7 @@ import { isBinding, isSlotReference, parseId } from '../shared.ts';
 import type { ScopeId } from '../shared.ts';
 import { MARKER, findComment, findElement, nameComment, rangeEnd } from './blocks.ts';
 import type { Render } from './branches.ts';
-import { Children, RenderedChildren, TemplateCall, insert, linkCalls } from './children.ts';
+import { RenderedChildren, TemplateCall, insertOut, linkCalls } from './children.ts';
 import { loadedFunction } from './code.ts';
 import { spreadEntries } from './handlers.ts';
 import { insertHTML, refreshing } from './insert.ts';
@@ -195,12 +195,7 @@ function write(
   // scope that a template makes is its own, which holds its arguments.
   const made = nextId;
   linkCalls(value, at);
-  insertHTML(
-    end ?? { parent },
-    (HAS_CHILDREN || HAS_TEMPLATES) && value instanceof Children
-      ? value.render(at)
-      : insert(value, undefined, at),
-  );
+  insertHTML(end ?? { parent }, insertOut(value, at, end ?? parent));
   if (HAS_TEMPLATES && key) {
     const scope = value instanceof TemplateCall ? scopes.get(made) : undefined;
     if (scope) {

@@ -2743,6 +2743,68 @@ describe('resume', () => {
     expect(document.querySelector('.host .lnk')!.namespaceURI).toBe('http://www.w3.org/2000/svg');
   });
 
+  it('keeps the namespace of a mix of an ambiguous template and a clone in SVG', async () => {
+    await resume('tplSvgMixed', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.host .dot')).not.toBeNull());
+    const svg = 'http://www.w3.org/2000/svg';
+    expect(document.querySelector('.host .lnk')!.namespaceURI).toBe(svg);
+    expect(document.querySelector('.host .dot')!.namespaceURI).toBe(svg);
+  });
+
+  it('keeps the namespace of the text and the nodes of a list in an ambiguous template', async () => {
+    await resume('tplSvgWrap', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.host .dot')).not.toBeNull());
+    const svg = 'http://www.w3.org/2000/svg';
+    expect(document.querySelector('.host .wrap')!.namespaceURI).toBe(svg);
+    expect(document.querySelector('.host .lbl')!.namespaceURI).toBe(svg);
+    expect(document.querySelector('.host .dot')!.namespaceURI).toBe(svg);
+  });
+
+  it('places a template that a parameter holds inside an ambiguous template', async () => {
+    await resume('tplChildrenParam', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.host .lnk .inner')).not.toBeNull());
+    expect(document.querySelector('.host')!.textContent).toBe('go');
+    expect(document.body.textContent).not.toContain('[object');
+  });
+
+  it('places a component in an ambiguous template whose text says function', async () => {
+    await resume('tplFunctionText', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.host .boxed .card')).not.toBeNull());
+    expect(document.body.innerHTML).not.toContain('<!--f');
+  });
+
+  it('keeps the text and the comments of a component that look like a mark', async () => {
+    await resume('tplMarkText', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.host .lnk')).not.toBeNull());
+    expect(document.querySelector('.host .lnk')!.textContent).toBe('go/*$$n0:QQ*/go');
+  });
+
+  it('places a template inside the HTML of an ambiguous template', async () => {
+    await resume('tplAmbiguousInner', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.host .lnk .inner')).not.toBeNull());
+    expect(document.querySelector('.host')!.textContent).toBe('go');
+    expect(document.body.textContent).not.toContain('[object');
+  });
+
+  it('places a component inside the HTML of an ambiguous template', async () => {
+    await resume('tplAmbiguousBox', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.host .boxed .card')).not.toBeNull());
+    expect(document.body.innerHTML).not.toContain('<!--f');
+  });
+
+  it('writes a title and a textarea that start with a value', async () => {
+    await resume('tplLeadingValue', {});
+    expect(document.querySelector('.area')!.textContent).toBe('tail end');
+    expect(document.querySelector('.z')).not.toBeNull();
+  });
+
   it('replaces a template of the file with another template at the same insert', async () => {
     await resume('tplInPlaceHost', {});
     click(document.querySelector('.open')!);
