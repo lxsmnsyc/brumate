@@ -1,7 +1,7 @@
 ---
 id: kept-page-nonce
 title: A kept page gets the request's nonce
-status: active
+status: done
 priority: should
 type: hotfix
 story:
@@ -21,7 +21,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-26
-spent:
+spent: 230000
 owns:
   - docs/roadmaps/brumate/nodes/kept-page-nonce/**
 shared:
