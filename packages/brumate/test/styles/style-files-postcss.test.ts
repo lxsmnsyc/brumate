@@ -159,7 +159,7 @@ beforeAll(async () => {
       logLevel: 'silent',
       css,
       base,
-      plugins: [brumate({ merge: 0 })],
+      plugins: [brumate({ merge: 0, clientOutDir: `${name}/client` })],
       resolve: {
         alias: {
           'brumate/server': runtime('server'),

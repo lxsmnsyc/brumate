@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
-import { createServer as createHttpServer } from 'node:http';
+import { createServer as createHttpServer, request as sendHttpRequest } from 'node:http';
 import { createServer } from 'node:net';
 import path from 'node:path';
 import { Readable } from 'node:stream';
@@ -187,6 +187,80 @@ export async function serveBuild(root) {
         http.closeAllConnections();
         http.close(resolve);
       }),
+  };
+}
+
+/** The policy that the proxy adds to each page: a string in a script sink must go through brumate. */
+const NITRO_POLICY = "require-trusted-types-for 'script'; trusted-types brumate";
+
+/**
+ * Serves the Nitro build of an example in `root` with `node .output/server/index.mjs`, behind a
+ * proxy that adds the Trusted Types policy to each page. The nonce policy comes from the app: its
+ * entry makes a nonce for each response, passes it to `handle` and sends `script-src
+ * 'nonce-…' 'strict-dynamic'`, as an app without a proxy that sets policies does. The proxy joins
+ * the two, so a script without the nonce of its page is blocked, and a string in an HTML or
+ * script sink that skips the policy fails. A page that is a file of the build has no nonce and
+ * gets Trusted Types only.
+ */
+export async function serveNitro(root) {
+  assert(
+    existsSync(path.join(root, '.output/server/index.mjs')),
+    `${path.relative(repo, root)}/.output is missing. Run without --no-build.`,
+  );
+  const port = await freePort();
+  const target = `http://localhost:${port}`;
+  const stopApp = await startProcess(process.execPath, ['.output/server/index.mjs'], {
+    cwd: root,
+    env: { PORT: String(port), NODE_ENV: 'production' },
+    url: target,
+  });
+  // The pages that came with a nonce policy from the app.
+  let nonced = 0;
+  const http = createHttpServer((request, response) => {
+    const upstream = sendHttpRequest(
+      `${target}${request.url}`,
+      { method: request.method, headers: request.headers },
+      (answer) => {
+        const headers = { ...answer.headers };
+        if ((headers['content-type'] ?? '').includes('html')) {
+          const own = headers['content-security-policy'];
+          if (own?.includes("script-src 'nonce-")) {
+            nonced++;
+          }
+          headers['content-security-policy'] = own ? `${own}; ${NITRO_POLICY}` : NITRO_POLICY;
+        }
+        response.writeHead(answer.statusCode, headers);
+        answer.pipe(response);
+        // A stream that Nitro drops ends the response at once, so a step fails and does not wait.
+        answer.on('error', () => response.destroy());
+        response.on('close', () => answer.destroy());
+      },
+    );
+    // Early hints reach the browser as Nitro sent them.
+    upstream.on('information', (hints) => {
+      if (hints.statusCode === 103 && hints.headers.link) {
+        response.writeEarlyHints({ link: hints.headers.link.split(/,\s*(?=<)/) });
+      }
+    });
+    upstream.on('error', (error) => {
+      response.statusCode = 502;
+      response.end(String(error?.stack ?? error));
+    });
+    response.on('close', () => upstream.destroy());
+    request.pipe(upstream);
+  });
+  await new Promise((resolve) => http.listen(0, resolve));
+  return {
+    url: `http://localhost:${http.address().port}`,
+    stop: async () => {
+      await new Promise((resolve) => {
+        http.closeAllConnections();
+        http.close(resolve);
+      });
+      await stopApp();
+      // An app that sends no nonce policy would pass every step, so the run fails.
+      assert(nonced > 0, `${path.relative(repo, root)} sent no page with a nonce policy`);
+    },
   };
 }
 

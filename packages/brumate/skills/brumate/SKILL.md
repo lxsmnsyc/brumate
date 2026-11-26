@@ -45,6 +45,7 @@ A `.brm` file is a component: scripts for its state, an optional `<style>`, and 
 - `viewTransition="name"` marks an element for a view transition of `transition(handler)` or of `navigate: { transition: true }`. `viewTransitionName=(expr)` pairs an element across two pages.
 - A store computed from other stores is `derived(sources, fn)` of `brumate/store`, read with `$store`. It is one-way, and never goes in a provided value or a prop.
 - A script in markup is `<script inline>…</script>`, with the code as written, or `<script src="…"></script>`. `trigger="idle"`, `"visible"`, `"interaction"` or `"load"` says when it loads. `data-rerun` runs a head script again after each client navigation. The script gets the nonce of the page.
+- Never write the script tags of the client, such as the Vite client or the client entry, in a layout or a server. `handle` of `virtual:brumate/routes` adds them, `vite dev` serves the pages, and production runs on Nitro or on a server that wraps `handle` with `toNodeHandler` of `srvx/node`. For a nonce policy, pass `handle(request, { nonce })`.
 - The light and dark choice of the page is `ColorScheme` and `colorScheme()` of `@brumate/ui`, not a signal and an effect.
 - Do not use `$ref`, `$watch`, `$settled`, `$cleanup`, `$get`, `$set`, or modifiers such as `onSubmit:prevent`.
 

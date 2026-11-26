@@ -1,8 +1,9 @@
 // Writes the pages of a site as static HTML files after the server build.
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { entryScript } from './routes.ts';
 
 export interface PrerenderOptions {
   /** The paths to render first. Defaults to `['/']`. */
@@ -23,8 +24,10 @@ export interface ManifestChunk {
 
 /** A page that the build wrote, in the prerender manifest. */
 export interface PrerenderedPage {
-  /** The file of the page, relative to the client build. */
+  /** The file of the page, relative to the client build, or to the shell directory for a shell page. */
   file: string;
+  /** Whether the page has `#defer` blocks, so a server must see its requests. Only in a build that writes shells. */
+  shell?: true;
   /**
    * The hashes of the page's inline scripts, as `sha256-<base64>`, for a
    * Content Security Policy: a prerendered page has no nonce.
@@ -41,6 +44,9 @@ export interface PrerenderManifest {
 }
 
 type Handle = (request: Request, options: object) => Promise<Response | undefined>;
+
+/** A page with a `#defer` block: the browser asks the server for its body, which a file cannot answer. */
+const DEFER_BLOCK = /<template b-b="[^"]*" b-defer="/;
 
 /** The file of a page: `index.html` in a folder of its path. */
 function getPageFile(pathname: string): string {
@@ -81,13 +87,15 @@ export function scriptHashes(html: string): string[] {
 
 /**
  * Renders pages with the route handler of the server build, and writes them
- * into the client build. Returns the paths that it wrote.
+ * into the client build. Returns the paths that it wrote. With `shells`, the pages that have
+ * `#defer` blocks go to that directory instead, for a server that passes them as `shell`.
  */
 export async function prerender(
   routes: string,
   root: string,
   base: string,
   options: PrerenderOptions,
+  shells?: string,
 ): Promise<string[]> {
   const client = path.resolve(root, options.client ?? 'dist/client');
   const manifest = JSON.parse(
@@ -106,10 +114,14 @@ export async function prerender(
   const { handle } = (await import(pathToFileURL(routes).href)) as { handle: Handle };
   const document = {
     head: options.head?.(manifest) ?? '',
-    scripts: `<script type="module" async src="${base}${entry.file}"></script>`,
+    scripts: entryScript(base, entry.file),
     // Every page renders from one place, with no client, so rate limits do not count.
     prerender: true,
   };
+  if (shells) {
+    await rm(shells, { recursive: true, force: true });
+    await mkdir(shells, { recursive: true });
+  }
   const queue = [...(options.paths ?? ['/'])];
   const seen = new Set<string>(queue);
   const written: string[] = [];
@@ -123,13 +135,18 @@ export async function prerender(
     }
     // oxlint-disable-next-line no-await-in-loop -- Pages render one by one, and each can add links.
     const html = await response.text();
-    const file = path.join(client, getPageFile(pathname));
+    const isShell = shells !== undefined && DEFER_BLOCK.test(html);
+    const file = path.join(isShell ? shells : client, getPageFile(pathname));
     // oxlint-disable-next-line no-await-in-loop -- Pages render one by one, and each can add links.
     await mkdir(path.dirname(file), { recursive: true });
     // oxlint-disable-next-line no-await-in-loop -- Pages render one by one, and each can add links.
     await writeFile(file, html);
     written.push(pathname);
-    pages[pathname] = { file: getPageFile(pathname), scripts: scriptHashes(html) };
+    pages[pathname] = {
+      file: getPageFile(pathname),
+      ...(isShell ? { shell: true as const } : {}),
+      scripts: scriptHashes(html),
+    };
     if (options.crawl !== false) {
       for (const link of links(html, base)) {
         if (!seen.has(link)) {

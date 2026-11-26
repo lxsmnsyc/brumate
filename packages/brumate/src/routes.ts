@@ -1,5 +1,31 @@
 // Builds the route tree of `virtual:brumate/routes` from the files of a routes directory.
 
+/** `import 'virtual:brumate/start'` in the client entry starts the loader. */
+export const START_MODULE = 'virtual:brumate/start';
+
+/** The URL that the dev server serves the start module at. */
+export const START_URL: string = `/@id/__x00__${START_MODULE}`;
+
+/**
+ * The scripts of a page on the dev server: the client of Vite, and the client entry of the app
+ * when it has one, under the base. `entry` is a URL path of the dev server, such as `/src/client.ts`.
+ * An app with no entry gets the start module.
+ */
+export function devScripts(base = '/', entry?: string): string {
+  // The dev server serves the path of a base that is a URL. A relative base is the root.
+  let path = base;
+  if (/^[a-z][a-z\d+.-]*:\/\/|^\/\//i.test(base)) {
+    path = new URL(base, 'http://localhost').pathname;
+  }
+  const prefix = path.startsWith('/') ? path.replace(/\/$/, '') : '';
+  return `<script type="module" src="${prefix}/@vite/client"></script><script type="module" src="${prefix}${entry ?? START_URL}"></script>`;
+}
+
+/** The script of a page in a build: the entry of the client build, which loads async. */
+export function entryScript(base: string, file: string): string {
+  return `<script type="module" async src="${base}${file}"></script>`;
+}
+
 /** A folder of routes, with the files as paths. The runtime `RouteNode` has loaders instead. */
 export interface RouteFiles {
   layout?: string;
@@ -89,6 +115,45 @@ export function routeFiles(paths: string[]): RouteFiles {
 }
 
 /**
+ * Reads the shell of a page that the build prerendered, from the server assets that Nitro bundles.
+ * The build keeps such a page out of the public files, so the request reaches the entry.
+ */
+const SHELL_LOADER = [
+  'async function loadShell(request, options) {',
+  "  if (options?.prerender || (request.method !== 'GET' && request.method !== 'HEAD')) {",
+  '    return undefined;',
+  '  }',
+  '  try {',
+  '    const segments = decodeURIComponent(new URL(request.url).pathname).split("/").filter(Boolean);',
+  '    if (segments.includes("..") || segments.includes(".")) {',
+  '      return undefined;',
+  '    }',
+  "    const { useStorage } = await import('nitro/storage');",
+  "    const file = await useStorage('assets:brumate').getItem([...segments, 'index.html'].join(':'));",
+  '    return file == null ? undefined : withNonce(String(file), options?.nonce);',
+  '  } catch {',
+  '    return undefined;',
+  '  }',
+  '}',
+].join('\n');
+
+/**
+ * Gives each script tag of a piece of HTML that has no nonce the nonce of the render, when the
+ * render has one. It serves the default scripts, and a prerendered shell: the build wrote the
+ * shell with no nonce, as the nonce belongs to a request.
+ */
+const SCRIPT_NONCE = [
+  'function withNonce(html, nonce) {',
+  '  if (nonce === undefined) {',
+  '    return html;',
+  '  }',
+  '  const value = String(nonce).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");',
+  // A function, so a `$&` or a `$\'` in the nonce is text and not a replacement pattern.
+  '  return html.replace(/<script(?=[\\s>])(?![^>]*\\snonce=)/g, () => `<script nonce="${value}"`);',
+  '}',
+].join('\n');
+
+/**
  * Writes a route tree as module code, with an import for each file. `rpc`
  * is the URL prefix of server function calls, for forms that post to one.
  * `middleware` is the path of the entry middleware, which runs for every
@@ -108,6 +173,10 @@ export function routeModule(
   hints: string[] = [],
   /** The chunks of the bundle of each root component, by ID, from the client build. */
   bundleHints: Record<string, string[]> = {},
+  /** The scripts of a page when the caller of `handle` passes none. */
+  scripts = '',
+  /** Whether `handle` reads the prerendered shell of a page from Nitro's server assets. */
+  shells = false,
 ): string {
   // Static imports in a build, because the server registry of server functions imports every
   // file anyway. In development, a route loads when a request needs it, so a file that does not
@@ -169,8 +238,11 @@ export function routeModule(
       : []),
     ...imports,
     `export const routes = ${routes};`,
-    'export function handle(request, options) {',
-    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions, fileMiddleware${middleware ? ', middleware, onError, onTrace' : ''}${dev ? ', dev: true' : ''}${build === undefined ? '' : `, build: ${JSON.stringify(build)}`}${hints.length > 0 ? `, hints: ${JSON.stringify(hints)}` : ''}${Object.keys(bundleHints).length > 0 ? `, bundleHints: ${JSON.stringify(bundleHints)}` : ''}, ...options });`,
+    ...(shells ? [SHELL_LOADER] : []),
+    ...(scripts || shells ? [SCRIPT_NONCE] : []),
+    `export ${shells ? 'async ' : ''}function handle(request, options) {`,
+    ...(shells ? ['  const shell = options?.shell ?? (await loadShell(request, options));'] : []),
+    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions, fileMiddleware${middleware ? ', middleware, onError, onTrace' : ''}${dev ? ', dev: true' : ''}${build === undefined ? '' : `, build: ${JSON.stringify(build)}`}${hints.length > 0 ? `, hints: ${JSON.stringify(hints)}` : ''}${Object.keys(bundleHints).length > 0 ? `, bundleHints: ${JSON.stringify(bundleHints)}` : ''}${shells ? ', ...(shell === undefined ? {} : { shell })' : ''}, ...options${scripts ? `, scripts: options?.scripts ?? withNonce(${JSON.stringify(scripts)}, options?.nonce)` : ''} });`,
     '}',
   ].join('\n');
 }

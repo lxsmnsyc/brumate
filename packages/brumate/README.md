@@ -21,7 +21,6 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [brumate()],
   build: {
-    manifest: true,
     rolldownOptions: { input: 'src/client.ts' },
   },
 });
@@ -31,6 +30,8 @@ export default defineConfig({
 // src/client.ts
 import 'virtual:brumate/start';
 ```
+
+`vite dev` serves the pages, and brumate writes the script tags. Production runs on [Nitro](https://nitro.build) or a server of your own. See [Deploying](https://github.com/lxsmnsyc/brumate/blob/main/website/docs/deploying.md).
 
 ## A component
 
@@ -51,7 +52,7 @@ The server renders the button and the text. The browser loads the code of the cl
 ## What it includes
 
 - `brumate/signals`: the compile-time functions, such as `$signal`, `$memo`, `$effect`, `$props`, `$action` and `$optimistic`.
-- `brumate/vite`: the Vite plugin. It compiles `.brm` files, splits client code per handler, serves server function calls in development, and can prerender pages.
+- `brumate/vite`: the Vite plugin. It compiles `.brm` files, splits client code per handler, serves pages and server function calls in development, and can prerender pages.
 - `brumate/server`: rendering, streaming, routes, server functions, sessions, cookies, and validation with Standard Schema.
 - `brumate/loader` and `brumate/client`: the loader and the core that run in the browser.
 - `brumate/testing`: mounting components in a DOM test, with the real server functions.

@@ -1,33 +1,45 @@
 import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
+import type { RequestListener } from 'node:http';
 import path from 'node:path';
-import { send, toRequest } from './node.ts';
+import { toNodeHandler } from 'srvx/node';
 
-// Serves the production build: `pnpm build` writes dist/client and dist/server.
+// Serves the production build: `pnpm build` writes dist/client and dist/server. The script tag
+// is the default: brumate reads the entry from the client build, which comes first.
 const root = path.dirname(new URL(import.meta.url).pathname);
 const client = path.join(root, 'dist/client');
 const server = await import(path.join(root, 'dist/server/server.js'));
-const manifest = JSON.parse(await readFile(path.join(client, '.vite/manifest.json'), 'utf8'));
-const entry = `/${manifest['src/client.ts'].file}`;
 
 const TYPES: Record<string, string> = {
   '.js': 'text/javascript',
   '.css': 'text/css',
 };
 
+/** The request of srvx on Node, which reaches the response for the early hints. */
+type NodeRequest = Request & {
+  runtime?: { node?: { res?: { writeEarlyHints?: (hints: { link: string[] }) => void } } };
+};
+
+const render = toNodeHandler(async (request: Request) => {
+  // Server function calls.
+  if (request.method === 'POST') {
+    const answer = await server.handle(request);
+    if (answer) {
+      return answer;
+    }
+  }
+  // The route files under src/routes render the page.
+  const answer = await server.route(request, {
+    // The browser starts to load the loader and the core while the page renders.
+    earlyHints: (link: string[]) =>
+      (request as NodeRequest).runtime?.node?.res?.writeEarlyHints?.({ link }),
+  });
+  return answer ?? new Response('Not found', { status: 404 });
+}) as RequestListener;
+
 const http = createServer(async (request, response) => {
   const url = new URL(request.url ?? '/', 'http://localhost');
   try {
-    // One request for both handlers, because its body can be read once.
-    const webRequest = await toRequest(request);
-    // Server function calls.
-    if (request.method === 'POST') {
-      const answer = await server.handle(webRequest);
-      if (answer) {
-        send(answer, response);
-        return;
-      }
-    }
     // Built client modules.
     if (url.pathname.startsWith('/assets/')) {
       const file = path.join(client, path.normalize(url.pathname));
@@ -40,13 +52,7 @@ const http = createServer(async (request, response) => {
       response.end(await readFile(file));
       return;
     }
-    // The route files under src/routes render the page.
-    const answer = await server.route(webRequest, {
-      scripts: `<script type="module" async src="${entry}"></script>`,
-      // The browser starts to load the loader and the core while the page renders.
-      earlyHints: (link: string[]) => response.writeEarlyHints({ link }),
-    });
-    send(answer, response);
+    await render(request, response);
   } catch (error) {
     response.statusCode = 500;
     response.end(String((error as Error).stack));

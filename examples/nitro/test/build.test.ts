@@ -37,7 +37,7 @@ it('renders a page with the built client entry', async () => {
   const html = await fetch(`http://localhost:${port}/`).then((response) => response.text());
   expect(html).toContain('<h1>Notes</h1>');
   expect(html).toMatch(/<script type="module" async src="\/assets\/client-[\w-]+\.js"><\/script>/);
-  expect(html).not.toContain('/@vite/client');
+  expect(html).not.toContain('/@vite/');
 });
 
 it('serves the client entry, and answers a form post with the page', async () => {

@@ -2,7 +2,7 @@
 // its middleware. The spans of the browser are in `window.spans`, those of the server in
 // `globalThis.serverSpans` of this process, which runs the server.
 import path from 'node:path';
-import { assert, repo, serveBuild, watch, watchPolicy } from '../lib.mjs';
+import { assert, freePort, repo, serveBuild, startProcess, watch, watchPolicy } from '../lib.mjs';
 
 const root = path.join(repo, 'examples/trace');
 const TIMEOUT = 5000;
@@ -172,6 +172,29 @@ export async function run({ browser, url, runner }) {
     assert(!text.includes('items/9') && !text.includes('secret'), 'the path is in the span');
     // The browser logs the 503 itself.
     errors.length = 0;
+  });
+
+  await step('/ under vite dev: the client entry of the app runs', async () => {
+    const port = await freePort();
+    const dev = `http://localhost:${port}`;
+    const stop = await startProcess(
+      process.execPath,
+      [path.join(root, 'node_modules/vite/bin/vite.js'), '--port', String(port), '--strictPort'],
+      { cwd: root, url: dev },
+    );
+    const devPage = await browser.newPage();
+    const devErrors = watch(devPage);
+    try {
+      await devPage.goto(`${dev}/`, { waitUntil: 'load' });
+      // `window.spans` is set by src/client.ts, not by the start module.
+      await devPage.waitForFunction(() => Array.isArray(window.spans), null, {
+        timeout: TIMEOUT,
+      });
+      assert(devErrors.length === 0, devErrors.join('\n'));
+    } finally {
+      await devPage.close();
+      await stop();
+    }
   });
 
   const failures = errors.filter((error) => !error.includes('broken handler'));

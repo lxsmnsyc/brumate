@@ -2,10 +2,20 @@ import { createHash } from 'node:crypto';
 import { parseSync } from 'oxc-parser';
 import type { Site } from './model.ts';
 import type { oxc } from './oxc.ts';
-import { existsSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import {
+  existsSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 import {
   isRunnableDevEnvironment,
@@ -90,8 +100,15 @@ import type { HotUpdate } from './runtime/hot.ts';
 import type { SourceMap } from './sourcemap.ts';
 import { buildReport, formatBuildReport } from './report.ts';
 import type { Budget, ReportChunk } from './report.ts';
-import type { PrerenderOptions } from './prerender.ts';
-import { routeFiles, routeModule, routeTypes } from './routes.ts';
+import type { ManifestChunk, PrerenderOptions } from './prerender.ts';
+import {
+  START_MODULE,
+  devScripts,
+  entryScript,
+  routeFiles,
+  routeModule,
+  routeTypes,
+} from './routes.ts';
 import type { RouteFiles } from './routes.ts';
 
 export interface BrumateOptions {
@@ -158,6 +175,12 @@ export interface BrumateOptions {
    */
   prerender?: boolean | PrerenderOptions;
   /**
+   * The output directory of the client build, relative to the root. The server build reads its
+   * manifest, build ID and hints from it. Defaults to `prerender.client`, then to the output
+   * of the client environment when it differs from the server's, then to `dist/client`.
+   */
+  clientOutDir?: string;
+  /**
    * Skew protection: a page that was open before a deploy keeps working.
    * Each build has an ID, which the page carries and sends with its calls.
    * A call to a function that is gone, or a page of another build, makes
@@ -197,7 +220,6 @@ export interface BrumateOptions {
   trace?: boolean | 'auto';
 }
 
-/** `import 'virtual:brumate/start'` in the client entry starts the loader. */
 /** How many files a build reads or compiles at once, so a large project does not run out of file handles. */
 const BATCH = 32;
 
@@ -215,7 +237,8 @@ async function inBatches<T, R>(list: T[], run: (item: T) => Promise<R>): Promise
   return results;
 }
 
-const START = 'virtual:brumate/start';
+/** `import 'virtual:brumate/start'` in the client entry starts the loader. */
+const START = START_MODULE;
 /**
  * On the dev server, a client entry that imports `start` from `brumate/loader` gets this module
  * in its place. It sets up the hot updates and the devtools around `start`.
@@ -369,6 +392,71 @@ function toList(value: unknown): string[] {
 /** Skips the `node_modules` and hidden directories of a package of components. */
 function packageExclude(directory: string): boolean {
   return directory === 'node_modules' || directory.startsWith('.');
+}
+
+/** Turns a Node request into a web Request. The request signal aborts when the client leaves. */
+function toWebRequest(request: IncomingMessage, response: ServerResponse): Request {
+  const connection = request.socket as { encrypted?: boolean };
+  const protocol = connection.encrypted ? 'https' : 'http';
+  // The URL after Vite removed `base`, which the routes know nothing of.
+  const target = request.url ?? '/';
+  let url: URL;
+  try {
+    url = new URL(target, `${protocol}://${request.headers.host ?? 'localhost'}`);
+  } catch {
+    // A malformed Host header.
+    url = new URL(target, `${protocol}://localhost`);
+  }
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(request.headers)) {
+    // HTTP/2 pseudo headers are not fields.
+    if (value === undefined || name.startsWith(':')) {
+      continue;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        headers.append(name, item);
+      }
+    } else {
+      headers.append(name, value);
+    }
+  }
+  const controller = new AbortController();
+  response.on('close', () => {
+    if (!response.writableFinished) {
+      controller.abort();
+    }
+  });
+  const method = request.method ?? 'GET';
+  const init: RequestInit & { duplex?: 'half' } = { method, headers, signal: controller.signal };
+  if (method !== 'GET' && method !== 'HEAD') {
+    // A stream, so a large upload is not held in memory.
+    init.body = Readable.toWeb(request) as ReadableStream;
+    init.duplex = 'half';
+  }
+  return new Request(url, init);
+}
+
+/** Sends a web Response as it streams. A client that leaves cancels the stream. */
+async function sendWebResponse(
+  answer: Response,
+  request: IncomingMessage,
+  response: ServerResponse,
+): Promise<void> {
+  // Each cookie stays a header of its own.
+  const headers = toNodeHeaders(answer.headers);
+  if (answer.statusText) {
+    response.writeHead(answer.status, answer.statusText, headers);
+  } else {
+    response.writeHead(answer.status, headers);
+  }
+  if (!answer.body || request.method === 'HEAD') {
+    await answer.body?.cancel();
+    response.end();
+    return;
+  }
+  // The pipeline destroys the response when the stream fails, and the stream when the client leaves.
+  await pipeline(Readable.fromWeb(answer.body as never), response);
 }
 
 /** Reads a request body as bytes, so files in form data stay intact. */
@@ -598,6 +686,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   let isServe = false;
   /** The resolved config, for the CSS pipeline of the inline styles. */
   let resolvedConfig: ResolvedConfig | undefined;
+  /** The dev server, which resolves the client entry. */
+  let devServer: ViteDevServer | undefined;
   /** Component IDs to absolute file paths. */
   const files = new Map<string, string>();
   const compiled = new Map<string, { source: string; result: CompileResult }>();
@@ -1328,6 +1418,58 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
 
   /** The hints of the client build of this process, for a server build that follows it. */
   let builtHints: ClientHints | undefined;
+  /** Whether the plugin turned the manifest of the client build on, which the project did not ask for. */
+  let ownManifest = false;
+  /** The config of the build that wrote `builtHints`, so a later build of another config does not use it. */
+  let builtIn: ResolvedConfig | undefined;
+  /** The server environments that started, and those that finished, since the client built. */
+  const startedServers = new Set<string>();
+  const closedServers = new Set<string>();
+  /** Whether the project has Nitro, which serves the files of the client before the entry. */
+  let usesNitro = false;
+  /** Where a build of several environments writes the pages that need the server, for Nitro to bundle. */
+  let shellsId = `${process.pid}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  /** A directory for each build, so builds from one package root at the same time do not share one. */
+  function shellDirectory(appRoot: string): string {
+    return path.resolve(appRoot, 'node_modules/.brumate/shells', shellsId);
+  }
+  /** Removes the shells of this build, and the directories that older builds left behind. */
+  function clearShells(appRoot: string): void {
+    const parent = path.resolve(appRoot, 'node_modules/.brumate/shells');
+    rmSync(shellDirectory(appRoot), { recursive: true, force: true });
+    if (!existsSync(parent)) {
+      return;
+    }
+    const day = 24 * 60 * 60 * 1000;
+    for (const name of readdirSync(parent)) {
+      const old = path.join(parent, name);
+      if (Date.now() - statSync(old).mtimeMs > day) {
+        rmSync(old, { recursive: true, force: true });
+      }
+    }
+  }
+  /** The environments that skipped prerendering, which the build said once. */
+  const skippedPrerender = new Set<string>();
+  /**
+   * Whether the pages of a build of several environments can render in Node: Nitro, or a server
+   * environment with no worker condition. The build imports its bundle to render them.
+   */
+  function rendersInNode(environment: {
+    config: { webCompatible?: boolean; resolve: { conditions?: string[] } };
+  }): boolean {
+    if (usesNitro) {
+      return true;
+    }
+    const conditions = environment.config.resolve.conditions ?? [];
+    for (const name of ['workerd', 'worker', 'edge-light', 'deno']) {
+      if (conditions.includes(name)) {
+        return false;
+      }
+    }
+    return environment.config.webCompatible !== true;
+  }
+  /** The server environments of this build that got the route handler as an entry, to prerender with. */
+  const prerenderEntries = new Set<string>();
 
   /** The IDs of the components in each bundle of the client build, by root, for `hints.json`. */
   const bundleMembers = new Map<string, string[]>();
@@ -1570,16 +1712,181 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     if (builtHints && !isServe) {
       return builtHints;
     }
-    const file = path.join(clientBuildDirectory(root, options.prerender), HINTS_FILE);
-    if (isServe || !existsSync(file)) {
+    if (isServe) {
+      return { all: [], bundles: {} };
+    }
+    const file = path.join(clientDirectory(), HINTS_FILE);
+    if (!existsSync(file)) {
       return { all: [], bundles: {} };
     }
     const read = JSON.parse(readFileSync(file, 'utf8')) as string[] | ClientHints;
     return Array.isArray(read) ? { all: read, bundles: {} } : read;
   }
 
+  /** The directory of the client build: the output of the client environment, such as Nitro's. */
+  function clientDirectory(): string {
+    const pages = options.prerender;
+    if (options.clientOutDir) {
+      return path.resolve(root, options.clientOutDir);
+    }
+    if (typeof pages === 'object' && pages.client) {
+      return clientBuildDirectory(root, pages);
+    }
+    const client = resolvedConfig?.environments?.client?.build.outDir;
+    // A server build that shares the output of the client has no environment of its own to tell.
+    if (client && path.resolve(root, client) !== outDir) {
+      return path.resolve(root, client);
+    }
+    return clientBuildDirectory(root, pages);
+  }
+
+  /** The manifest file of the client build. */
+  function manifestFile(): string {
+    const named =
+      resolvedConfig?.environments?.client?.build.manifest ?? resolvedConfig?.build.manifest;
+    return path.join(clientDirectory(), typeof named === 'string' ? named : '.vite/manifest.json');
+  }
+
+  /**
+   * Whether a module loads for a server: the load says so, or the environment is a server one.
+   * Nitro's server environment loads with `ssr` unset.
+   */
+  function isServerModule(
+    loadOptions: { ssr?: boolean } | undefined,
+    environment: { config: { consumer: string } } | undefined,
+  ): boolean {
+    return Boolean(loadOptions?.ssr) || environment?.config.consumer === 'server';
+  }
+
+  /** The file of the entry in the manifest of the client build, as the output names it. */
+  let builtEntry: { file: string } | { error: string } | undefined;
+
+  /** Reads the entry of the client build from its manifest, or says why there is none. */
+  function readEntry(): { file: string } | { error: string } {
+    const client = clientDirectory();
+    const where = path.relative(root, client) || '.';
+    const file = manifestFile();
+    if (!existsSync(file)) {
+      return {
+        error: `No client manifest at ${path.relative(root, file)}, so the pages have no client entry to load. Build the client first, or set \`clientOutDir\` to the output directory of the client build`,
+      };
+    }
+    let chunks: Record<string, ManifestChunk>;
+    try {
+      chunks = JSON.parse(readFileSync(file, 'utf8')) as Record<string, ManifestChunk>;
+    } catch {
+      return { error: `The client manifest in ${where} is not valid JSON. Build the client again` };
+    }
+    // The chunk of the entry that dev loads. The manifest lists its keys in alphabetical order.
+    const input = clientEntryInput();
+    if (input !== undefined) {
+      const wanted = normalizePath(path.relative(root, path.resolve(root, input)));
+      for (const [key, chunk] of Object.entries(chunks)) {
+        if (chunk.isEntry && (key === wanted || chunk.src === wanted)) {
+          return { file: chunk.file };
+        }
+      }
+    }
+    for (const chunk of Object.values(chunks)) {
+      if (chunk.isEntry) {
+        return { file: chunk.file };
+      }
+    }
+    return {
+      error: `The client manifest in ${where} has no entry. Build the client first, or set \`clientOutDir\` to the output directory of the client build`,
+    };
+  }
+
+  /**
+   * The client entry of the app: the first input of the client environment that is not an HTML
+   * page of Vite. Dev loads it, and the build names its chunk. Vite reads `input` of the
+   * environment before the input of the build.
+   */
+  function clientEntryInput(): string | undefined {
+    const client = resolvedConfig?.environments?.client;
+    const input = client?.input ?? client?.build.rolldownOptions?.input;
+    let inputs: string[] = [];
+    if (typeof input === 'string') {
+      inputs = [input];
+    } else if (Array.isArray(input)) {
+      inputs = input;
+    } else if (input) {
+      inputs = Object.values(input);
+    }
+    for (const item of inputs) {
+      if (!item.endsWith('.html')) {
+        return item;
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * The URL path that the dev server serves the client entry at, or undefined when the app has
+   * none. The input goes through the resolvers of the client, so a virtual module or a package
+   * works too.
+   */
+  async function clientEntryUrl(server: ViteDevServer): Promise<string | undefined> {
+    const input = clientEntryInput();
+    if (input === undefined) {
+      return undefined;
+    }
+    const resolved = await server.environments.client.pluginContainer.resolveId(input, undefined, {
+      isEntry: true,
+    });
+    if (!resolved || resolved.external) {
+      return undefined;
+    }
+    // A virtual module is served by its id, with the NUL character spelled out.
+    if (resolved.id.startsWith('\0')) {
+      return `/@id/__x00__${resolved.id.slice(1)}`;
+    }
+    const file = normalizePath(resolved.id);
+    const relative = normalizePath(path.relative(root, file));
+    // A file outside the root is served by its path on disk.
+    if (relative.startsWith('../') || path.isAbsolute(relative)) {
+      return `/@fs/${file.replace(/^\//, '')}`;
+    }
+    return `/${relative}`;
+  }
+
+  /**
+   * The scripts that `handle` sends when its caller passes none. The dev server gets the client
+   * of Vite and the client entry, or the start module when the app has no entry. A server build
+   * gets the entry of the client build, which must exist.
+   */
+  function defaultScripts(
+    fail: (message: string) => never,
+    warn: (message: string) => void,
+    devEntry?: string,
+  ) {
+    if (isServe) {
+      return devScripts(base, devEntry);
+    }
+    builtEntry ??= readEntry();
+    if ('error' in builtEntry) {
+      return fail(builtEntry.error);
+    }
+    // The entry comes from the client output, so the build ID of the server must be its own.
+    const client = clientDirectory();
+    const found = readBuildId(client);
+    if (found !== undefined && buildId !== undefined && buildId !== found) {
+      warn(
+        `The build ID ${buildId} is not the ${found} of ${path.relative(root, client)}, so the client entry of the pages is of another build. Build the client first, or set BRUMATE_BUILD, for skew protection`,
+      );
+    }
+    return entryScript(base, builtEntry.file);
+  }
+
   /** The route tree module. A DOM test gets the server version of each component in it. */
-  function routeTree(server = false): string {
+  function routeTree(
+    server = false,
+    fail: (message: string) => never = (message) => {
+      throw new Error(message);
+    },
+    warn: (message: string) => void = () => {},
+    devEntry?: string,
+  ): string {
     const env = envFile();
     const hints = clientHints();
     const entry = middlewareFile();
@@ -1594,6 +1901,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       buildId,
       hints.all,
       hints.bundles,
+      // A DOM test mounts the components itself, so its pages need no scripts.
+      server ? '' : defaultScripts(fail, warn, devEntry),
+      // A Nitro build serves files before the entry, so the shells of its pages are server assets.
+      !server && !isServe && Boolean(options.prerender) && usesNitro,
     );
     // The variables are checked when the server starts, before any route loads.
     const serial = serialImports().join('\n');
@@ -1949,8 +2260,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       const stream = (renderToStream as typeof RenderToStream)(component, props, {
         start: `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${path.basename(file, '.brm')}</title></head><body>`,
         end: '</body></html>',
-        // The client of Vite and the loader, as the entry of an app starts it.
-        scripts: `<script type="module" src="/@vite/client"></script><script type="module" src="/@id/__x00__${START}"></script>`,
+        // The client of Vite and the entry of the app, as its pages load them.
+        scripts: devScripts(base, await clientEntryUrl(server)),
       });
       const reader = stream.getReader();
       for (;;) {
@@ -1990,6 +2301,80 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       recording = createRecorder(new AsyncLocalStorage(), format);
     }
     return recording;
+  }
+
+  /** Renders a page of the routes in the SSR environment, so a plain `vite dev` serves them. */
+  async function servePage(
+    server: ViteDevServer,
+    request: IncomingMessage,
+    response: ServerResponse,
+    next: (error?: unknown) => void,
+  ): Promise<void> {
+    const ssr = server.environments.ssr;
+    if (!ssr || !isRunnableDevEnvironment(ssr)) {
+      next();
+      return;
+    }
+    try {
+      const { handle } = (await ssr.runner.import(ROUTES)) as {
+        handle(
+          request: Request,
+          options?: { address?: string },
+        ): Promise<Response | undefined> | Response | undefined;
+      };
+      const answer = await handle(toWebRequest(request, response), {
+        address: request.socket.remoteAddress,
+      });
+      if (!answer) {
+        next();
+        return;
+      }
+      await sendWebResponse(answer, request, response);
+    } catch (error) {
+      // Once the page has started, its status is sent, and a second document would land inside
+      // the first. The error goes to the terminal and the response is destroyed.
+      if (response.headersSent) {
+        // A client that leaves mid-stream is not an error of the page.
+        if ((error as { code?: string } | undefined)?.code !== 'ERR_STREAM_PREMATURE_CLOSE') {
+          server.config.logger.error(
+            error instanceof Error ? (error.stack ?? error.message) : String(error),
+          );
+        }
+        response.destroy();
+        return;
+      }
+      if (error instanceof Error) {
+        server.ssrFixStacktrace(error);
+      }
+      response.statusCode = 500;
+      response.setHeader('content-type', 'text/html; charset=utf-8');
+      response.end(errorPage(error, server));
+    }
+  }
+
+  let warnedAppType = false;
+
+  /** The middleware that serves the pages, unless the server is not Vite's to answer with. */
+  function pagesMiddleware(server: ViteDevServer): (() => void) | undefined {
+    // An own server, or Nitro, owns the requests.
+    if (server.config.server.middlewareMode || server.environments.nitro) {
+      return undefined;
+    }
+    const appType = server.config.appType;
+    if (appType !== 'custom') {
+      if (!warnedAppType) {
+        warnedAppType = true;
+        server.config.logger.warn(
+          `brumate pages need \`appType: 'custom'\`, and the config sets '${appType}', so \`vite dev\` does not serve them`,
+        );
+      }
+      return undefined;
+    }
+    return () => {
+      server.middlewares.use((request, response, next) => {
+        void servePage(server, request, response, next);
+      });
+    };
   }
 
   async function handleDevRPC(
@@ -2223,6 +2608,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }
       }
       const shared = packageConfig(config);
+      // Vite's fallback to `index.html` would rewrite the URL of a page before the middleware.
+      if (env.command === 'serve' && !env.isPreview && config.appType === undefined) {
+        shared.appType = 'custom';
+      }
       if (bridgePackages.length > 0) {
         // The import names of the packages, not the bridge names, which can carry a version.
         const names = [...new Set(bridgePackages.map((item) => item.package))];
@@ -2258,11 +2647,32 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         const preload = config.build?.modulePreload;
         // The files of earlier builds stay, and the build removes the ones that are too old itself.
         const keep = options.skew?.keep ? { build: { emptyOutDir: false } } : {};
+        // The server build reads the manifest, for the entry that pages load by default. Only
+        // the client environment writes it, so a build of several environments adds no other.
+        const manifest =
+          config.build?.manifest === undefined &&
+          config.environments?.client?.build?.manifest === undefined
+            ? { environments: { client: { build: { manifest: true } } } }
+            : {};
+        ownManifest = 'environments' in manifest;
+        // Nitro bundles the pages that need the server as its server assets. Without Nitro, the
+        // key is unused.
+        shellsId = `${process.pid}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+        const nitroConfig =
+          options.prerender && env.command === 'build'
+            ? {
+                nitro: {
+                  serverAssets: [{ baseName: 'brumate', dir: shellDirectory(appRoot) }],
+                },
+              }
+            : {};
         if (preload === false) {
-          return { ...shared, ...keep };
+          return { ...shared, ...manifest, ...keep, ...nitroConfig };
         }
         return {
           ...shared,
+          ...manifest,
+          ...nitroConfig,
           build: {
             ...keep.build,
             modulePreload: {
@@ -2328,6 +2738,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       relativeUrls =
         config.base === './' || config.base === '' || !!config.experimental.renderBuiltUrl;
       isSsrBuild = Boolean(config.build.ssr);
+      usesNitro = config.plugins.some((item) => item.name.startsWith('nitro:'));
     },
 
     async generateBundle(_output, bundle) {
@@ -2436,8 +2847,45 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
     },
 
-    async writeBundle(_output, bundle) {
+    async writeBundle(output, bundle) {
+      const environment = this.environment;
+      if (
+        options.prerender &&
+        !isSsrBuild &&
+        environment?.config.consumer === 'server' &&
+        prerenderEntries.delete(environment.name)
+      ) {
+        // The pages go to the client directory, which a host such as Nitro serves as files.
+        let chunk: (typeof bundle)[string] | undefined;
+        for (const item of Object.values(bundle)) {
+          if (item.type === 'chunk' && item.isEntry && item.name === PRERENDER_ENTRY) {
+            chunk = item;
+            break;
+          }
+        }
+        if (chunk && output.dir) {
+          const settings = {
+            ...(options.prerender === true ? {} : options.prerender),
+            client: clientDirectory(),
+          };
+          const written = await prerender(
+            path.join(output.dir, chunk.fileName),
+            root,
+            base,
+            settings,
+            usesNitro ? shellDirectory(root) : undefined,
+          );
+          this.info(`Prerendered ${written.length} pages`);
+        }
+        return;
+      }
       if (!isSsrBuild) {
+        // A server environment of a build of several environments has no client files to describe.
+        if (environment?.config.consumer === 'server') {
+          return;
+        }
+        // The files go to the output of this environment, which the server reads as the client directory.
+        const clientOut = output.dir ?? outDir;
         // The modules that every page loads early, for the `Link` headers of the server build.
         const chunks = new Map<string, Extract<(typeof bundle)[string], { type: 'chunk' }>>();
         for (const item of Object.values(bundle)) {
@@ -2554,7 +3002,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
             this.error(`The client build has no chunk for the bundle of ${root}`);
           }
         }
-        await mkdir(path.join(outDir, '.brumate'), { recursive: true });
+        await mkdir(path.join(clientOut, '.brumate'), { recursive: true });
         const all: string[] = [];
         for (const name of hints) {
           all.push(`${base}${name}`);
@@ -2573,14 +3021,19 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         // server after the client, with the hints of that client.
         if (hasManifest) {
           builtHints = clientOutput;
+          builtIn = resolvedConfig;
+          // A new client build starts a round: its servers read its entry and its manifest.
+          builtEntry = undefined;
+          startedServers.clear();
+          closedServers.clear();
         }
-        await writeFile(path.join(outDir, HINTS_FILE), JSON.stringify(clientOutput));
+        await writeFile(path.join(clientOut, HINTS_FILE), JSON.stringify(clientOutput));
         if (buildId !== undefined) {
           const written: string[] = [];
           for (const item of Object.values(bundle)) {
             written.push(item.fileName);
           }
-          const removed = pruneBuilds(outDir, buildId, written, options.skew?.keep ?? 0);
+          const removed = pruneBuilds(clientOut, buildId, written, options.skew?.keep ?? 0);
           if (removed.length > 0) {
             this.info(`Removed the files of ${removed.length} older builds`);
           }
@@ -2600,16 +3053,58 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       if (!chunk) {
         return;
       }
-      const settings = options.prerender === true ? {} : options.prerender;
+      const settings = {
+        ...(options.prerender === true ? {} : options.prerender),
+        client: clientDirectory(),
+      };
       const written = await prerender(path.join(outDir, chunk.fileName), root, base, settings);
       this.info(`Prerendered ${written.length} pages`);
     },
 
+    // A build of several environments in one process, such as with Nitro, writes the client
+    // into the public directory. The manifest was only for the server environments, so it goes
+    // after the last of them, which each read it once their routes loaded.
+    async closeBundle() {
+      const name = this.environment?.name;
+      if (this.environment?.config.consumer !== 'server' || !ownManifest || !name) {
+        return;
+      }
+      if (builtIn !== resolvedConfig) {
+        return;
+      }
+      closedServers.add(name);
+      // Only the servers that started this round count: one that never builds must not hold it.
+      for (const other of startedServers) {
+        if (!closedServers.has(other)) {
+          return;
+        }
+      }
+      await rm(manifestFile(), { force: true });
+    },
+
     async buildStart() {
+      if (builtIn !== resolvedConfig) {
+        builtEntry = undefined;
+      } else if (!isServe && this.environment?.config.consumer === 'server') {
+        // The first server of a round reads the entry, so the manifest can go before the last
+        // one starts. Every server of the round names the same entry.
+        startedServers.add(this.environment.name);
+        builtEntry ??= readEntry();
+      }
+      // The shells of an earlier build must not ship with this one.
+      if (
+        !isServe &&
+        !isSsrBuild &&
+        options.prerender &&
+        usesNitro &&
+        this.environment?.config.consumer !== 'server'
+      ) {
+        clearShells(root);
+      }
       if (!isServe) {
         if (isSsrBuild) {
           // The server build names the build of the client, which must come first.
-          const client = clientBuildDirectory(root, options.prerender);
+          const client = clientDirectory();
           buildId = process.env.BRUMATE_BUILD || readBuildId(client);
           if (buildId === undefined) {
             this.warn(
@@ -2622,7 +3117,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
               `No ${HINTS_FILE} in ${path.relative(root, client)}, so the pages of this server load no client code. Build the client first`,
             );
           }
-        } else {
+        } else if (this.environment?.config.consumer !== 'server' || buildId === undefined) {
+          // The servers of a build of several environments keep the ID of the client before them.
           buildId =
             process.env.BRUMATE_BUILD || `${Date.now().toString(36)}${hash(String(Math.random()))}`;
         }
@@ -2798,10 +3294,43 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
       if (id === `\0${SERVER}`) {
         // A DOM test gets the server code of each file too, so its calls can run in the test.
-        return serverRegistry(!loadOptions?.ssr);
+        return serverRegistry(!isServerModule(loadOptions, this.environment));
       }
       if (id === `\0${ROUTES}`) {
-        return routeTree(!loadOptions?.ssr);
+        // A build of several environments, such as Nitro's, has no `--ssr` entry to add the route
+        // handler to. The server environment that loads the routes emits it as an entry too.
+        const environment = this.environment;
+        if (
+          options.prerender &&
+          !isServe &&
+          !isSsrBuild &&
+          environment?.config.consumer === 'server' &&
+          !prerenderEntries.has(environment.name)
+        ) {
+          if (!rendersInNode(environment)) {
+            if (!skippedPrerender.has(environment.name)) {
+              skippedPrerender.add(environment.name);
+              this.warn(
+                `Prerendering is skipped for the ${environment.name} environment: it does not run in Node, and the build renders the pages in Node. Prerender with a server build that runs in Node`,
+              );
+            }
+          } else if (usesNitro && environment.name === 'nitro') {
+            // Nitro lists its public files and server assets while this environment bundles, so
+            // the pages that the build writes afterward would not ship.
+            this.error(
+              'The routes load in the nitro environment, so the prerendered pages would be written after Nitro lists its files. Put the entry of the server in src/entry-server.ts, so the routes build in their own environment before Nitro bundles',
+            );
+          } else {
+            prerenderEntries.add(environment.name);
+            this.emitFile({ type: 'chunk', id: ROUTES, name: PRERENDER_ENTRY });
+          }
+        }
+        return routeTree(
+          !isServerModule(loadOptions, this.environment),
+          (message) => this.error(message),
+          (message) => this.warn(message),
+          isServe && devServer ? await clientEntryUrl(devServer) : undefined,
+        );
       }
       if (id === `\0${TESTING}`) {
         const entry = middlewareFile();
@@ -3014,6 +3543,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
 
     configureServer(server) {
+      devServer = server;
       // Vite watches the root. An edit of a linked package, such as one of a workspace, updates the page too.
       const linked: string[] = [];
       for (const item of packages) {
@@ -3213,6 +3743,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }
         next();
       });
+      // After the middlewares of Vite and the ones above, so only a request that no file or
+      // call answers reaches a page.
+      return pagesMiddleware(server);
     },
 
     // A server environment that runs apart from Vite, such as Nitro's worker, keeps the code

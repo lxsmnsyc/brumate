@@ -15,7 +15,7 @@ pnpm --filter brumate build
 pnpm --filter example-todos dev
 ```
 
-`server.ts` renders the page with Vite in development. Vite serves the client modules and answers server function calls.
+`server.ts` is a server of your own: it runs Vite in middleware mode and renders the page with `toNodeHandler` from `srvx/node`. Vite serves the client modules and answers server function calls. It writes no script tags, since brumate does.
 
 ## Production
 
@@ -27,10 +27,10 @@ pnpm --filter example-todos start
 
 `build` writes two builds:
 
-- `dist/client`: the client entry, `src/client.ts`, and a chunk for each component entry and part. `.vite/manifest.json` gives the file of the client entry.
+- `dist/client`: the client entry, `src/client.ts`, and a chunk for each component entry and part. `.vite/manifest.json` gives the file of the client entry, which brumate puts in the script tag.
 - `dist/server`: `src/server.ts`, which exports `handle` for server function calls and `route` for pages.
 
-`server.prod.ts` serves `dist/client/assets`, answers server function calls with `handle`, and streams every other page with `route`.
+`server.prod.ts` serves `dist/client/assets`, answers server function calls with `handle`, and streams every other page with `route`, as a `toNodeHandler` of `srvx/node`.
 
 ## What to look at
 

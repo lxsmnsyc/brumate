@@ -1,15 +1,18 @@
 // The production build of examples/tracker, under the same strict content
-// security policy as the todos suite. /about and /titles are prerendered files.
+// security policy as the todos suite. The build runs on Nitro.
 import path from 'node:path';
-import { assert, repo, serveBuild, watch, watchPolicy } from '../lib.mjs';
+import { assert, repo, serveNitro, watch, watchPolicy } from '../lib.mjs';
 
 const root = path.join(repo, 'examples/tracker');
 const TIMEOUT = 5000;
 
-export const build = [['pnpm', ['--filter', 'example-tracker', 'build']]];
+// NODE_ENV=production, because Nitro builds for development under another value.
+export const build = [
+  ['pnpm', ['--filter', 'example-tracker', 'build'], { env: { NODE_ENV: 'production' } }],
+];
 
 export function start() {
-  return serveBuild(root);
+  return serveNitro(root);
 }
 
 const titles = (page) =>
@@ -30,11 +33,11 @@ export async function run({ browser, url, runner }) {
   watchPolicy(page, errors);
   const step = runner.flow('tracker', { page, errors });
 
-  await step('/: the list renders under the CSP and the activity streams in', async () => {
+  await step('/: the list renders under Trusted Types and the activity streams in', async () => {
     const answer = await page.goto(`${url}/`);
     assert(
-      answer.headers()['content-security-policy']?.includes("'strict-dynamic'"),
-      'the page has no CSP header',
+      answer.headers()['content-security-policy']?.includes("'script'"),
+      'the page has no Trusted Types policy',
     );
     const shown = await titles(page);
     assert(shown.length === 3, `the list shows ${shown.length} issues: ${shown.join(', ')}`);
@@ -203,62 +206,19 @@ export async function run({ browser, url, runner }) {
     assert(await page.evaluate(() => window.__e2eSamePage === true), 'back loaded a new page');
   });
 
-  await step('/about: the prerendered page opens from a link and as a file', async () => {
+  await step('/about: the page opens from a link and directly', async () => {
     await page.click('nav a[href="/about"]');
     await page.waitForFunction(() => document.title === 'About', null, { timeout: TIMEOUT });
     assert(await page.evaluate(() => window.__e2eSamePage === true), 'the link loaded a new page');
-    // The #defer body of the static page renders on the server, for the user who signed in.
+    // The #defer body of the page renders on the server, for the user who signed in.
     await page.locator('.who', { hasText: 'You are signed in as' }).waitFor({ timeout: TIMEOUT });
     await page.goto(`${url}/about`);
     await page.locator('h1', { hasText: 'About' }).waitFor({ timeout: TIMEOUT });
     await page.locator('.who', { hasText: 'You are signed in as' }).waitFor({ timeout: TIMEOUT });
   });
 
-  await step('/about: the #defer body waits for its own stylesheet before it shows', async () => {
-    // The body of the block links a stylesheet that the page does not have, and the sheet is slow.
-    await page.route('**/e2e-defer.css', async (route) => {
-      await new Promise((done) => setTimeout(done, 400));
-      await route.fulfill({ contentType: 'text/css', body: '.who{color:rgb(1,2,3)}' });
-    });
-    await page.route('**/about', async (route) => {
-      const request = route.request();
-      if (!request.headers()['x-brumate-defer']) {
-        await route.continue();
-        return;
-      }
-      const response = await route.fetch();
-      const link = '<link rel="stylesheet" href="/e2e-defer.css">';
-      await route.fulfill({ response, body: link + (await response.text()) });
-    });
-    await page.addInitScript(() => {
-      window.__e2eDefer = { shown: false, pending: -1 };
-      new MutationObserver(() => {
-        const who = document.querySelector('.who');
-        if (who && /You are/.test(who.textContent) && !window.__e2eDefer.shown) {
-          window.__e2eDefer.shown = true;
-          const link = document.querySelector('link[href="/e2e-defer.css"]');
-          if (!link) {
-            window.__e2eDefer.pending = -1;
-          } else {
-            window.__e2eDefer.pending = link.sheet ? 0 : 1;
-          }
-        }
-      }).observe(document, { childList: true, subtree: true, characterData: true });
-    });
-    try {
-      await page.goto(`${url}/about`);
-      await page.locator('.who', { hasText: 'You are signed in as' }).waitFor({ timeout: TIMEOUT });
-      const seen = await page.evaluate(() => window.__e2eDefer);
-      assert(seen.pending !== -1, 'the body of the block did not link the stylesheet');
-      assert(seen.pending === 0, 'the #defer body showed before its stylesheet applied');
-    } finally {
-      await page.unroute('**/about');
-      await page.unroute('**/e2e-defer.css');
-    }
-  });
-
   await step(
-    '/team: browser code on a prerendered page keeps its #defer line for the user',
+    '/team: browser code on a page with a #defer block keeps its #defer line for the user',
     async () => {
       await page.click('nav a[href="/team"]');
       await page.waitForFunction(() => document.title === 'Team', null, { timeout: TIMEOUT });
@@ -270,37 +230,58 @@ export async function run({ browser, url, runner }) {
     },
   );
 
-  await step('/from?from=docs: the prerendered page keeps its query string', async () => {
+  await step('/from, /titles: Nitro serves the prerendered pages as files', async () => {
+    for (const pathname of ['/from', '/titles', '/titles/other']) {
+      // oxlint-disable-next-line no-await-in-loop -- One path at a time keeps the message clear.
+      const answer = await page.request.get(`${url}${pathname}`);
+      const headers = answer.headers();
+      // A file has an etag and a length. A rendered page streams, with neither.
+      assert(
+        headers.etag && headers['last-modified'] && headers['content-length'],
+        `${pathname} was rendered on the request, not served as a file`,
+      );
+    }
+    // A prerendered page with a #defer block is a shell: the entry sends it, with the bodies after it.
+    for (const pathname of ['/about', '/team']) {
+      // oxlint-disable-next-line no-await-in-loop -- One path at a time keeps the message clear.
+      const answer = await page.request.get(`${url}${pathname}`);
+      const text = await answer.text();
+      assert(
+        !answer.headers().etag,
+        `${pathname} was served as a file, so no server sees its #defer`,
+      );
+      assert(text.includes(' b-hole'), `${pathname} is not sent as a shell`);
+    }
+  });
+
+  await step('/from?from=docs: the page keeps its query string', async () => {
     await page.goto(`${url}/from?from=docs`);
     await page.locator('.from', { hasText: 'Opened from docs.' }).waitFor({ timeout: TIMEOUT });
     const search = await page.evaluate(() => location.search);
     assert(search === '?from=docs', `the URL became ${search}`);
   });
 
-  await step(
-    '/titles: a title in #head follows its memo after links between prerendered pages',
-    async () => {
-      await page.goto(`${url}/titles`);
-      await page.waitForLoadState('networkidle');
-      await page.click('button.soups');
-      await page.waitForFunction(() => document.title === 'Soups · Titles', null, {
-        timeout: TIMEOUT,
-      });
-      await page.evaluate(() => (window.__e2eTitles = true));
-      await page.click('a.other');
-      await page.waitForURL('**/titles/other', { timeout: TIMEOUT });
-      await page.locator('a.home').waitFor({ timeout: TIMEOUT });
-      await page.click('a.home');
-      await page.waitForURL('**/titles', { timeout: TIMEOUT });
-      await page.locator('button.soups').waitFor({ timeout: TIMEOUT });
-      assert(await page.evaluate(() => window.__e2eTitles === true), 'a link loaded a new page');
-      await page.waitForFunction(() => document.title === 'Titles', null, { timeout: TIMEOUT });
-      await page.click('button.soups');
-      await page.waitForFunction(() => document.title === 'Soups · Titles', null, {
-        timeout: TIMEOUT,
-      });
-    },
-  );
+  await step('/titles: a title in #head follows its memo after links between pages', async () => {
+    await page.goto(`${url}/titles`);
+    await page.waitForLoadState('networkidle');
+    await page.click('button.soups');
+    await page.waitForFunction(() => document.title === 'Soups · Titles', null, {
+      timeout: TIMEOUT,
+    });
+    await page.evaluate(() => (window.__e2eTitles = true));
+    await page.click('a.other');
+    await page.waitForURL('**/titles/other', { timeout: TIMEOUT });
+    await page.locator('a.home').waitFor({ timeout: TIMEOUT });
+    await page.click('a.home');
+    await page.waitForURL('**/titles', { timeout: TIMEOUT });
+    await page.locator('button.soups').waitFor({ timeout: TIMEOUT });
+    assert(await page.evaluate(() => window.__e2eTitles === true), 'a link loaded a new page');
+    await page.waitForFunction(() => document.title === 'Titles', null, { timeout: TIMEOUT });
+    await page.click('button.soups');
+    await page.waitForFunction(() => document.title === 'Soups · Titles', null, {
+      timeout: TIMEOUT,
+    });
+  });
 
   await step('320 px: no page scrolls sideways', async () => {
     await page.setViewportSize({ width: 320, height: 640 });

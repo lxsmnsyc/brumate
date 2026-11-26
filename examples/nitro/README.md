@@ -7,4 +7,4 @@ A brumate app that [Nitro](https://nitro.build) serves and builds.
 - `node .output/server/index.mjs` serves the build.
 - `pnpm test` builds the app, runs it, and posts a form to it.
 
-`src/entry-server.ts` answers each request. `vite.config.ts` names the client entry.
+`src/entry-server.ts` answers each request. `vite.config.ts` names the client entry, and brumate writes its script tag.

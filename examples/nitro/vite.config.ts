@@ -7,7 +7,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [brumate(), nitro()],
   environments: {
-    // The entry that the browser loads. `src/entry-server.ts` names it with `?assets=client`.
+    // The entry that the browser loads. Brumate writes its script tag.
     client: { build: { rollupOptions: { input: 'src/client.ts' } } },
   },
 });

@@ -1,13 +1,11 @@
 import brumate from 'brumate/vite';
+import { nitro } from 'nitro/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  plugins: [brumate()],
-  build: {
-    // The production server reads the manifest to find the built client entry.
-    manifest: true,
-    rolldownOptions: {
-      input: 'src/client.ts',
-    },
+  plugins: [brumate(), nitro()],
+  environments: {
+    // The entry that the browser loads. Brumate writes its script tag.
+    client: { build: { rollupOptions: { input: 'src/client.ts' } } },
   },
 });

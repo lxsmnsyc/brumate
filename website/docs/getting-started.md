@@ -1,6 +1,6 @@
 # Getting started
 
-A brumate app is a Vite app with the brumate plugin, route files under `src/routes`, and a small server that renders pages. This page sets one up from scratch.
+A brumate app is a Vite app with the brumate plugin and route files under `src/routes`. `vite dev` serves its pages. This page sets one up from scratch.
 
 ## Install
 
@@ -18,7 +18,6 @@ my-app/
 ├── package.json
 ├── tsconfig.json
 ├── vite.config.ts
-├── server.ts            the development server
 └── src/
     ├── client.ts        starts the loader in the browser
     └── routes/
@@ -36,7 +35,6 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [brumate()],
   build: {
-    manifest: true,
     rolldownOptions: { input: 'src/client.ts' },
   },
 });
@@ -48,6 +46,8 @@ The client entry starts the loader. The loader then loads the core and the code 
 // src/client.ts
 import 'virtual:brumate/start';
 ```
+
+You never write the script tag of the client entry. brumate adds it to every page.
 
 ## Add a layout and a page
 
@@ -89,56 +89,21 @@ A layout renders the document around the pages. `children` is the page for the c
 
 ## Serve pages in development
 
-`virtual:brumate/routes` exports `handle`, which answers a request with the page for its path. In development, Vite loads it and serves the client modules:
-
-```ts
-// server.ts
-import { createServer as createHTTPServer } from 'node:http';
-import { Readable } from 'node:stream';
-import { toNodeHeaders } from 'brumate/server';
-import { errorPage } from 'brumate/vite';
-import { createServer } from 'vite';
-
-const vite = await createServer({ server: { middlewareMode: true }, appType: 'custom' });
-
-createHTTPServer((request, response) => {
-  vite.middlewares(request, response, async () => {
-    try {
-      const { handle } = await vite.ssrLoadModule('virtual:brumate/routes');
-      const answer = await handle(new Request(`http://localhost${request.url}`), {
-        scripts:
-          '<script type="module" src="/@vite/client"></script><script type="module" async src="/src/client.ts"></script>',
-      });
-      if (!answer) {
-        response.statusCode = 404;
-        response.end('Not found');
-        return;
-      }
-      response.writeHead(answer.status, toNodeHeaders(answer.headers));
-      Readable.fromWeb(answer.body).pipe(response);
-    } catch (error) {
-      response.statusCode = 500;
-      response.setHeader('content-type', 'text/html');
-      response.end(errorPage(error, vite));
-    }
-  });
-}).listen(5173);
-```
-
-- `scripts` is the markup that loads the client entry. It goes at the end of the page. `/@vite/client` updates components when you edit them.
-- `errorPage` answers with the Errors tab of the devtools when a page fails to render, such as after a compile error. It shows the lines of the file around the error, and the page loads again when you fix it.
-- `handle` returns undefined when no route matches and the root has no `_error.brm`.
-- This server passes only the URL. Forms that post to a route need the method, the headers and the body too. [`examples/todos`](https://github.com/lxsmnsyc/brumate/tree/main/examples/todos) has a complete server.
-
-Run it:
+Run Vite:
 
 ```bash
-node server.ts
+pnpm vite dev
 ```
 
 Open `http://localhost:5173`. The page shows before any script runs, and the click handler loads with the page.
 
-[Deploying](./deploying.md) describes the production build and server, and static sites.
+- The plugin answers each request that Vite and the server functions leave, of any method, with `handle` from `virtual:brumate/routes`. Pages stream, and forms post to their routes.
+- brumate adds the script tags at the end of each page: the Vite client, which updates components when you edit them, and your client entry, the `input` of the client build. An app with no client entry gets the loader.
+- A page that fails to render, such as after a compile error, answers with the Errors tab of the devtools. It shows the lines of the file around the error, and the page loads again when you fix it.
+- A path that no route matches gets Vite's 404, unless the root has an `_error.brm`.
+- The plugin sets `appType: 'custom'` when the config leaves it unset. See [The dev server](./reference-plugin.md#the-dev-server).
+
+An app needs no server file in development. [Deploying](./deploying.md) describes the production server, with Nitro or a server of your own, and static sites.
 
 ## Edit while it runs
 
@@ -149,7 +114,7 @@ The dev server updates the page when you save a component, and keeps its state w
 - An edit of the markup, or one that adds or removes a value, renders the page again without reloading it. The server renders the new markup, and each signal of the component's script keeps its value, by its name. Signals in blocks, such as in a `#for` body, start again.
 - A file that does not compile reloads the page, which shows the error. See [`errorPage`](./reference-plugin.md#errorpageerror-server).
 
-A client entry that calls `start` from `brumate/loader` itself gets the same updates and the devtools: the plugin sets them up on the dev server, so the entry only calls `start({ load })`.
+A client entry that calls `start` from `brumate/loader` itself gets the same updates and the devtools. The plugin sets them up on the dev server, so the entry only calls `start({ load })`. Under `vite dev`, the script tags that brumate adds load that entry, so its own code runs, as it does in the build.
 
 Rendering again uses the client router. With [`navigate: false`](./navigation.md#links-that-the-browser-loads), the page reloads instead.
 

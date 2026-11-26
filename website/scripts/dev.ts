@@ -13,10 +13,6 @@ const http = createHTTPServer((request, response) => {
       const { handle } = await vite.ssrLoadModule('virtual:brumate/routes');
       const answer: Response | undefined = await handle(
         new Request(`http://localhost${request.url}`),
-        {
-          scripts:
-            '<script type="module" src="/@vite/client"></script><script type="module" async src="/src/client.ts"></script>',
-        },
       );
       if (!answer) {
         response.statusCode = 404;
