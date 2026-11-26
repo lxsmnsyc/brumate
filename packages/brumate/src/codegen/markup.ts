@@ -259,6 +259,22 @@ export type Fill = { kind: 'if'; renders: string[] } | { kind: 'for'; render: st
 /** The `$handler` calls that each patch has edited, since emitters of a file share its patch. */
 const handlerEdits = new WeakMap<Patch, Set<object>>();
 
+/** The tags that HTML and SVG both have, so the parent decides the namespace of the element. */
+const AMBIGUOUS_TAGS = new Set(['a', 'script', 'style', 'title']);
+
+/** True if markup has an element at its top that HTML and SVG both have. */
+function hasAmbiguousTop(nodes: Markup[]): boolean {
+  for (const node of nodes) {
+    if (node.kind === 'element' && AMBIGUOUS_TAGS.has(node.tag.toLowerCase())) {
+      return true;
+    }
+    if (node.kind === 'fragment' && hasAmbiguousTop(node.children)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 const CLIENT_HELPERS: Record<string, string> = {
   scope: 'createScope',
   slots: 'setSlots',
@@ -331,6 +347,32 @@ export function decodeAttribute(text: string): string {
 /** The text that markup text shows, with its character references read. */
 function decodeText(html: string): string {
   return decodeReferences(html);
+}
+
+/** Code that holds a place for nodes in HTML: a component, a dynamic tag or a block. */
+const PLACES = /^\$\$b\.(?:component|dynamic|nodes)\(/;
+
+/** The names of the parameters whose type is text: a string, a number or a boolean. */
+function textParameters(params: oxc.ParamPattern[]): Set<string> {
+  const names = new Set<string>();
+  for (const param of params) {
+    if (param.type !== 'Identifier') {
+      continue;
+    }
+    const type = param.typeAnnotation?.typeAnnotation.type;
+    if (type === 'TSStringKeyword' || type === 'TSNumberKeyword' || type === 'TSBooleanKeyword') {
+      names.add(param.name);
+    }
+  }
+  return names;
+}
+
+/** True when the compiler knows an expression is text: a literal, a template string or a text parameter. */
+function isText(node: oxc.Node, names: Set<string>): boolean {
+  if (node.type === 'Literal' || node.type === 'TemplateLiteral') {
+    return true;
+  }
+  return node.type === 'Identifier' && names.has(node.name);
 }
 
 /** The markup of an inserted literal, such as `{'<b>'}`, or undefined for other code. */
@@ -425,6 +467,13 @@ export class Emitter {
     this.wait = options.mode === 'server' ? 'await ' : '';
     this.async = options.mode === 'server' ? 'async ' : '';
     this.ctxArgument = options.mode === 'server' ? '$$ctx' : 'undefined';
+    // The mark of an insert that may hold nodes (see `emitTemplate`) has a number that the source
+    // does not hold, so no text of the component reads as one.
+    let number = 0;
+    while (file.source.includes(`$$n${number}:`)) {
+      number++;
+    }
+    this.mark = `/*$$n${number}:`;
     // Only the dev server checks, so a build carries no hint.
     this.inParagraph =
       options.mode === 'server' && !plan.hideNames ? paragraphComponents(file) : new Set();
@@ -1901,6 +1950,19 @@ export class Emitter {
     }
   }
 
+  /**
+   * In the body of a template of the browser, the names of its parameters that are text by their
+   * type. Another value can be children or a template, which an insert renders where it is, so it
+   * gets the scope of its place if the template renders from HTML.
+   */
+  private templateText: Set<string> | undefined;
+
+  /** The start of the mark that an insert that may hold nodes gets in a template. */
+  private readonly mark: string;
+
+  /** The inserts of the template that have a scope, which hold a place when it renders from HTML. */
+  private templateInserts = 0;
+
   emitTemplate(template: TemplateDecl): void {
     const first = template.params[0];
     const last = template.params.at(-1);
@@ -1922,13 +1984,48 @@ export class Emitter {
       );
     }
     this.line(`${this.async}function ${name}(${params})${type} {`);
+    const fn = this.currentFn;
     this.line(`let $$html = '';`);
     // A template can render anywhere, so its elements get the style variables.
+    this.templateText =
+      this.options.mode === 'client' ? textParameters(template.params) : undefined;
+    const from = this.lines.length;
+    this.templateInserts = 0;
     this.atTopLevel(() => this.emitBody(template.body));
+    this.templateText = undefined;
     this.flush();
     // The output names the template's scope, which the insert links to where it is called.
     const at = this.plan.scopes.get(scope)!.needsId ? `, ${this.scopeVar(scope)}` : '';
-    this.line(`return $$b.raw($$html${at});`);
+    // In the browser, the template clones its markup when it can. A template can be called
+    // anywhere, so one whose top element is SVG or HTML by where it goes (`<a>`) renders from
+    // HTML, which the insert parses in its own context.
+    const cloned =
+      this.options.mode === 'client' &&
+      this.options.hoist !== undefined &&
+      !hasAmbiguousTop(template.body.children) &&
+      cloneLines(this, this.options.hoist, fn, template.body);
+    // The marks of the inserts that may hold nodes: the scope of their place for HTML, none for a clone.
+    const marks = new RegExp(`${this.mark.replace(/[$*/]/g, '\\$&')}([^*]*)\\*/`, 'g');
+    let places = false;
+    for (let index = from; index < this.lines.length; index++) {
+      this.lines[index] = this.lines[index]!.replace(marks, (_, scope: string) => {
+        places ||= !cloned;
+        return cloned ? '' : `, ${scope}`;
+      });
+    }
+    if (!cloned) {
+      // A template that renders from HTML holds a place for the nodes of a component, a dynamic
+      // tag or a block, and for an insert that has a scope. The browser needs the code that
+      // parses them. The parts are code, not the text that the markup writes.
+      for (const flush of this.flushes) {
+        for (const part of flush.parts) {
+          places ||= flush.line >= from && 'code' in part && PLACES.test(part.code);
+        }
+      }
+      places ||= this.templateInserts > 0;
+      this.plan.rawPlaces ||= places && this.options.mode === 'client';
+    }
+    this.line(cloned ? `return $$b.rawNodes($$f${at});` : `return $$b.raw($$html${at});`);
     this.close();
   }
 
@@ -1979,9 +2076,19 @@ export class Emitter {
             : '';
         // A primitive renders as text, so it needs neither the place of the insert nor an await.
         const inner = this.pended(this.expression(node.expression), node.expression, scope);
+        // In a template of the browser, a value that may hold nodes gets a mark, which becomes the
+        // scope of its place when the template renders from HTML: its insert holds a place there.
+        // A template that clones has no insert, so the mark goes.
+        const mark =
+          this.templateText && at === '' && !isText(node.expression.ast, this.templateText)
+            ? `${this.mark}${this.ctxArgument}, ${this.scopeVar(instanceScope(this.plan, scope))}*/`
+            : '';
+        if (this.templateText && (at !== '' || mark !== '')) {
+          this.templateInserts++;
+        }
         const value = this.isPrimitiveInsert(node.expression)
           ? `$$b.insert(${inner})`
-          : this.ready(`$$b.insert(${inner}${at})`);
+          : this.ready(`$$b.insert(${inner}${at}${mark})`);
         // A literal renders when the component compiles.
         const text = literalText(node.expression.ast);
         const settled = this.settledMemos(
@@ -3191,8 +3298,14 @@ export class Emitter {
    * the block, so the browser finds the body to hide while a memo of the header loads.
    */
   private emitLoadingBody(block: Block & { kind: 'loading' }, scope: Scope): void {
-    this.open(scope, block, '1');
-    this.emitBody(block.body);
+    if (this.options.mode === 'client') {
+      // The body writes its markers after its script, with its markup. For a body that waits
+      // at an `await`, that is the rest of the render, so the body clones its template.
+      this.emitBody(block.body, true, () => this.open(scope, block, '1'));
+    } else {
+      this.open(scope, block, '1');
+      this.emitBody(block.body);
+    }
     this.end(block);
   }
 
@@ -3336,11 +3449,7 @@ export class Emitter {
    * clone. `branchNodes` and `listNodes` write its markers, when it has them.
    */
   private emitNodesBlock(block: Block, scope: Scope): boolean {
-    if (
-      this.options.mode !== 'client' ||
-      !this.options.hoist ||
-      (block.kind === 'for' && block.window !== undefined)
-    ) {
+    if (this.options.mode !== 'client' || !this.options.hoist) {
       return false;
     }
     const anchor = this.anchor(scope, block);
@@ -3377,6 +3486,10 @@ export class Emitter {
       );
       return true;
     }
+    if (block.kind === 'for' && block.window !== undefined && anchor) {
+      this.emitWindowNodes(block, block.window, anchor);
+      return true;
+    }
     if (block.kind === 'for' || block.kind === 'repeat') {
       const item = this.unique('item');
       const index = this.unique('index');
@@ -3399,7 +3512,97 @@ export class Emitter {
       );
       return true;
     }
+    if (block.kind === 'offscreen') {
+      // The marker says which of the two it is: 1 for a body that renders, and -1 for one that
+      // has not rendered yet.
+      const body = this.bodyFunction(
+        '',
+        () => this.emitBody(block.body),
+        this.plan.bodyScopes.get(block.body),
+      );
+      this.code(
+        `$$b.nodes($$b.offscreenNodes(${marks}, ${this.expression(block.visible)}, ${body}))`,
+        this.settledMemos([block.visible], scope),
+      );
+      return true;
+    }
     return false;
+  }
+
+  /**
+   * In the browser, a windowed `#for` renders its first items, between spacers that give it the
+   * height of the rest, and starts the window of the browser. See `windowStart` of the core.
+   */
+  private emitWindowNodes(
+    block: Block & { kind: 'for' },
+    windowed: NonNullable<(Block & { kind: 'for' })['window']>,
+    anchor: { scope: string; index: number },
+  ): void {
+    const list = this.unique('list');
+    const shown = this.unique('shown');
+    // In the browser, the tag is known where the list is.
+    const spacer = this.parentSpacer() ?? 'div';
+    this.line('{');
+    this.line(`const ${list} = $$b.toList(${this.expression(block.list)});`);
+    this.line(
+      `const ${shown} = Math.min(${list}.length, ${windowed.count ? this.expression(windowed.count) : '20'});`,
+    );
+    const item = this.unique('item');
+    const index = this.unique('index');
+    const body = this.bodyFunction(
+      `${item}, ${index}`,
+      () => this.emitItem(block, item, index),
+      this.plan.bodyScopes.get(block.body),
+    );
+    const fallback = block.fallback;
+    const other =
+      fallback &&
+      this.bodyFunction('', () => this.emitBody(fallback), this.plan.bodyScopes.get(fallback));
+    this.html(
+      `<${spacer} data-window="before" aria-hidden="true" style="height: 0px"></${spacer}>`,
+    );
+    this.code(
+      `$$b.nodes($$b.listNodes(${anchor.scope}, ${anchor.index}, ${list}.slice(0, ${shown}), ${body}, ${other ?? 'undefined'}))`,
+    );
+    this.html(`<${spacer} data-window="after" aria-hidden="true" style="height: `);
+    this.code(`((${list}.length - ${shown}) * (${this.expression(windowed.height)}))`);
+    this.html(`px"></${spacer}><template b-b="`);
+    this.code(anchor.scope);
+    this.html(`:${anchor.index}" b-client="load=${this.plan.id}#w${anchor.index}"></template>`);
+    this.close();
+  }
+
+  /**
+   * In the browser, a `#try` that renders where it is gives its body and its `#catch` body as
+   * functions, so the markup around it and both bodies can clone. `tryNodes` runs the body, and
+   * the `#catch` body when it throws.
+   */
+  private emitTryNodes(block: Block & { kind: 'try' }, scope: Scope): void {
+    const body = this.bodyFunction(
+      '',
+      () => this.emitBody(block.body),
+      this.plan.bodyScopes.get(block.body),
+    );
+    const error = this.unique('error');
+    const fallback = this.bodyFunction(
+      error,
+      () => {
+        if (block.error) {
+          this.line(`const ${block.error.name} = ${error};`);
+        }
+        if (block.reset) {
+          this.line(`const ${block.reset.name} = undefined;`);
+        }
+        this.emitBody(block.fallback);
+      },
+      this.plan.bodyScopes.get(block.fallback),
+    );
+    // A wait of the body that fails ends in the boundary of the `#try`, and `fail` shows the
+    // `#catch` body in its place, as for any error of client code in the body.
+    const caught = this.plan.anchors.has(block) && tryCatchesClient(this.plan.graph.model, block);
+    this.open(scope, block);
+    this.code(`$$b.nodes($$b.tryNodes(${body}, ${fallback}${caught ? ', 1' : ''}))`);
+    this.end(block);
   }
 
   /** The tag of a spacer in the element around, for a row of a table or an item of a list. */
@@ -3536,6 +3739,10 @@ export class Emitter {
         return;
       }
       case 'try': {
+        if (this.options.mode === 'client' && this.options.hoist) {
+          this.emitTryNodes(block, scope);
+          return;
+        }
         const before = this.unique('before');
         const error = this.unique('error');
         const server = this.options.mode === 'server';

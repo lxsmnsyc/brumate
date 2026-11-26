@@ -1,0 +1,23 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import Badge from './Badge.brm';
+
+  let shown = $signal(true);
+  const name = $memo(Promise.resolve('Ada'));
+</script>
+
+<button class="toggle" onClick=(() => (shown = !shown))>Toggle</button>
+#loading (name) {
+  <script>
+    const extra = await $memo(Promise.resolve('Lin'));
+  </script>
+  <p class="user">{name} {extra}</p>
+  <Badge label=(extra) />
+  #if (shown) {
+    <b class="nested">{extra}</b>
+  } #else {
+    <i class="nested">off</i>
+  }
+} #else {
+  <p class="fallback">loading</p>
+}

@@ -64,8 +64,8 @@ it('marks the start of a nested block with nothing in it, which a call fills', (
   ])!;
   expect(found.html).toBe('<ul><!--x0--><!--/b--></ul><!--x1--><!--/b-->');
   expect(found.writes).toEqual([
-    [{ kind: 'block', scope: '$$s2', anchor: 0 }],
-    [{ kind: 'block', scope: '$$s2', anchor: 1 }],
+    [{ kind: 'block', scope: '$$s2', anchor: 0, order: 0 }],
+    [{ kind: 'block', scope: '$$s2', anchor: 1, order: 1 }],
   ]);
 });
 
@@ -97,6 +97,7 @@ it('renders a child component in the place of a comment', () => {
       {
         kind: 'component',
         call: '$$b.componentNodes(Badge, { "label": (name) }, undefined, $$s2, 0)',
+        order: 0,
       },
     ],
   ]);
@@ -120,7 +121,13 @@ it('builds the element of a dynamic tag in the place of a comment', () => {
   ])!;
   expect(found.html).toBe('<div><!--x0--></div>');
   expect(found.writes).toEqual([
-    [{ kind: 'component', call: '$$b.dynamicNodes((tag), {}, undefined, undefined, $$s2)' }],
+    [
+      {
+        kind: 'component',
+        call: '$$b.dynamicNodes((tag), {}, undefined, undefined, $$s2)',
+        order: 0,
+      },
+    ],
   ]);
 });
 

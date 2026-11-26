@@ -89,39 +89,28 @@ export function k5($$s) {
 
 # Render module
 import * as $$b from 'brumate/client';
-const $$t0 = $$b.template("<!--x0--><dialog class=\"modal\" open>Hello<button b-x=\"1\" class=\"close\" b-on=\"click=Portal_17ywlhi#h3\">Close</button></dialog><!--/P-->", 2);
-const $$t1 = $$b.template("<!--x0--><p class=\"note\">Always here</p><!--/P-->", 1);
+import { r2 as $$r2 } from "./portal.brm?brumate-client";
+const $$t0 = $$b.template("<!--x0--><p class=\"note\">Always here</p><!--/P-->", 1);
+const $$t1 = $$b.template("<button b-x=\"0\" class=\"toggle\" b-on=\"click=Portal_17ywlhi#h1\">Toggle</button><div class=\"host\"><!--x1--><!--/b--></div><section id=\"target\"></section><template b-x=\"2\" b-client=\"load=Portal_17ywlhi#k5\"></template>", 3, undefined, 1);
 
 export default function Portal($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Portal_17ywlhi");
   let open = (false);
-  $$html += "<button class=\"toggle\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Portal_17ywlhi#h1\">Toggle</button><div class=\"host\">";
-  const $$body0 = () => {
-    let $$html = '';
-    const $$portal1 = (() => {
-      let $$html = '';
-      const $$s3 = $$b.createScope(3, $$s1, undefined, 1);
-      const $$e = $$b.clone($$t0), $$f = $$e[2];
-      $$b.nameComment($$e[0], "P" + $$s3);
-      $$b.keep($$s3, 0, $$e[1]);
-      return $$f;
-    })();
-    $$b.addPortal($$portal1);
-    return '';
-  };
-  $$html += $$b.nodes($$b.branchNodes($$s1, 1, (open) ? 0 : -1, [$$body0]));
-  const $$portal2 = (() => {
+  const $$e = $$b.clone($$t1), $$f = $$e[3];
+  $$b.keep($$s1, 0, $$e[0]);
+  $$b.keep($$s1, 2, $$e[2]);
+  $$b.setSlots($$s1, [open]);
+  $$b.fillBranch($$e[1], $$s1, 1, (open) ? 0 : -1, [$$r2]);
+  const $$portal0 = (() => {
     let $$html = '';
     const $$s4 = $$b.createScope(4, $$s1);
-    const $$e = $$b.clone($$t1), $$f = $$e[1];
+    const $$e = $$b.clone($$t0), $$f = $$e[1];
     $$b.nameComment($$e[0], "P" + $$s4);
     return $$f;
   })();
-  $$b.addPortal($$portal2);
-  $$html += "</div><section id=\"target\"></section><template b-b=\"" + $$s1 + ":2\" b-client=\"load=Portal_17ywlhi#k5\"></template>";
-  $$b.setSlots($$s1, [open]);
-  return $$html;
+  $$b.addPortal($$portal0);
+  return $$f;
 }
 Portal.brumateId = "Portal_17ywlhi";
 

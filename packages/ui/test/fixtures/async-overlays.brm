@@ -1,0 +1,43 @@
+<script>
+  import Button from '../../src/Button.brm';
+  import Dialog from '../../src/Dialog.brm';
+  import DialogTrigger from '../../src/DialogTrigger.brm';
+  import Modal from '../../src/Modal.brm';
+  import Popover from '../../src/Popover.brm';
+  import Late from './async-overlay-late.brm';
+</script>
+
+<DialogTrigger>
+  <Button class="defer-trigger">Open deferred</Button>
+  <Popover>
+    <Dialog class="defer-dialog" aria-label="Deferred">
+      #defer {
+        <button class="defer-field" autofocus>From the server</button>
+      } #else {
+        <p class="defer-fallback">Loading…</p>
+      }
+    </Dialog>
+  </Popover>
+</DialogTrigger>
+
+<DialogTrigger>
+  <Button class="modal-defer-trigger">Open deferred modal</Button>
+  <Modal>
+    <Dialog class="modal-defer-dialog" aria-label="Deferred modal">
+      #defer {
+        <button class="modal-defer-field" autofocus>From the server</button>
+      } #else {
+        <p class="modal-defer-fallback">Loading…</p>
+      }
+    </Dialog>
+  </Modal>
+</DialogTrigger>
+
+<DialogTrigger>
+  <Button class="loading-trigger">Open loading</Button>
+  <Popover>
+    <Dialog class="loading-dialog" aria-label="Loading">
+      <Late />
+    </Dialog>
+  </Popover>
+</DialogTrigger>

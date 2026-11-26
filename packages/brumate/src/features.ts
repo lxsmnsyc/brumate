@@ -99,15 +99,20 @@ export function getFeatures(result: CompileResult): Features {
     // A template that the browser can call has an export of its own, `t` and a number. A
     // template of the file that renders in the browser with a scope makes `raw` with that scope,
     // which an insert must destroy when it replaces the markup.
-    templates: /\bexport (?:const|function) t\d+\b|\$\$b\.raw\(\$\$html, /.test(client),
+    templates: /\bexport (?:const|function) t\d+\b|\$\$b\.raw(?:Nodes)?\(\$\$(?:html|f), /.test(
+      client,
+    ),
     titles: /\bb-t\b/.test(all),
     bindings: /\$\$b\.binding\(/.test(all),
     lateMarkup: /\$\$ctx\.(?:boundary|defer|deferBlock)\(|\bgather\(/.test(result.server),
     blocks: /\bb-(?:client|defer)\b/.test(all),
     listeners: /\bb-listen\b/.test(all),
     actions: /\$\$b\.action\(/.test(all),
-    // A render function that gives HTML. One with no markup gives an empty string.
-    clientHTML: /\breturn \$\$html;/.test(client),
+    // A render function that gives HTML, also a template that returns it as `raw` and puts
+    // nodes in it: an insert of children or of a template (it has the scope of its place), a
+    // component, a dynamic tag or a block. Those hold places in the HTML. One with no markup
+    // gives an empty string.
+    clientHTML: /\breturn \$\$html;/.test(client) || result.plan.rawPlaces,
     tries: /\$\$b\.caught\(/.test(result.server) || /\bexport const t = /.test(client),
     // A `$bind` that a component passes on can reach an element through a spread, whose `b-on`
     // entry the server writes at run time, so a passed binding counts too.

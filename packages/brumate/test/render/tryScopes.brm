@@ -1,0 +1,19 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let go = $signal(false);
+
+  function boom(): string {
+    throw new Error('boom');
+  }
+</script>
+
+<button class="go" onClick=(() => (go = true))>Go</button>
+#if (go) {
+  #try {
+    <button class="inner" onClick=(() => (go = false))>Back</button>
+    <p class="value">{boom()}</p>
+  } #catch (error) {
+    <p class="caught">{String(error)}</p>
+  }
+}

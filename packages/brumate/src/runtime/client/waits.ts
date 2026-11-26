@@ -127,6 +127,30 @@ export function attempt(body: () => Out): DocumentFragment {
   return toNodes(out);
 }
 
+/**
+ * The nodes of a `#try` that renders where it is: the body, in a boundary of its own when its
+ * errors of client code find the `#try` (`caught`), or the `#catch` body when the body throws.
+ * The scopes and the queued work of the body go with it, since its nodes are not in the page.
+ */
+export function tryNodes(
+  body: () => Out,
+  fallback: (error: unknown) => Out,
+  caught?: 1,
+): DocumentFragment {
+  const queued = afterInsert.length;
+  const made = rendered.length;
+  try {
+    return caught ? attempt(body) : toNodes(body());
+  } catch (error) {
+    afterInsert.length = queued;
+    // The scopes that the body made are not in the page, and its nodes never will be.
+    for (const scope of rendered.splice(made)) {
+      destroy(scope);
+    }
+    return toNodes(fallback(error));
+  }
+}
+
 /** Counts a new wait in the boundary of the render that runs, and returns that boundary. */
 export function join(): Boundary | undefined {
   const own = boundary;

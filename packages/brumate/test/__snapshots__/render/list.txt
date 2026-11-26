@@ -119,10 +119,12 @@ let label = $$b.get($$p, 2);
 function row(...$$a) { return $$b.templateCall("List_12rwm68#T2", $$p, row$, $$a); }
 function row$(index: number) {
   let $$html = '';
-  const $$s2 = $$b.createScope(2, $$p);
-  $$html += "<span>" + $$b.insert((label)) + " <!--t" + $$s2 + ":0-->" + $$b.insert((index + 1)) + "<!--/t--></span>";
+  const $$s2 = $$b.createScope(2, $$p, undefined, 1);
+  const $$e = $$b.clone($$b.shared("10pq8b970fp", () => $$b.template("<span b-x=\"1\"><!--x0--> </span>", 2))), $$f = $$e[2];
+  $$b.putText($$e[0], (label));
+  $$b.appendText($$s2, 0, $$e[1], (index + 1));
   $$b.setSlots($$s2, [index]);
-  return $$b.raw($$html, $$s2);
+  return $$b.rawNodes($$f, $$s2);
 }
 return row($$b.get($$s, 1));
 })($$s.p), ($$v) => $$b.text($$s, 1, $$v));
@@ -138,7 +140,8 @@ export function b12($$s) {
 export function u13($$s) {
   $$b.prop($$s, 0, "value", $$b.get($$s.p, 0).length);
 }
-const $$k4 = $$b.template("<li b-x=\"0\"><!--x1--><!--x2--></li>", 3);
+const $$k4 = $$b.template("<span b-x=\"1\"><!--x0--> </span>", 2);
+const $$k5 = $$b.template("<li b-x=\"0\"><!--x1--><!--x2--></li>", 3);
 export function r3($$p, $$item, $$index) {
   let $$html = '';
   let label = $$b.get($$p, 2);
@@ -146,15 +149,17 @@ export function r3($$p, $$item, $$index) {
   function row(...$$a) { return $$b.templateCall("List_12rwm68#T2", $$p, row$, $$a); }
   function row$(index: number) {
     let $$html = '';
-    const $$s2 = $$b.createScope(2, $$p);
-    $$html += "<span>" + $$b.insert((label)) + " <!--t" + $$s2 + ":0-->" + $$b.insert((index + 1)) + "<!--/t--></span>";
+    const $$s2 = $$b.createScope(2, $$p, undefined, 1);
+    const $$e = $$b.clone($$k4), $$f = $$e[2];
+    $$b.putText($$e[0], (label));
+    $$b.appendText($$s2, 0, $$e[1], (index + 1));
     $$b.setSlots($$s2, [index]);
-    return $$b.raw($$html, $$s2);
+    return $$b.rawNodes($$f, $$s2);
   }
   const count = $$item;
   const i = $$index;
   const $$s3 = $$b.createScope(3, $$p, undefined, 2);
-  const $$e = $$b.clone($$k4), $$f = $$e[3];
+  const $$e = $$b.clone($$k5), $$f = $$e[3];
   $$b.keep($$s3, 0, $$e[0]);
   $$b.keepValue($$s3, 1, $$e[1], (row(i)), $$s3);
   $$b.place($$e[2], $$b.componentNodes(Child, { "value": (count), "onChange": $$b.handlerProp(((value) => (counts = counts.map((item, index) => (index === i ? value : item)))), "List_12rwm68#h11", $$s3) }, undefined, $$s3, 2));
@@ -162,8 +167,8 @@ export function r3($$p, $$item, $$index) {
   $$b.setItem($$s3, $$item);
   return $$f;
 }
-const $$k5 = $$b.template("<em b-x=\"0\"></em>", 1);
-const $$k6 = $$b.template("<section><!--x0--></section>", 1);
+const $$k6 = $$b.template("<em b-x=\"0\"></em>", 1);
+const $$k7 = $$b.template("<section><!--x0--></section>", 1);
 export function r4($$p) {
   let $$html = '';
   let counts = $$b.get($$p, 0);
@@ -171,18 +176,18 @@ export function r4($$p) {
   const $$s4 = $$b.createScope(4, $$p);
   const $$children0 = $$b.children($$s4, () => {
     let $$html = '';
-    const $$e = $$b.clone($$k5), $$f = $$e[1];
+    const $$e = $$b.clone($$k6), $$f = $$e[1];
     $$b.setContent($$e[0], (label));
     return $$f;
   });
-  const $$e = $$b.clone($$k6), $$f = $$e[1];
+  const $$e = $$b.clone($$k7), $$f = $$e[1];
   $$b.place($$e[0], $$b.componentNodes(Child, { "value": (counts.length), "onChange": $$b.handlerProp(((value) => console.log(value)), "List_12rwm68#h14", $$s4), children: $$children0 }, undefined, $$s4, 0));
   return $$f;
 }
 export function n0($$p) {
   let $$html = '';
   let label = $$b.get($$p.p, 2);
-  const $$e = $$b.clone($$k5), $$f = $$e[1];
+  const $$e = $$b.clone($$k6), $$f = $$e[1];
   $$b.setContent($$e[0], (label));
   return $$f;
 }
@@ -191,7 +196,8 @@ export function n0($$p) {
 import * as $$b from 'brumate/client';
 import Child from "./Child.brm?brumate-render";
 import { r3 as $$r3, r4 as $$r4 } from "./list.brm?brumate-client";
-const $$t0 = $$b.template("<button b-x=\"0\" class=\"add\" b-on=\"click=List_12rwm68#h6\">Add</button><button b-x=\"1\" class=\"show\" b-on=\"click=List_12rwm68#h7\">Show</button><ul><!--x2--><!--/b--></ul><!--x3--><!--/b-->", 4);
+const $$t0 = $$b.template("<span b-x=\"1\"><!--x0--> </span>", 2);
+const $$t1 = $$b.template("<button b-x=\"0\" class=\"add\" b-on=\"click=List_12rwm68#h6\">Add</button><button b-x=\"1\" class=\"show\" b-on=\"click=List_12rwm68#h7\">Show</button><ul><!--x2--><!--/b--></ul><!--x3--><!--/b-->", 4);
 
 export default function List($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
@@ -205,12 +211,14 @@ export default function List($$props: Record<string, never>): string | DocumentF
   function row(...$$a) { return $$b.templateCall("List_12rwm68#T2", $$s1, row$, $$a); }
   function row$(index: number) {
     let $$html = '';
-    const $$s2 = $$b.createScope(2, $$s1);
-    $$html += "<span>" + $$b.insert((label)) + " <!--t" + $$s2 + ":0-->" + $$b.insert((index + 1)) + "<!--/t--></span>";
+    const $$s2 = $$b.createScope(2, $$s1, undefined, 1);
+    const $$e = $$b.clone($$t0), $$f = $$e[2];
+    $$b.putText($$e[0], (label));
+    $$b.appendText($$s2, 0, $$e[1], (index + 1));
     $$b.setSlots($$s2, [index]);
-    return $$b.raw($$html, $$s2);
+    return $$b.rawNodes($$f, $$s2);
   }
-  const $$e = $$b.clone($$t0), $$f = $$e[4];
+  const $$e = $$b.clone($$t1), $$f = $$e[4];
   $$b.keep($$s1, 0, $$e[0]);
   $$b.keep($$s1, 1, $$e[1]);
   $$b.setSlots($$s1, [counts, show, label]);

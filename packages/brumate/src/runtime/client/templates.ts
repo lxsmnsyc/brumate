@@ -1,15 +1,13 @@
 // Markup that the browser clones: a template parsed once, the walk to its nodes, and the helpers
 // that fill a clone.
 
-import { HAS_CHILDREN } from '../features.ts';
-import { attributeText, onValue } from '../html.ts';
+import { attributeText, onValue, textValue } from '../html.ts';
 import type { ScopeId } from '../shared.ts';
 import { trustedHTML } from '../trusted.ts';
 import type { Render } from './branches.ts';
-import { Children, TemplateCall, insert } from './children.ts';
+import { insertOut } from './children.ts';
 import { spread } from './handlers.ts';
 import { findForeign, holdPlace, markCloned, parseHTML } from './insert.ts';
-import { resolveScope } from './scopes.ts';
 import { options, scopes } from './state.ts';
 import type { Scope } from './state.ts';
 
@@ -176,6 +174,16 @@ export function clone(source: Template): ClonedNode[] {
   return cloned as ClonedNode[];
 }
 
+const sharedValues = new Map<string, unknown>();
+
+/** A constant of code that renders in another module than the one that names it, made once. */
+export function shared<T>(key: string, make: () => T): T {
+  if (!sharedValues.has(key)) {
+    sharedValues.set(key, make());
+  }
+  return sharedValues.get(key) as T;
+}
+
 /**
  * Keeps an element of cloned markup on its scope, where updates find it. An element at the top
  * of the clone, or one with handlers, gets its `b-b` too, which `list` and the handlers read to
@@ -187,7 +195,12 @@ export function keep(scope: ScopeId, anchor: number, element: Element, named?: b
     (found.n ??= [])[anchor] = element;
   }
   // `named`: elements inside it have handlers and find their scope from it with `closest`.
-  if (named || element.parentNode?.nodeType === 11 || element.hasAttribute('b-on')) {
+  if (
+    named ||
+    element.parentNode?.nodeType === 11 ||
+    element.hasAttribute('b-on') ||
+    element.hasAttribute('b-client')
+  ) {
     element.setAttribute('b-b', `${scope}:${anchor}`);
   }
 }
@@ -408,6 +421,20 @@ export function listNodes(
   return blockNodes(scope, anchor, `b${scope}:${anchor}`, content);
 }
 
+/**
+ * Renders an `#offscreen` where it is: its body between its markers when `visible`, marked 1,
+ * and nothing marked -1 until it shows, which `offscreen` does later.
+ */
+export function offscreenNodes(
+  scope: ScopeId | undefined,
+  anchor: number | undefined,
+  visible: unknown,
+  body: () => string | DocumentFragment,
+): DocumentFragment {
+  const content = visible ? bodyNodes(body()) : document.createDocumentFragment();
+  return blockNodes(scope, anchor, `b${scope}:${anchor}:${visible ? 1 : -1}`, content);
+}
+
 /** Writes attributes that code of a start tag gave as their text, as HTML has them. */
 export function setAttrText(element: Element, text: string): void {
   if (text) {
@@ -456,6 +483,14 @@ export function setOn(element: Element, on: string[], own: string): void {
   }
 }
 
+/**
+ * Writes the text of an element of cloned markup whose content is text, such as a `<textarea>`
+ * or a `<title>`, from the pieces of its text and its values.
+ */
+export function setText(element: Element, value: unknown): void {
+  element.textContent = textValue(value);
+}
+
 /** Writes the content of an element of cloned markup, as `insert` writes it in HTML. */
 export function setContent(element: Element, value: unknown, at?: ScopeId | Scope): void {
   if (typeof value === 'string' || typeof value === 'number') {
@@ -475,10 +510,7 @@ function insertNodes(
   at: ScopeId | Scope | undefined,
   near: Node,
 ): DocumentFragment {
-  const out =
-    HAS_CHILDREN && value instanceof Children && !(value instanceof TemplateCall)
-      ? value.render(resolveScope(at))
-      : insert(value, undefined, at);
+  const out = insertOut(value, at, near);
   if (typeof out !== 'string') {
     return out;
   }

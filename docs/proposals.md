@@ -1039,6 +1039,8 @@ A clone finds the elements that its render writes with a walk of paths at runtim
 
 Creating rows takes about 0.9 ms less, and replacing them about the same. Both take about 28 ms from the click to the paint, so the gain is 2 to 3% of it. The walk is a line of code for each node on the path to an element, in each component, and the compiler must know that the parser keeps the markup as it is written, as Solid checks the nesting of elements. It waits until speed matters more than size.
 
+Measured again on 2026-11-25, after the encoded walk (#164), cloned bodies for every block and no-client-html (batch 9c2b67f4): the fixed walk is within noise. `profile-rows.mjs` with `bench.py`, load average 13: create 9.0 ms against 9.15 ms (+1.7%, mad 2.7 and 3.35), replace 15.3 ms against 16.0 ms (+4.6%, mad 4.25 and 4.4); on a quieter run create was 5.5 ms on both sides. Not worth the nesting check and the code of a walk for each template (node `fixed-walks`, not reproduced).
+
 #### Risks
 
 - Streaming. Markup and state that arrive later, out of order, need the scan of step 1 to run on each chunk, as the index does now.

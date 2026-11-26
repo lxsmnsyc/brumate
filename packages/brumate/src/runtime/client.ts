@@ -33,7 +33,7 @@ export { createContext } from './context.ts';
 export { nameComment } from './client/blocks.ts';
 export { branch, fill, held, offscreen, rekey, reset, retag } from './client/branches.ts';
 export type { HiddenBody } from './client/branches.ts';
-export { children, insert, templateCall } from './client/children.ts';
+export { children, insert, rawNodes, templateCall } from './client/children.ts';
 export { loadModule } from './client/code.ts';
 export {
   component,
@@ -73,6 +73,7 @@ export {
   loading,
   reveal,
   started,
+  tryNodes,
   wait,
 } from './client/waits.ts';
 export { guess, optimisticStore, track } from './client/guesses.ts';
@@ -108,16 +109,19 @@ export {
   fillBranch,
   fillList,
   keep,
+  shared,
   keepText,
   listNodes,
   markBlock,
   nodes,
+  offscreenNodes,
   putText,
   setAttr,
   setAttrText,
   setContent,
   setOn,
   setSpread,
+  setText,
   template,
 } from './client/templates.ts';
 export { asyncEffect } from './client/async-effect.ts';

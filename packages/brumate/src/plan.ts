@@ -79,6 +79,11 @@ export interface Plan {
   childrenRenders: Map<ComponentNode | DynamicTagNode, { symbol: string; scope: Scope }>;
   /** True when the markup holds a `<script src>` or `<script inline>`, which the emit sets. */
   scripts: boolean;
+  /**
+   * True when a template of the browser renders from HTML and holds a place for nodes in it, which
+   * the emit sets. Its inserts need the code that parses the places.
+   */
+  rawPlaces: boolean;
   /** True when markup holds `viewTransition` or `viewTransitionName`, which the emit sets. */
   viewTransitions: boolean;
   /**
@@ -852,6 +857,7 @@ export function createPlan(
     symbols,
     childrenRenders,
     scripts: false,
+    rawPlaces: false,
     viewTransitions: false,
     blockHolders,
     clientSites,

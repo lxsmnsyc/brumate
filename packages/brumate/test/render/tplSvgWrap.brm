@@ -1,0 +1,22 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let open = $signal(false);
+</script>
+
+#template lbl(label: string) {
+  <a href="#l" class="lbl">{label}</a>
+}
+
+#template dot(label: string) {
+  <circle class="dot" r="1" data-label={label}></circle>
+}
+
+#template wrap(label: string) {
+  <a href="#w" class="wrap"><g>{[dot(label), lbl('t' + label)]}</g></a>
+}
+
+<button class="open" onClick=(() => (open = true))>Open</button>
+#if (open) {
+  <svg class="host">{wrap('k')}</svg>
+}

@@ -2736,6 +2736,75 @@ describe('resume', () => {
     expect(client.scopes.size).toBe(count);
   });
 
+  it('renders a template whose top element is an `<a>` in the SVG that it is inserted in', async () => {
+    await resume('tplSvgLink', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.host .lnk')).not.toBeNull());
+    expect(document.querySelector('.host .lnk')!.namespaceURI).toBe('http://www.w3.org/2000/svg');
+  });
+
+  it('keeps the namespace of a mix of an ambiguous template and a clone in SVG', async () => {
+    await resume('tplSvgMixed', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.host .dot')).not.toBeNull());
+    const svg = 'http://www.w3.org/2000/svg';
+    expect(document.querySelector('.host .lnk')!.namespaceURI).toBe(svg);
+    expect(document.querySelector('.host .dot')!.namespaceURI).toBe(svg);
+  });
+
+  it('keeps the namespace of the text and the nodes of a list in an ambiguous template', async () => {
+    await resume('tplSvgWrap', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.host .dot')).not.toBeNull());
+    const svg = 'http://www.w3.org/2000/svg';
+    expect(document.querySelector('.host .wrap')!.namespaceURI).toBe(svg);
+    expect(document.querySelector('.host .lbl')!.namespaceURI).toBe(svg);
+    expect(document.querySelector('.host .dot')!.namespaceURI).toBe(svg);
+  });
+
+  it('places a template that a parameter holds inside an ambiguous template', async () => {
+    await resume('tplChildrenParam', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.host .lnk .inner')).not.toBeNull());
+    expect(document.querySelector('.host')!.textContent).toBe('go');
+    expect(document.body.textContent).not.toContain('[object');
+  });
+
+  it('places a component in an ambiguous template whose text says function', async () => {
+    await resume('tplFunctionText', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.host .boxed .card')).not.toBeNull());
+    expect(document.body.innerHTML).not.toContain('<!--f');
+  });
+
+  it('keeps the text and the comments of a component that look like a mark', async () => {
+    await resume('tplMarkText', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.host .lnk')).not.toBeNull());
+    expect(document.querySelector('.host .lnk')!.textContent).toBe('go/*$$n0:QQ*/go');
+  });
+
+  it('places a template inside the HTML of an ambiguous template', async () => {
+    await resume('tplAmbiguousInner', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.host .lnk .inner')).not.toBeNull());
+    expect(document.querySelector('.host')!.textContent).toBe('go');
+    expect(document.body.textContent).not.toContain('[object');
+  });
+
+  it('places a component inside the HTML of an ambiguous template', async () => {
+    await resume('tplAmbiguousBox', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.host .boxed .card')).not.toBeNull());
+    expect(document.body.innerHTML).not.toContain('<!--f');
+  });
+
+  it('writes a title and a textarea that start with a value', async () => {
+    await resume('tplLeadingValue', {});
+    expect(document.querySelector('.area')!.textContent).toBe('tail end');
+    expect(document.querySelector('.z')).not.toBeNull();
+  });
+
   it('replaces a template of the file with another template at the same insert', async () => {
     await resume('tplInPlaceHost', {});
     click(document.querySelector('.open')!);
@@ -9410,6 +9479,19 @@ describe('a constant async memo in a body that the browser clones', () => {
   });
 });
 
+describe('a #try body that throws in the browser', () => {
+  it('shows the #catch body and keeps no scope of the body', async () => {
+    await resume('tryScopes', {});
+    const client = await import('../src/runtime/client.ts');
+    const before = client.scopes.size;
+    click(document.querySelector('.go')!);
+    await waitFor(() => expect(texts('.caught')).toEqual(['Error: boom']));
+    expect(texts('.value')).toEqual([]);
+    // The scopes of the `#if` and `#catch` bodies and the button's; the thrown body's is 4 with it.
+    expect(client.scopes.size - before).toBe(3);
+  });
+});
+
 describe('#loading in markup that the browser renders', () => {
   function userLoads(): UserLoad[] {
     return ((globalThis as { userLoads?: UserLoad[] }).userLoads ??= []);
@@ -10090,6 +10172,28 @@ describe('await in block scripts, #for rows and markup of a browser render', () 
     await waitFor(() => expect(users()).toEqual(['ada2 ada70']));
     expect(document.querySelector('.fallback')).toBeNull();
     expect(loadedIds()).toEqual([1, 70, 2]);
+    expect(errors).toEqual([]);
+  });
+
+  it('resumes a #loading (memo) body with an await that holds a component and a block', async () => {
+    const errors = watchErrors();
+    await resume('awaitLoadingNestedOn', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(inFlight()).toEqual([1, 70]));
+    expect(document.querySelector('.fallback')).not.toBeNull();
+    await settleUser(70);
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1 ada70']));
+    expect(document.querySelector('.fallback')).toBeNull();
+    expect(text('.nested')).toBe('ada70');
+    expect(text('span')).toBe('ada70');
+    // The block inside the body keeps working after the body is in the page.
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(text('.nested')).toBe('off'));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(text('.nested')).toBe('ada70'));
+    expect(document.querySelectorAll('.user')).toHaveLength(1);
+    expect(document.querySelectorAll('span')).toHaveLength(1);
     expect(errors).toEqual([]);
   });
 

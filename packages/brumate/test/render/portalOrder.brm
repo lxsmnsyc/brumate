@@ -1,0 +1,18 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let go = $signal(false);
+  let open = $signal(true);
+</script>
+
+<button class="go" onClick=(() => (go = true))>Go</button>
+#if (go) {
+  #if (open) {
+    #portal {
+      <p class="first">First</p>
+    }
+  }
+  #portal {
+    <p class="second">Second</p>
+  }
+}

@@ -167,6 +167,12 @@ export function skew(reason: 'call' | 'code' | 'defer'): void {
 /** The scopes of the page, by ID. */
 export const scopes: Map<ScopeId, Scope> = new Map();
 
+/**
+ * The scope of the template that made each node at the top of its clone. A clone names a scope
+ * on an element only when an update or a handler needs it, so a replace finds the rest here.
+ */
+export const templateNodes: WeakMap<Node, Scope> = new WeakMap();
+
 /** What modules of optional features add to the core. See `client-routes.ts` and `hot`. */
 export const hooks: {
   /** Changes a state record before its scopes are added, such as for a page that navigation added. */
