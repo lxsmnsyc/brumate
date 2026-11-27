@@ -1,7 +1,7 @@
 ---
 id: template-call-try
 title: "A template call that throws is caught by the #try of its insert in the browser too"
-status: active
+status: done
 priority: should
 type: fix
 story:
@@ -21,7 +21,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-27
-spent:
+spent: 334483
 owns:
   - docs/roadmaps/brumate/nodes/template-call-try/**
 shared:
