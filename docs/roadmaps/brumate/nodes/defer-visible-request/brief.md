@@ -1,7 +1,7 @@
 ---
 id: defer-visible-request
 title: "Diagnose: a visible #defer body shows without a body request"
-status: todo
+status: active
 priority: should
 type: diagnose
 story:

@@ -1,7 +1,7 @@
 ---
 id: module-memo-extra-load
 title: "Diagnose: an extra load of a module async memo, once on Node 24 CI"
-status: todo
+status: active
 priority: should
 type: diagnose
 story:

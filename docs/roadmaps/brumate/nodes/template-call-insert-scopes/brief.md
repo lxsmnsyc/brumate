@@ -1,7 +1,7 @@
 ---
 id: template-call-insert-scopes
 title: Each insert of a template call gets its own scope on the server
-status: todo
+status: active
 priority: should
 type: feature
 story:
