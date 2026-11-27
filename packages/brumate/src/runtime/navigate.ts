@@ -14,7 +14,8 @@ import {
   sheetKey,
 } from './sheets.ts';
 import { loadOnce } from './skew.ts';
-import { HAS_SCRIPTS } from './features.ts';
+import { HAS_PRINTED, HAS_SCRIPTS } from './features.ts';
+import { readPrinted } from './html.ts';
 import { startTransition } from './view-transitions.ts';
 import { trustedHTML, trustedScript } from './trusted.ts';
 import { TRACE } from './trace-flag.ts';
@@ -989,6 +990,12 @@ async function load(visit: Visit, trace?: RequestTrace): Promise<void> {
     // A change of only the query string, such as a filter, keeps the focus, so typing goes on.
     const samePath = url.pathname === location.pathname;
     const top = window.scrollY;
+    // The raw HTML that the new page printed, which its state reads back, is read from the page
+    // as it came, since the layouts that stay keep the old markup and drop the new one.
+    if (HAS_PRINTED) {
+      (globalThis as { $bP?: Record<string, string> }).$bP = {};
+      readPrinted(next.body);
+    }
     let added: Node[];
     if (routes) {
       added = replaceRoutes(next, state!, routes);

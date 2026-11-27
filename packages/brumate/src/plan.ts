@@ -87,6 +87,11 @@ export interface Plan {
   /** True when markup holds `viewTransition` or `viewTransitionName`, which the emit sets. */
   viewTransitions: boolean;
   /**
+   * True when an insert of the server can print raw HTML between markers, which the page state
+   * reads back, which the emit sets. See `Emitter.place`.
+   */
+  printed: boolean;
+  /**
    * The component whose children hold a block, for the blocks in children. The browser renders
    * the new bodies of such a block with the contexts of that component, as the server does.
    */
@@ -859,6 +864,7 @@ export function createPlan(
     scripts: false,
     rawPlaces: false,
     viewTransitions: false,
+    printed: false,
     blockHolders,
     clientSites,
     diagnostics,

@@ -1,0 +1,26 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+  import { pages } from './pages.ts';
+
+  const { children } = $props();
+  // A value of the layout, so its part of the state holds it.
+  const doc = pages.c!.body;
+  let key = $signal(0);
+</script>
+
+<html>
+  <head>
+    <meta charset="utf-8">
+  </head>
+  <body>
+    <a class="go" href="/b">B</a>
+    <button class="layout-key" onClick=(() => key++)>key</button>
+    <div class="layout">
+      #key (key) {
+        <span class="lk">{key}</span>
+        {doc}
+      }
+    </div>
+    <main>{children}</main>
+  </body>
+</html>

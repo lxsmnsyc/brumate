@@ -1,0 +1,6 @@
+<script>
+  import { pages } from './pages.ts';
+</script>
+
+<!-- The state does not hold a value of a module that the markup reads. -->
+<div class="unused">{pages.a!.body}</div>

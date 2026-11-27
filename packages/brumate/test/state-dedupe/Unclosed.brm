@@ -1,0 +1,20 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { pages, unclosed } from './pages.ts';
+
+  const page = pages.b!;
+  // A value of the script, so the state holds it, as it holds `page`.
+  const tail = unclosed;
+  let show = $signal(true);
+</script>
+
+<button class="show" onClick=(() => (show = !show))>show</button>
+<span class="phrase">{page.body}</span>
+<table><tbody><tr><td class="cell">{page.body}</td></tr></tbody></table>
+<div class="tail">{tail}</div>
+<div class="if">
+  #if (show) {
+    {page.body}
+    <i>{String(Boolean(tail))}</i>
+  }
+</div>

@@ -36,6 +36,89 @@ export function rawHTML(value: Raw): string {
   return value[RAW];
 }
 
+/** Text as `innerHTML` writes it. */
+function serializeText(text: string): string {
+  return text.replace(/[&<> ]/g, (char) => (char === ' ' ? '&nbsp;' : ESCAPES[char]!));
+}
+
+/** The start marker: `d`, the 4 characters of the render, a dot and the count. */
+const PRINTED = /^d[\da-z]{4}\.\d+$/;
+
+/**
+ * Reads the HTML between `<!--d{token}-->` and the `<!--/d-->` among its next siblings, before
+ * the next start. Removes the end marker.
+ */
+function readRange(start: Comment): string | undefined {
+  let html = '';
+  for (let node = start.nextSibling; node; node = node.nextSibling) {
+    if (node.nodeType === 8) {
+      const data = (node as Comment).data;
+      if (data === '/d') {
+        node.remove();
+        return html;
+      }
+      if (PRINTED.test(data)) {
+        return undefined;
+      }
+      html += `<!--${data}-->`;
+    } else if (node.nodeType === 1) {
+      html += (node as Element).outerHTML;
+    } else if (node.nodeType === 3) {
+      html += serializeText((node as Text).data);
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Reads the HTML between each `<!--d{token}-->` and its `<!--/d-->` in a page into `$bP`, by
+ * token, and removes the markers, as `READ_PRINTED` of the server does while the page parses.
+ * Navigation reads the page it fetched, whose kept layouts never join this page.
+ */
+export function readPrinted(root: Node): void {
+  const read = ((globalThis as { $bP?: Record<string, string> }).$bP ??= {});
+  const starts: Comment[] = [];
+  const walker = document.createTreeWalker(root, 128);
+  for (
+    let node = walker.nextNode() as Comment | null;
+    node;
+    node = walker.nextNode() as Comment | null
+  ) {
+    if (PRINTED.test(node.data)) {
+      starts.push(node);
+    }
+  }
+  for (const start of starts) {
+    const html = readRange(start);
+    if (html !== undefined) {
+      read[start.data.slice(1)] = html;
+      start.remove();
+    }
+  }
+}
+
+/**
+ * The HTML between `<!--d{token}-->` and its `<!--/d-->`, which the server printed and left out
+ * of the page state. The record read it while the page parsed, before any client code changed
+ * the page (see `READ_PRINTED` of the server), or navigation read it from the page it fetched.
+ * Throws when the range is not there or its end is not a sibling of its start, since the value
+ * cannot be read then. In development the server names the component that printed it.
+ */
+export function printedHTML(token: string, component?: string): string {
+  const read = (globalThis as { $bP?: Record<string, string> }).$bP;
+  const html = read?.[token];
+  if (html === undefined) {
+    // A build leaves out the long message: Vite folds `import.meta.env.DEV`.
+    throw new Error(
+      !(import.meta as { env?: { DEV?: boolean } }).env?.DEV || component === undefined
+        ? `The page has no printed HTML ${token}`
+        : `The raw HTML that ${component} printed (${token}) has no end in the page: the browser moved its end marker while it parsed. Insert it as the only content of a <div>.`,
+    );
+  }
+  delete read![token];
+  return html;
+}
+
 const ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
 
 function toEscape(char: string): string {

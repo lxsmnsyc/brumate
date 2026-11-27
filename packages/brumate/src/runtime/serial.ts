@@ -276,13 +276,48 @@ const PropPromisePlugin = createPlugin<PropPromise, { p: SerovalNode }>({
   deserialize: (node, ctx) => stateValues.q(ctx.deserialize(node.p)),
 });
 
+/**
+ * The raw HTML that a page printed between markers: the token of each value, the tokens that its
+ * state record wrote, and in development the component of each token, for the error of the
+ * browser when it cannot read one.
+ */
+export interface Printed {
+  tokens: WeakMap<object, string>;
+  used: Set<string>;
+  names?: Map<string, string>;
+}
+
+/** The raw HTML that the page being serialized printed. Set only around its state record. */
+let printed: Printed | undefined;
+
+/** Sets the raw HTML that the page printed with markers, for the state records that follow. */
+export function setPrinted(value: Printed | undefined): void {
+  printed = value;
+}
+
 /** HTML, such as the `children` of a component, so the client can insert it again. */
-const RawPlugin = createPlugin<Raw, { h: SerovalNode }>({
+const RawPlugin = createPlugin<Raw, { h: SerovalNode; t?: SerovalNode; n?: SerovalNode }>({
   tag: 'brumate/raw',
   skipPlainObjects: true,
   test: isRaw,
-  parse: parsers((value) => ({ h: rawHTML(value) })),
-  serialize: (node, ctx) => `$b.r(${ctx.serialize(node.h)})`,
+  // HTML that the page printed is read back from the page, by its token. See `setPrinted`.
+  parse: parsers((value): Record<'h' | 't' | 'n', unknown> => {
+    const token = printed?.tokens.get(value);
+    if (token === undefined) {
+      return { h: rawHTML(value) } as Record<'h' | 't' | 'n', unknown>;
+    }
+    printed!.used.add(token);
+    const name = printed!.names?.get(token);
+    return (name === undefined ? { t: token } : { t: token, n: name }) as Record<
+      'h' | 't' | 'n',
+      unknown
+    >;
+  }),
+  serialize: (node, ctx) =>
+    node.t === undefined
+      ? `$b.r(${ctx.serialize(node.h)})`
+      : `$b.d(${ctx.serialize(node.t)}${node.n === undefined ? '' : `,${ctx.serialize(node.n)}`})`,
+  // Data from the browser holds the HTML: only the page reads a token back.
   deserialize: (node, ctx) => stateValues.r(ctx.deserialize<string>(node.h)),
   validate: { h: v.string },
 });

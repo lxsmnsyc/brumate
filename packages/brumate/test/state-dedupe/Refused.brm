@@ -1,0 +1,22 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { refused } from './pages.ts';
+
+  // Values of the script, so the state holds them.
+  const pre = refused.pre;
+  const textarea = refused.textarea;
+  const listing = refused.listing;
+  const shadow = refused.shadow;
+  let key = $signal(0);
+</script>
+
+<button class="key" onClick=(() => key++)>key</button>
+<div class="refused">
+  #key (key) {
+    <span class="k">{key}</span>
+    <div>{pre}</div>
+    <div>{textarea}</div>
+    <div>{listing}</div>
+    <div>{shadow}</div>
+  }
+</div>

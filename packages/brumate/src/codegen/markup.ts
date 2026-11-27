@@ -47,6 +47,58 @@ import { copy, unmarked } from '../sourcemap.ts';
 import { insertValue } from '../runtime/html.ts';
 import { paragraphComponents } from '../nesting.ts';
 
+/** Elements whose content the parser reads as text, moves, or keeps out of the document. */
+const NOT_PRINTABLE = new Set([
+  'template',
+  'textarea',
+  'title',
+  'script',
+  'style',
+  'noscript',
+  'xmp',
+  'iframe',
+  'noembed',
+  'noframes',
+  'plaintext',
+  'select',
+  'option',
+  'optgroup',
+  'datalist',
+  'table',
+  'caption',
+  'colgroup',
+  'thead',
+  'tbody',
+  'tfoot',
+  'tr',
+  'pre',
+  'listing',
+  'svg',
+  'math',
+  // A nested `<a>` or `<form>` in the HTML would be moved or dropped.
+  'a',
+  'form',
+]);
+/** Elements that hold any flow content, so the parser closes nothing that raw HTML in them opens. */
+const PRINTABLE_PARENTS = new Set([
+  'div',
+  'article',
+  'section',
+  'main',
+  'aside',
+  'nav',
+  'header',
+  'footer',
+  'figure',
+  'figcaption',
+  'blockquote',
+  'details',
+  'dialog',
+  'body',
+  'fieldset',
+  'search',
+]);
+
 const VOID_ELEMENTS = new Set([
   'area',
   'base',
@@ -458,6 +510,12 @@ export class Emitter {
   private counter = 0;
   /** The tags of the elements around the node that renders, innermost last. */
   private readonly elements: string[] = [];
+  /**
+   * On the server, the place of markup at the top level of what renders now, as code: `$$place`
+   * at the root of the component and in children, which get it from where they are inserted,
+   * and `0` in a template or a `#head` or portal body, whose markup goes elsewhere. See `place`.
+   */
+  private topPlace = '$$place';
 
   constructor(file: SFCFile, plan: Plan, patch: Patch, options: EmitterOptions) {
     this.file = file;
@@ -1991,7 +2049,7 @@ export class Emitter {
       this.options.mode === 'client' ? textParameters(template.params) : undefined;
     const from = this.lines.length;
     this.templateInserts = 0;
-    this.atTopLevel(() => this.emitBody(template.body));
+    this.atTopLevel(() => this.emitBody(template.body), '0');
     this.templateText = undefined;
     this.flush();
     // The output names the template's scope, which the insert links to where it is called.
@@ -2067,6 +2125,15 @@ export class Emitter {
         let rest = server && spacer !== undefined ? `, ${JSON.stringify(spacer)}` : '';
         if (server && anchor) {
           rest = `${rest || ', undefined'}, ${anchor.index}`;
+        }
+        // Raw HTML here can print between markers, which the page state reads back, when the
+        // place is 1. Children inserted here render at this place. See `Context.printRaw`.
+        const place = this.place();
+        if (place !== '0') {
+          this.plan.printed = true;
+          const tag = server && spacer !== undefined ? JSON.stringify(spacer) : 'undefined';
+          const index = server && anchor ? String(anchor.index) : 'undefined';
+          rest = `, ${tag}, ${index}, ${place}`;
         }
         const at =
           // The output of a template links its scope to this insert, so a `#try` here catches
@@ -2796,17 +2863,23 @@ export class Emitter {
     this.atTopLevel(() => this.emitNodes(node.children, scope));
   }
 
-  /** Runs a callback for markup that renders outside this component's elements, such as children. */
-  private atTopLevel(callback: () => void): void {
+  /**
+   * Runs a callback for markup that renders outside this component's elements, such as children.
+   * `place` is the place of its top level, as code. See `topPlace`.
+   */
+  private atTopLevel(callback: () => void, place = '$$place'): void {
     const nesting = this.nesting;
     const base = this.bodyBase;
+    const top = this.topPlace;
     // The elements around markup that renders elsewhere are not these.
     const elements = this.elements.splice(0);
     this.nesting = 0;
     this.bodyBase = 0;
+    this.topPlace = place;
     callback();
     this.nesting = nesting;
     this.bodyBase = base;
+    this.topPlace = top;
     this.elements.push(...elements);
   }
 
@@ -2823,7 +2896,7 @@ export class Emitter {
       const render = this.plan.childrenRenders.get(node);
       const ref = render ? `, ${JSON.stringify(`${this.plan.id}#${render.symbol}`)}` : '';
       this.line(
-        `const ${name} = $$b.children(${this.scopeVar(instanceScope(this.plan, scope))}, async ($$ctx) => {`,
+        `const ${name} = $$b.children(${this.scopeVar(instanceScope(this.plan, scope))}, async ($$ctx, $$at, $$place) => {`,
       );
       this.line(`let $$html = '';`);
       this.atTopLevel(() => this.emitNodes(nodes, scope));
@@ -3013,12 +3086,25 @@ export class Emitter {
     const anchor = this.anchor(scope, node);
     // The rendering scope becomes the owner of the child, so the child finds the contexts above it.
     const owner = this.scopeVar(instanceScope(this.plan, scope));
-    let link = anchor ? `, ${anchor.index}` : '';
+    // The anchor, where the component is in a `<p>`, and the place of its root, as far as given.
+    const args = [anchor ? String(anchor.index) : 'undefined', 'undefined', 'undefined'];
+    let given = anchor ? 1 : 0;
     if (this.inParagraph.has(node)) {
       // Where the component is, so the server can name it when its element closes the `<p>`.
       const before = this.file.source.slice(0, node.start).split('\n');
       const at = `${this.file.filename}:${before.length}:${before.at(-1)!.length + 1}`;
-      link = `${link || ', undefined'}, ${JSON.stringify(`<${node.name}> in ${at}`)}`;
+      args[1] = JSON.stringify(`<${node.name}> in ${at}`);
+      given = 2;
+    }
+    // The root of the child renders at this place. See `place`.
+    const place = this.place();
+    if (place !== '0') {
+      args[2] = place;
+      given = 3;
+    }
+    let link = '';
+    for (const arg of args.slice(0, given)) {
+      link += `, ${arg}`;
     }
     // The values of the props, without the handlers and functions, which the child can call
     // later, so the child does not wait for the memos that only they read.
@@ -3174,7 +3260,7 @@ export class Emitter {
     this.code(this.scopeVar(body));
     this.html('-->');
     this.headBlocks += block.kind === 'head' ? 1 : 0;
-    this.atTopLevel(() => this.emitBody(block.body, false));
+    this.atTopLevel(() => this.emitBody(block.body, false), '0');
     this.headBlocks -= block.kind === 'head' ? 1 : 0;
     this.html('<!--/P-->');
     this.flush();
@@ -3603,6 +3689,37 @@ export class Emitter {
     this.open(scope, block);
     this.code(`$$b.nodes($$b.tryNodes(${body}, ${fallback}${caught ? ', 1' : ''}))`);
     this.end(block);
+  }
+
+  /**
+   * On the server, the place of markup here, as code. 1 when raw HTML inserted here stays between
+   * two comments around it, as siblings, in the browser's parse: the element around holds flow
+   * content, and no element above it reads its content as text, moves it (tables, `<select>`) or
+   * keeps it out of the document (`<template>`). 0 when it may not. At the top level of the
+   * component or of children, the elements above are the caller's, so the place comes from it:
+   * `$$place`, which is 2 at the top of the page, where the parser may move markup into the body.
+   */
+  private place(): string {
+    if (this.options.mode !== 'server') {
+      return '0';
+    }
+    for (const tag of this.elements) {
+      if (NOT_PRINTABLE.has(tag)) {
+        return '0';
+      }
+    }
+    const parent = this.elements.at(-1);
+    if (parent === undefined) {
+      return this.topPlace;
+    }
+    if (!PRINTABLE_PARENTS.has(parent)) {
+      return '0';
+    }
+    // In the `<body>` of the page, nothing of the caller is above.
+    if (this.elements.includes('body')) {
+      return '1';
+    }
+    return this.topPlace === '0' ? '0' : `${this.topPlace} && 1`;
   }
 
   /** The tag of a spacer in the element around, for a row of a table or an item of a list. */
