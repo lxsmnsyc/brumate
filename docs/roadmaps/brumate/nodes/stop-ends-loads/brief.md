@@ -1,7 +1,7 @@
 ---
 id: stop-ends-loads
 title: A stopped page ends the code loads still in flight
-status: todo
+status: active
 priority: should
 type: hotfix
 story:
