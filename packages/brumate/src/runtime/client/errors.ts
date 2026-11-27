@@ -38,6 +38,8 @@ export function fail(scope: Scope | undefined, error: unknown, uncaught?: boolea
       // `#catch`, so a `#try` further out catches the error.
       // oxlint-disable-next-line no-await-in-loop -- Each scope can belong to another component.
       const module = await loadModule(id).catch(() => undefined);
+      // An error whose boundary code loads after the stop is dropped on purpose. It does not go to
+      // `unhandled`, because the page it belongs to has ended.
       if (at !== stops) {
         return;
       }

@@ -305,6 +305,8 @@ function addScopes(state: PageState, root: string): Scope[] {
 
 /** Stops reading state records and markers that arrive later. Later records wait for `init`. */
 export function dispose(): void {
+  // A stop is final for the loads in flight. `dispose` does not clear `scopes`, so a `stop()`
+  // and a `start()` on the same DOM would not link these scopes again. No caller does that.
   pause();
   // A page that stopped keeps no link from code that loads later.
   endLoads();

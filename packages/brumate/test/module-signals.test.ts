@@ -682,6 +682,72 @@ describe('an async memo of a module', () => {
     expect(browser.calls.user).toBe(0);
   });
 
+  describe('code that loads after the loader stopped', () => {
+    /** Starts the core with code that loads when `release` runs, as an import on a slow machine. */
+    async function startLate(module: Record<string, unknown>): Promise<() => void> {
+      const client = await import('../src/runtime/client.ts');
+      let release!: () => void;
+      const late = new Promise<void>((done) => (release = done));
+      client.loader.init({
+        load: async () => {
+          await late;
+          return { id: 'Late', props: {}, g: {}, ...module } as never;
+        },
+        listen: () => {},
+      });
+      return () => {
+        client.loader.dispose();
+        release();
+      };
+    }
+
+    it('shows no error from a boundary whose code loads after the stop', async () => {
+      const { fail } = await import('../src/runtime/client/errors.ts');
+      const heard: unknown[] = [];
+      const hear = (event: Event): void => void heard.push(event);
+      window.addEventListener('brumate:error', hear);
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+      try {
+        const end = await startLate({});
+        fail({ id: 'e1', k: 0, m: 'Late', s: [] }, new Error('late'));
+        end();
+        await sleep(20);
+        expect(heard).toEqual([]);
+      } finally {
+        window.removeEventListener('brumate:error', hear);
+        log.mockRestore();
+      }
+    });
+
+    it('renders no body of a #try that resets after the stop', async () => {
+      const { reset } = await import('../src/runtime/client/branches.ts');
+      document.body.innerHTML = '<!--b7:0--><p class="old">old</p><!--/-->';
+      const end = await startLate({ body: () => '<p class="new">new</p>', fallback: () => '' });
+      void reset({ id: 7, k: 0, m: 'Late', s: [] }, 0, 'Late', 'body', 'fallback', []);
+      end();
+      await sleep(20);
+      expect(document.querySelector('.old')).not.toBeNull();
+      expect(document.querySelector('.new')).toBeNull();
+    });
+
+    it('runs no update of scopes that refresh after the stop', async () => {
+      const { refresh } = await import('../src/runtime/client/insert.ts');
+      const { scopes } = await import('../src/runtime/client/state.ts');
+      const update = vi.fn<(scope: unknown) => void>();
+      const scope = { id: 9, k: 0, m: 'Late', s: [] };
+      scopes.set(scope.id, scope);
+      try {
+        const end = await startLate({ g: { 0: { 0: [[0, 'u1']] } }, u1: update });
+        refresh([scope]);
+        end();
+        await sleep(20);
+        expect(update).not.toHaveBeenCalled();
+      } finally {
+        scopes.delete(scope.id);
+      }
+    });
+  });
+
   it('waits with $resolve in a handler of the reader', async () => {
     await resume('AsyncPage.brm');
     click('.w-two');
