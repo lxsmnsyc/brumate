@@ -13,7 +13,7 @@ import { spreadEntries } from './handlers.ts';
 import { insertHTML, refreshing } from './insert.ts';
 import { prop, spreadProps } from './props.ts';
 import { afterInsert, destroy, destroyNodes, disposeKinds, inPlace, nextId } from './scopes.ts';
-import { hiding, options, scopes } from './state.ts';
+import { hiding, options, scopes, sharedScopes } from './state.ts';
 import type { Scope } from './state.ts';
 import { give, set, take } from './updates.ts';
 
@@ -251,47 +251,12 @@ function renderedTemplate(
     }
   }
   // The server writes one render of a memo of a template call at every insert that shows it, so
-  // the scope has markup elsewhere too. An update in place reaches one copy only, so each insert
-  // renders its own scope, as the browser does.
-  if (found && hasMarkupOutside(found, first, end)) {
+  // the scope has markup at more than one insert. An update in place reaches one copy only, so
+  // each insert renders its own scope, as the browser does.
+  if (found && sharedScopes.has(found.id)) {
     return undefined;
   }
   return found && { ref: call.ref, scope: found };
-}
-
-const BLOCK_MARKER = /^[tb]-?[\d.]+:/;
-
-/** True if a node of the page that names exactly this scope is outside the range of the insert. */
-function hasMarkupOutside(scope: Scope, first: ChildNode | null, end: Node | null): boolean {
-  const range: Node[] = [];
-  for (let node = first; node && node !== end; node = node.nextSibling) {
-    range.push(node);
-  }
-  const walker = document.createTreeWalker(document, 129);
-  for (let item = walker.nextNode(); item; item = walker.nextNode()) {
-    let id: string | undefined;
-    if (item.nodeType === 8) {
-      const data = (item as Comment).data;
-      // The markers of a block or a template, not those of portals or lists.
-      id = BLOCK_MARKER.test(data) ? data.slice(1).split(':')[0] : undefined;
-    } else {
-      id = (item as Element).getAttribute('b-b')?.split(':')[0];
-    }
-    if (id === undefined || parseId(id) !== scope.id) {
-      continue;
-    }
-    let inside = false;
-    for (const node of range) {
-      if (node === item || node.contains(item)) {
-        inside = true;
-        break;
-      }
-    }
-    if (!inside) {
-      return true;
-    }
-  }
-  return false;
 }
 
 /**

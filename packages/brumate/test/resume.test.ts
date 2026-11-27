@@ -2646,6 +2646,18 @@ describe('resume', () => {
     expect(text('.a')).toBe('3');
   });
 
+  it('updates three inserts of a memo of a #template call after resume', async () => {
+    await resume('memoTemplateThrice', {});
+    click(document.querySelector('button')!);
+    await waitFor(() => expect(text('.c')).toBe('2'));
+    expect(text('.a')).toBe('2');
+    expect(text('.b')).toBe('2');
+    click(document.querySelector('button')!);
+    await waitFor(() => expect(text('.c')).toBe('3'));
+    expect(text('.a')).toBe('3');
+    expect(text('.b')).toBe('3');
+  });
+
   it('renders a component in a same-file #template that updates in the browser', async () => {
     await resume('tplImportHost', {});
     click(document.querySelector('.open')!);

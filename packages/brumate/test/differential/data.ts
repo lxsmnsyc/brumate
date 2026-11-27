@@ -249,4 +249,4 @@ diverge('try-rollback', ['tryRollback']);
 diverge('awaited-slot', ['awaitedStream']);
 diverge('loading-scopes', ['RelayLoading', 'sourcedLoading']);
 diverge('error-stack', ['catchLeak']);
-diverge('memo-template-twice', ['memoTemplateTwice']);
+diverge('memo-template-twice', ['memoTemplateThrice', 'memoTemplateTwice']);

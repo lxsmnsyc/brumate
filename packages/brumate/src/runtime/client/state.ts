@@ -251,6 +251,9 @@ export const comments: Map<string, Comment> = new Map();
 
 export const elements: Map<string, Element> = new Map();
 
+/** The scopes whose bound elements appear more than once in the page: one render shown at two inserts. */
+export const sharedScopes: Set<ScopeId> = new Set();
+
 // Records of one render share references through an array, so a later record can settle a
 // promise of an earlier one. Each render on the page has its own array, by its `b-root`.
 export const refs: Map<string, unknown[]> = new Map();

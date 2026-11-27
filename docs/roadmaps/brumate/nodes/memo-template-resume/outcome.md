@@ -2,21 +2,22 @@
 
 ## Built
 
-- `renderedTemplate` in `packages/brumate/src/runtime/client/inserts.ts` no longer links a resumed insert to a template scope whose markup also sits outside the range of the insert (new `hasMarkupOutside`). Such an insert renders its own scope on its first update, as a browser render does.
-- Test `updates both inserts of a memo of a #template call after resume` in `packages/brumate/test/resume.test.ts`, page `packages/brumate/test/render/memoTemplateTwice.brm`.
-- Differential entry `memo-template-twice` in `packages/brumate/test/differential/data.ts`.
+- The client finds a scope whose bound elements appear twice in the page while it indexes them: `indexElement` in `packages/brumate/src/runtime/client/blocks.ts` adds the scope to `sharedScopes` (`client/state.ts`, cleared in `leavePage`). `renderedTemplate` in `client/inserts.ts` skips such a scope, so each insert renders its own scope on its first update, as a browser render does.
+- Tests in `packages/brumate/test/resume.test.ts`: `updates both inserts of a memo of a #template call after resume` (page `test/render/memoTemplateTwice.brm`) and a three-insert test (page `memoTemplateThrice.brm`).
+- Differential entry `memo-template-twice` in `packages/brumate/test/differential/data.ts` for both pages.
 - Patch changeset `.changeset/memo-template-resume.md`.
 
 ## Proof
 
 - base: `cdf7f880`, `npx vitest run test/resume.test.ts -t "both inserts of a memo"` in `packages/brumate`. Fails: `.a` stays `1` while `.b` shows `2`.
-- branch: the same command passes.
+- branch: the same command passes, and the three-insert test passes.
 
 Cause: the server renders a memo of a template call once, so one scope (`2`) has two copies of its markup (`b-b="2:0"` twice). The client indexes elements by `b-b` key and keeps the last one, so an in-place update reaches `.b` only.
 
 ## Deviations
 
-- The differential page `memoTemplateTwice` is listed as an accepted divergence, not a match. Its visible markup matches. Its slots differ: the server has one scope `2` and a memo slot holding markup, and the browser has two scopes and a memo slot holding the call. A server fix would need one render per insert, which is a larger change.
+- The differential pages `memoTemplateTwice` and `memoTemplateThrice` stay accepted divergences. Their visible markup matches. Their slots differ: the server has one scope and a memo slot that holds markup, and the browser has one scope per insert and a memo slot that holds the call.
+- Server fix sized and not built. Giving each insert its own scope on the server needs a lazy value in place of the rendered `Raw` of a template call. It touches: `codegen/patch.ts` (the memo body that calls a template), `runtime/server.ts` (`insert`, `Lazy`, and the page state serializer for a memo slot), and the client resume of a memo slot, which must turn the sent value into a `TemplateCall` for the slots to match at all. The same shape exists for any value that holds a template call (a `const`, a signal, a prop), so it is a larger change than M and a risk for a hotfix. The maintainer decides whether to schedule it as a feature node.
 
 ## Stubs left
 
@@ -24,8 +25,21 @@ Cause: the server renders a memo of a template call once, so one scope (`2`) has
 
 ## Gotchas
 
-- The check walks the whole document on the first update of each resumed template insert. It looks at elements with `b-b` and `t`/`b` markers only. Portal markers (`P`) must not count: they broke `a spread onto a component` in the full file.
-- Other flakes seen in full runs under load (a ref loop test, `ResolveGoneChild`, `refLoop`, `style-files-postcss`) passed alone.
+- Detection runs in the element index, so it needs the index to hold the whole page when a resumed insert first updates. This holds for resumed pages (the core indexes the page at start).
+- A false positive only sends an insert to the re-render path, which is safe.
+- Full runs of `packages/brumate` under load showed unrelated flakes (a ref loop test, `ResolveGoneChild`, `refLoop`, `style-files-postcss`). Each passes alone.
+
+## Measurement
+
+A resumed page with 300 rows, each `{row(i, n)}` for a `#template row`. Time from the click to the first update of every row (ms, three clicks in a row, loaded machine, `packages/brumate` vitest in happy-dom).
+
+| Build                                          | First update              | Second | Third    |
+| ---------------------------------------------- | ------------------------- | ------ | -------- |
+| base (`cdf7f880`)                              | 61, 104, 288 (three runs) | 53     | 52 to 56 |
+| first version, whole-document walk (`da1a895`) | 431, 595, 746             | 53     | 53       |
+| this version, flag set while indexing          | 156, 157, 165             | 53     | 52 to 53 |
+
+The first update on this version costs about 100 ms more than the quietest base run, measured on a loaded machine. Later updates do not change.
 
 ## Proposed learnings
 
@@ -33,10 +47,10 @@ Cause: the server renders a memo of a template call once, so one scope (`2`) has
 
 ## Verification
 
-- `pnpm lint`: no errors (warnings only). `pnpm format:check`: pass. `pnpm typecheck`: pass.
-- `npx vitest run` in `packages/brumate`: 3614 to 3616 pass per run. One to three tests fail per run, a different set each time, and each passes alone.
+- `npx vitest run test/resume.test.ts test/differential-*.test.ts test/render.test.ts` in `packages/brumate`: see the PR comment for the result.
+- `pnpm lint`, `pnpm format:check`, `pnpm typecheck`: see the PR comment for the result.
 
 ## Size
 
-- Estimated M, actual S.
-- Risk estimated medium, measured medium. The check runs on every first update of a resumed template insert.
+- Estimated M, actual M with the sized server fix left out.
+- Risk estimated medium, measured medium.
