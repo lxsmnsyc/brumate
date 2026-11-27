@@ -1,7 +1,7 @@
 ---
 id: docs-audit
 title: The docs match the code of 0.10.0
-status: active
+status: done
 priority: should
 type: docs
 story:
@@ -21,7 +21,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-27
-spent:
+spent: 165058
 owns:
   - website/docs/**
   - website/ui/*.md
