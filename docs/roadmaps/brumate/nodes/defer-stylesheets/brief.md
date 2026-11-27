@@ -1,7 +1,7 @@
 ---
 id: defer-stylesheets
 title: "#defer bodies keep their stylesheets, and e2e sees streaming"
-status: active
+status: done
 priority: should
 type: fix
 story:
@@ -21,7 +21,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-27
-spent:
+spent: 350778
 owns:
   - e2e/run.mjs
   - e2e/suites/tracker.mjs
