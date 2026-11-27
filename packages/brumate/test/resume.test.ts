@@ -4701,6 +4701,24 @@ describe('cloned SVG', () => {
     expect(document.querySelector('.in-if')!.namespaceURI).toBe(svg);
   });
 
+  it('keeps SVG for an ambiguous top element of a body, a component and an item', async () => {
+    await resume('clonedForeignAnchor', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.in-for')).not.toBeNull());
+    const svg = 'http://www.w3.org/2000/svg';
+    expect(document.querySelector('.in-if')!.namespaceURI).toBe(svg);
+    expect(document.querySelector('.comp')!.namespaceURI).toBe(svg);
+    expect(document.querySelector('.in-for')!.namespaceURI).toBe(svg);
+    expect(document.querySelector('.nest')!.namespaceURI).toBe(svg);
+    // An element inside an ambiguous `<a>` renders too.
+    expect(document.querySelector('.nest .em')).not.toBeNull();
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(document.querySelectorAll('.in-for')).toHaveLength(2));
+    for (const item of document.querySelectorAll('.in-for')) {
+      expect(item.namespaceURI).toBe(svg);
+    }
+  });
+
   it('puts an insert after a void element, not inside it', async () => {
     await resume('clonedForeign', {});
     click(document.querySelector('.open')!);
