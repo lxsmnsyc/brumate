@@ -38,6 +38,9 @@ depends_on:
   - on: kept-page-nonce
     kind: hard
     why: a patch fix of 0.9.1
+  - on: stop-ends-loads
+    kind: hard
+    why: a patch fix of 0.9.1 (the module memo flake)
 ---
 
 # Release brumate 0.9.1

@@ -35,6 +35,12 @@ depends_on:
   - on: release-0.9.1
     kind: hard
     why: the 0.10.0 docs say kept pages get the request's nonce from 0.9.1 (kept-page-nonce)
+  - on: template-call-try
+    kind: hard
+    why: a 0.10.0 fix found by the review of template-call-insert-scopes
+  - on: defer-stylesheets
+    kind: hard
+    why: a 0.10.0 fix of #defer stylesheets found by defer-visible-request
   - on: docs-audit
     kind: hard
     why: the docs match the code before the release (the maintainer, 2026-11-27)

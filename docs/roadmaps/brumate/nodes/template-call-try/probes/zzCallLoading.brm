@@ -1,0 +1,24 @@
+<script>
+  import { $signal, $memo } from 'brumate/signals';
+
+  function later(v: number): Promise<number> {
+    return Promise.resolve(v * 10);
+  }
+  let n = $signal(1);
+  const shown = $memo(box(n));
+</script>
+
+#template box(value: number) {
+  #loading {
+    <script>
+      const u = await $memo(later(value));
+    </script>
+    <span class="v">{u}</span>
+  } #else {
+    <i>wait</i>
+  }
+}
+
+<button onClick=(() => n++)>Add</button>
+<div class="a">{shown}</div>
+<div class="b">{shown}</div>

@@ -4,6 +4,14 @@ import type { Handler } from './references.ts';
 import { loading, modules, options, valueRenders } from './state.ts';
 import type { ClientModule, Scope } from './state.ts';
 
+/** Counts the stops of the loader. Code that loads after a stop links and starts nothing. */
+export let stops: number = 0;
+
+/** Ends the code loads in flight: their continuations see that `stops` changed. */
+export function endLoads(): void {
+  stops++;
+}
+
 export function loadModule(id: string): Promise<ClientModule> {
   let promise = loading.get(id);
   if (!promise) {

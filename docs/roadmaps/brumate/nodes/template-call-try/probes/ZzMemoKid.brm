@@ -1,0 +1,13 @@
+<script>
+  import { $props, $signal, $memo } from 'brumate/signals';
+
+  const { item, n } = $props<{ item: (value: number) => unknown; n: number }>();
+  const shown = $memo(item(n));
+  let open = $signal(false);
+</script>
+
+<button class="open" onClick=(() => (open = true))>Open</button>
+<div class="a">{shown}</div>
+#if (open) {
+  <div class="b">{shown}</div>
+}

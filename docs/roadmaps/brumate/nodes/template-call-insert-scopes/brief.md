@@ -1,7 +1,7 @@
 ---
 id: template-call-insert-scopes
 title: Each insert of a template call gets its own scope on the server
-status: todo
+status: done
 priority: should
 type: feature
 story:
@@ -21,7 +21,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-27
-spent:
+spent: 491243
 owns:
   - docs/roadmaps/brumate/nodes/template-call-insert-scopes/**
 shared:

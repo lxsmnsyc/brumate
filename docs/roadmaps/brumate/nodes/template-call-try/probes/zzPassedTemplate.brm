@@ -1,0 +1,13 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import ZzMemoKid from './ZzMemoKid.brm';
+
+  let n = $signal(1);
+</script>
+
+#template box(value: number) {
+  <span class="v">{value}</span>
+}
+
+<button class="add" onClick=(() => n++)>Add</button>
+<ZzMemoKid item=box n=(n) />
