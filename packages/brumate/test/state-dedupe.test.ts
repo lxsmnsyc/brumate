@@ -393,6 +393,29 @@ describe('tokens of printed raw HTML', () => {
     expect(() => stateValues.d!('abcd.0')).toThrow('The page has no printed HTML abcd.0');
   });
 
+  it('keeps in the state a value whose marker raw HTML of the page copies, before or after it', async () => {
+    const server = await import(file('Forged.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    const { raw } = await import('../src/runtime/html.ts');
+    const real = (await import(file('pages.ts'))).pages.a.body;
+    // The token that the real value gets, which raw HTML of the page can copy.
+    const probe = await runtime.render(server.default, { first: raw('x'), second: real });
+    const token = /<!--d([\da-z]{4}\.0)-->/.exec(probe.html)![1]!;
+    expect(probe.state).toContain(`$b.d("${token}")`);
+    const fake = raw(`<!--d${token}--><p>evil</p><!--/d-->`);
+    for (const props of [
+      { first: fake, second: real },
+      { first: real, second: fake },
+    ]) {
+      // oxlint-disable-next-line no-await-in-loop -- One order, then the other.
+      const { html, state } = await runtime.render(server.default, props);
+      expect(state).not.toContain('$b.d(');
+      expect(state).toContain('$b.r("\\x3Ch2 id=\\"alpha');
+      expect(html).not.toMatch(/<!--\/?d/);
+      expect(html).toContain('<p>evil</p>');
+    }
+  });
+
   it('reads no range past the start of another, in the record and in navigation', async () => {
     const server = await import(file('Page.brm.ts'));
     const runtime = await import('../src/runtime/server.ts');

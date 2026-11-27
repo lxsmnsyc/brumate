@@ -13,4 +13,5 @@
 - Bytes, base 6fa90cdc vs branch: `/docs/context/` gzip -20.3%, `/ui/dialog/` -17.2%, `/` 0 markers.
 - todos: first branch run +6 B gzip from `d: unused` in `stateValues`. Moved `d` to a conditional assignment. Second run: raw equal (36 222 B), gzip +2 B from chunk hashes.
 - `navigation/run.mjs --check`: 4 ok. `e2e/run.mjs`: exit 0.
+- Follow-up review: a copy of a marker before the real range won the read. The server now drops a token whose start marker shows twice. Test fails without it (`$b.d("w6sd.0")` with the forged `$b.r`). e2e `printed`: 13 ok.
 - PR review: B1 fixed by no `printed` under `inOrder` (reproduced first). S1, S2, S3, N1, N2 fixed. New e2e suite `printed`: 11 ok in Chrome. Docs note added.

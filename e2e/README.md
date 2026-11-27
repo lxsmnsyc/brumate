@@ -89,6 +89,7 @@ Each check is a named step. Any uncaught error, console error or failed request 
 
 - Raw HTML in a `<div>` leaves the state, and the page reads it back with no marker left.
 - Raw HTML with `<html>` and `<body>` tags, in a `<button>`, in an `<li>`, or with a `<script>` stays in the state. The same HTML between markers shows that Chrome moves or changes it.
+- Raw HTML that copies the marker of a value, before or after it, leaves that value in the state, and the page reads no copy.
 - A `#try` whose `#loading` fails: in order, the `#catch` body replaces the whole body. Streamed, the page reads the value before the swap.
 
 ## Failures

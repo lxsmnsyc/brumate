@@ -528,6 +528,31 @@ function printedPrefix(seed: string): string {
 /** A printed range: its start marker with the token, the HTML, and its end marker. */
 const PRINTED_RANGE = /<!--d([\da-z]{4}\.\d+)-->([\s\S]*?)<!--\/d-->/g;
 
+/**
+ * Leaves out of `printed` each token whose start marker the page holds more than once, so the
+ * state record writes the HTML of its value, and `unmark` removes every copy of its markers.
+ */
+function dropCopiedTokens(printed: Printed, html: string): void {
+  const seen = new Set<string>();
+  const copied = new Set<string>();
+  for (const match of html.matchAll(START_MARKER)) {
+    const token = match[1]!;
+    if (seen.has(token)) {
+      copied.add(token);
+    }
+    seen.add(token);
+  }
+  for (const token of copied) {
+    const value = printed.values.get(token);
+    if (value) {
+      printed.tokens.delete(value);
+    }
+  }
+}
+
+/** The start marker of a printed range, with its token. */
+const START_MARKER = /<!--d([\da-z]{4}\.\d+)-->/g;
+
 /** The page without the markers of the ranges whose token the state record did not write. */
 function unmark(html: string, used: Set<string>): string {
   return html.replace(PRINTED_RANGE, (range, token: string, inner: string) =>
@@ -1100,6 +1125,7 @@ export class Context {
     }
     const token = `${this.printedPrefix}.${this.printedCount++}`;
     printed.tokens.set(value, token);
+    printed.values.set(token, value);
     this.undo.push(() => printed.tokens.delete(value));
     // In development, the browser names the component when it cannot read the value back.
     if (printed.names) {
@@ -2843,8 +2869,9 @@ export function stateScript(
  * Reads the HTML between each `<!--d{token}-->` and its `<!--/d-->` into `self.$bP`, by token,
  * and removes the markers, so the page is the same as one without them. `$b.d` takes it from
  * there. A range whose end is not a sibling of its start, before the next start, stays, and
- * `$b.d` throws for it. The first range of a token counts, so raw HTML that copies a later marker
- * cannot replace it. `readPrinted` of navigation does the same for a page it fetched.
+ * `$b.d` throws for it. The first range of a token counts. The record writes no token whose marker
+ * the page holds twice (see `dropCopiedTokens`), so a copy in raw HTML, before or after the range,
+ * is never read. `readPrinted` of navigation does the same for a page it fetched.
  */
 const READ_PRINTED =
   "(function(){var w=document.createTreeWalker(document,128),r=/^d[\\da-z]{4}\\.\\d+$/,n,s=[],m=self.$bP=self.$bP||{},e={'&':'&amp;','\\x3C':'&lt;','>':'&gt;','\\u00a0':'&nbsp;'};while(n=w.nextNode())r.test(n.data)&&s.push(n);s.forEach(function(a){for(var h='',x=a.nextSibling,y,k;x;x=y){y=x.nextSibling;if(x.nodeType===8){if(x.data==='/d'){x.remove();a.remove();(k=a.data.slice(1))in m||(m[k]=h);break}if(r.test(x.data))break;h+='\\x3C!--'+x.data+'-->'}else h+=x.nodeType===1?x.outerHTML:x.nodeType===3?x.data.replace(/[&\\x3C>\\u00a0]/g,function(c){return e[c]}):''}})})();";
@@ -3166,6 +3193,7 @@ export async function render<P>(
   if (!options.defer && options.printed !== false && !ctx.inOrder) {
     ctx.printed = {
       tokens: new WeakMap(),
+      values: new Map(),
       used: new Set(),
       names: options.dev ? new Map() : undefined,
     };
@@ -3438,6 +3466,11 @@ export async function render<P>(
     };
   }
 
+  // Raw HTML of the page can hold a copy of a marker. The state holds the value of a token whose
+  // start marker shows more than once, so no copy, before or after, takes its place.
+  if (ctx.printed && ctx.printedCount > 0) {
+    dropCopiedTokens(ctx.printed, `${ctx.headHTML()}${html}`);
+  }
   let state = '';
   // The state of the page is serialized before this returns, so a value that cannot be sent
   // fails the render here, with its name, instead of leaving the page without its state.

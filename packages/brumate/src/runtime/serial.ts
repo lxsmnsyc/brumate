@@ -283,6 +283,8 @@ const PropPromisePlugin = createPlugin<PropPromise, { p: SerovalNode }>({
  */
 export interface Printed {
   tokens: WeakMap<object, string>;
+  /** The value of each token, so a token can be left out again. */
+  values: Map<string, object>;
   used: Set<string>;
   names?: Map<string, string>;
 }

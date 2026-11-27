@@ -95,6 +95,20 @@ const TRY = `<script>
 }
 `;
 
+const FORGED = `<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  const { first, second } = $props();
+  let key = $signal(0);
+</script>
+
+<button class="key" onClick=(() => key++)>key</button>
+#key (key) {
+  <div class="first">{first}</div>
+  <div class="second">{second}</div>
+}
+`;
+
 /** Compiles a component with the built package, and imports its server module. */
 async function loadComponent(compile, name, source) {
   const { server } = compile(source, { filename: `${name}.brm` });
@@ -128,6 +142,21 @@ export async function start() {
     const marked = `${item.open}<!--dzzzz.0-->${item.doc}<!--/d-->${item.close}`;
     pages.set(`/marked/${name}`, { html: wrapPage(`${marked}<script>${reader}</script>`) });
   }
+  // Raw HTML that copies the marker of a value, before it and after it.
+  const Forged = await loadComponent(compile, 'forged', FORGED);
+  const real = raw(makeSection('forged'));
+  const probe = await render(Forged, { first: raw('x'), second: real });
+  const token = /<!--d([\da-z]{4}\.0)-->/.exec(probe.html)?.[1];
+  assert(token, 'the real value of the forged case has no marker');
+  const fake = raw(`<!--d${token}--><p class="evil">evil</p><!--/d-->`);
+  for (const [name, props] of [
+    ['before', { first: fake, second: real }],
+    ['after', { first: real, second: fake }],
+  ]) {
+    const { html, state } = await render(Forged, props);
+    pages.set(`/forged/${name}`, { html: wrapPage(html + state), state, token });
+  }
+
   const Try = await loadComponent(compile, 'try', TRY);
   const doc = raw(makeSection('try'));
   // The memo fails on purpose, so its error is not logged.
@@ -216,6 +245,18 @@ export async function run({ browser, url, runner }) {
       assert(read['zzzz.0']?.includes('changed by script'), 'the script did not change the range');
     },
   );
+
+  for (const name of ['before', 'after']) {
+    await step(`forged ${name}: a copy of a marker leaves the value in the state`, async () => {
+      const { state, token } = pages.get(`/forged/${name}`);
+      assert(readTokens(state).length === 0, 'the state leaves out a value whose marker is copied');
+      assert(state.includes('forged &amp; more'), 'the state does not hold the real value');
+      const { markers, read } = await inspectPage(page, `${url}/forged/${name}`);
+      assert(markers === 0, `${markers} markers stay in the page`);
+      assert(!(token in read), `the page read ${token}: ${read[token]}`);
+      assert((await page.locator('.evil').count()) === 1, 'the raw HTML of the copy is gone');
+    });
+  }
 
   await step('#try in order: the #catch body replaces the whole body, with no marker', async () => {
     const { state } = pages.get('/try/in-order');
