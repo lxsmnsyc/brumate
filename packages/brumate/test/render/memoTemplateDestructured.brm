@@ -1,0 +1,14 @@
+<script>
+  import { $signal, $memo } from 'brumate/signals';
+
+  let n = $signal(1);
+  const shown = $memo(box({ value: n }));
+</script>
+
+#template box({ value, extra = 0 }: { value: number; extra?: number }) {
+  <span class="v">{value + extra}</span>
+}
+
+<button onClick=(() => n++)>Add</button>
+<div class="a">{shown}</div>
+<div class="b">{shown}</div>

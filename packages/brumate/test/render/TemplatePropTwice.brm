@@ -1,0 +1,8 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { shown } = $props<{ shown?: unknown }>();
+</script>
+
+<div class="a">{shown}</div>
+<div class="b">{shown}</div>

@@ -1,0 +1,10 @@
+<script>
+  const shown = box(1);
+</script>
+
+#template box(value: number) {
+  <span class="v">{value}</span>
+}
+
+<div class="a">{shown}</div>
+<div class="b">{shown}</div>

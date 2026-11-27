@@ -1,0 +1,13 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import TemplatePropThrice from './TemplatePropThrice.brm';
+
+  let n = $signal(1);
+</script>
+
+#template box(value: number) {
+  <span class="v">{value}</span>
+}
+
+<button onClick=(() => n++)>Add</button>
+<TemplatePropThrice shown=(box(n)) />

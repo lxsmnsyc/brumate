@@ -201,6 +201,20 @@ function plain(value: unknown, order: Map<unknown, number>, depth = 0): unknown 
   if (value && typeof value === 'object' && value.constructor.name === 'MemoError') {
     return undefined;
   }
+  // A call of a `#template`: its reference, its owner by the place of the scope in the page, and
+  // its arguments. Its render function has an identity.
+  if (value && typeof value === 'object' && value.constructor.name === 'TemplateCall') {
+    const call = value as { ref: string; owner: unknown; args: unknown[] };
+    const owner =
+      call.owner && typeof call.owner === 'object'
+        ? (call.owner as { id: unknown }).id
+        : call.owner;
+    return {
+      template: call.ref,
+      owner: `[scope ${order.get(owner) ?? '?'}]`,
+      args: plain(call.args, order, depth + 1),
+    };
+  }
   if (typeof Node !== 'undefined' && value instanceof Node) {
     return '[node]';
   }
