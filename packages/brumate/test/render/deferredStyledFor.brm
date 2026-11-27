@@ -1,0 +1,14 @@
+<script>
+  const names = ['a', 'b'];
+</script>
+
+#for (name of names) {
+  #defer ('idle') {
+    <p class="greeting">Hello {name}</p>
+    <style>
+      .greeting { color: red; }
+    </style>
+  } #else {
+    <p class="fallback">Loading</p>
+  }
+}

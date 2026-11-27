@@ -1659,7 +1659,13 @@ export class Context {
     target.status = 'found';
     // A block `<style>` is in the CSS of the component that holds the block, which the render around
     // the body styled. The page may not have it: navigation removes a stylesheet that no element uses.
-    const owner = this.find(scopeOfAnchor(at))?.record.m;
+    let entry = this.find(scopeOfAnchor(at));
+    // The scope of a block in an `#if` or a `#for` has no module, so the component is up the tree.
+    while (entry && entry.record.m === undefined) {
+      const up = entry.parent ?? entry.record.p;
+      entry = up === undefined ? undefined : this.find(up);
+    }
+    const owner = entry?.record.m;
     const around = this.root.aroundStyles;
     this.register(
       id,
@@ -2956,7 +2962,7 @@ const SHOW_FALLBACK = `function $bF(i){var t=document.querySelector('template[b-
 // A body that links stylesheets the page does not have waits for them, as the body of a `#defer`
 // request does (`preloadSheets`), and the swaps and the records after it wait their turn. A swap
 // that needs no wait runs at once. The wait is 4 s, as `WAIT` in sheets.ts.
-const WAIT_SWAP = `function $bS(i){var t=document.querySelector('template[b-l="'+i+'"]'),s=t?t.content.querySelectorAll('link[rel~=stylesheet][href]'):[],w=[],a=[],n=self.$bN|0,e=0,k,l,c;for(;e<s.length;e++){k=s[e].getAttribute('href');if(!document.querySelector('link[href="'+k+'"]')){l=document.createElement('link');l.rel='preload';l.as='style';l.href=k;c=s[e].getAttribute('nonce');c&&l.setAttribute('nonce',c);w.push(new Promise(function(r){l.onload=l.onerror=r}));a.push(l);document.head.append(l)}}if(!a.length&&!n)return $bX(i);self.$bN=n+1;self.$bQ=self.$bQ||[];self.$bW=(self.$bW||Promise.resolve()).then(function(){return Promise.race([Promise.all(w),new Promise(function(r){setTimeout(r,4e3)})])}).then(function(){a.forEach(function(l){l.remove()});$bX(i);if(!--self.$bN){var q=self.$bQ;self.$bQ=0;(self.$brm=self.$brm||[]).push.apply(self.$brm,q)}})}`;
+const WAIT_SWAP = `function $bS(i,f){var t=document.querySelector('template[b-l="'+i+'"]'),s=t?t.content.querySelectorAll('link[rel~=stylesheet][href]'):[],w=[],a=[],n=self.$bN|0,e=0,k,l;for(;e<s.length;e++){k=s[e].getAttribute('href');if(!document.querySelector('link[href="'+k+'"]')){l=document.createElement('link');l.rel='preload';l.as='style';l.href=k;(k=s[e].getAttribute('nonce'))&&l.setAttribute('nonce',k);w.push(new Promise(function(r){l.onload=l.onerror=r}));a.push(l);document.head.append(l)}}if(!a.length&&!n){$bX(i);f&&f();return}self.$bN=n+1;self.$bQ=self.$bQ||[];w=Promise.race([Promise.all(w),new Promise(function(r){setTimeout(r,4e3)})]);self.$bW=(self.$bW||Promise.resolve()).then(function(){return w}).then(function(){a.forEach(function(l){l.remove()});try{$bX(i);f&&f()}catch(x){console.error(x)}if(!--self.$bN){k=self.$bQ;self.$bQ=0;(self.$brm=self.$brm||[]).push.apply(self.$brm,k)}})}`;
 
 // Moves a `#loading` body from its <template> into the page, in place of the fallback.
 const SWAP = `${WAIT_SWAP}function $bX(i){var t=document.querySelector('template[b-l="'+i+'"]'),w=document.createTreeWalker(document.body,128),s,n,d=0;while(n=w.nextNode())if(n.data==='l'+i){s=n;break}if(!s||!t)return;var p=s.parentNode;for(n=s.nextSibling;n;){if(n.nodeType===8){if(n.data==='/l'){if(!d)break;d--}else if(/^l\\d/.test(n.data))d++}var x=n.nextSibling;p.removeChild(n);n=x}p.insertBefore(t.content,s);p.removeChild(s);n&&p.removeChild(n);t.remove()}`;
@@ -3471,19 +3477,25 @@ export async function render<P>(
           serialize(result.ctx, (script) => {
             // An ID inside a boundary, such as `5.1`, is a string.
             const id = scriptJSON(boundary.id);
-            let call = `${swap ? '' : swapScript}$bS(${id})`;
+            // The fallback of the next `#reveal` and the head come after the body, which can wait for
+            // stylesheets, so they run when the swap is done. Their functions are defined at once.
+            let define = swap ? '' : swapScript;
+            let then = '';
             swap = true;
             if (after) {
-              call += `;${showFallback()}${after}`;
+              define += showFallback();
+              then += after;
             }
             const late = result.ctx.lateHead();
             let head = '';
             if (late.html || late.title !== undefined) {
               head = `<template b-h="${boundary.id}">${late.html}</template>`;
               const title = late.title === undefined ? '' : `,${scriptJSON(late.title)}`;
-              call += `;${headSwap ? '' : HEAD}$bH(${id}${title})`;
+              define += headSwap ? '' : `${HEAD};`;
+              then += `${then ? ';' : ''}$bH(${id}${title})`;
               headSwap = true;
             }
+            const call = `${define}$bS(${id}${then ? `,function(){${then}}` : ''})`;
             pending().push(
               // The body moves in before its record runs, so the core finds its markup when it reads the scopes.
               `<template b-l="${boundary.id}">${result.html}</template>${head}${result.ctx.portals.join('')}${scriptTag}${call}</script>${script}`,

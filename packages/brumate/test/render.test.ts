@@ -308,7 +308,7 @@ describe('#loading', () => {
     expect(rest).toMatch(/^<template b-l="0"><p class="greeting">Hello Ada<\/p>/);
     // The body moves in first, then its record runs, and the core reads its scopes.
     expect(rest).toMatch(
-      /<script>function \$bS\(i\)\{.*\$bS\(0\)<\/script><script b-state b-scopes b-next="\d+">\$bR\([^]*<\/script>$/,
+      /<script>function \$bS\(i,f\)\{.*\$bS\(0\)<\/script><script b-state b-scopes b-next="\d+">\$bR\([^]*<\/script>$/,
     );
   });
 
@@ -320,7 +320,7 @@ describe('#loading', () => {
     for await (const chunk of pending) {
       rest += chunk;
     }
-    expect(rest).toContain('<script nonce="a&quot;b">function $bS(i)');
+    expect(rest).toContain('<script nonce="a&quot;b">function $bS(i,f)');
     expect(rest).toContain('<script nonce="a&quot;b" b-state b-scopes');
   });
 

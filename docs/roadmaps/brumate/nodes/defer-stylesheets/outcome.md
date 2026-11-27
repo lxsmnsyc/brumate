@@ -5,7 +5,7 @@
 - e2e agent (A1): `e2e/run.mjs` reads the browser's user agent once and gives every context and page the same agent without `Headless` (`useBrowserAgent`). A step can pass its own `userAgent`. `headlesschrome` stays on `BOTS`.
 - B (option B1): the request for a `#defer` body sends the style of the component that holds the block. `Context.style` remembers the components that the render around the target styled (`aroundStyles`). `deferBlock` asks again for the component of the block, through `child.style`, in the body. The answer then carries the `<style b-style>` or the stylesheet link of the component, as for any component in the body. The cost is the CSS of that component, once per answer.
 - C (option C1, changed): the swap of a streamed body (`$bS` in `runtime/server.ts`) waits for the stylesheet links in its `<template b-l>`. It starts a `rel=preload` link for each URL the page does not have, waits for load or error or 4 s (`WAIT` of `sheets.ts`), removes the preloads, then runs the old swap (now `$bX`). A swap with no new link runs at once, so pages without links see no change. Swaps queue behind a waiting one.
-- The state records after a waiting swap run after the body is in place: `$bR` pushes to `self.$bQ` while a swap waits, and the swap hands them to `self.$brm` when the queue ends. This is what C1 left out: the records of the answer follow `$bS` in the same response and the core needs the body in the page. `RECORD` grows by 7 bytes per page.
+- The state records after a waiting swap run after the body is in place: `$bR` pushes to `self.$bQ` while a swap waits, and the swap hands them to `self.$brm` when the queue ends. This is what C1 left out: the records of the answer follow `$bS` in the same response and the core needs the body in the page. `RECORD` grows by 12 bytes per page. The swap script (`SWAP`, inline on every streamed page with a swap) grows from 438 B raw / 304 B gzip to 1327 B / 689 B, about +385 B gzip.
 - The tracker gets `/later` (`examples/tracker/src/routes/later.brm`, the repro page): a `#defer ('visible')` body with a block `<style>`, not prerendered, so a crawler and a browser get different pages from it.
 - Changeset: patch.
 
@@ -56,3 +56,11 @@
 ## Size
 
 - Estimated M, actual M. Risk medium: the swap script and the record function are in every streamed page.
+
+## Review rework
+
+- B walks up from the scope of the block to the nearest scope with a module, so a `#defer` inside `#if` or `#for` (two items too) gets its style. Fixtures `deferredStyledIf` and `deferredStyledFor`; the test fails on base.
+- `$bS(id, then)`: the `#reveal` fallback calls and the head call run in `then`, after the body is in place, also when the swap waits. Their function definitions stay at the top level of the script. Test "applies the head of the body after the body" fails on base.
+- A throw in the waited swap is caught and logged with `console.error`; the queue count and held records are released and the next swap runs at once. Test "keeps swapping when a swap that waited throws" fails on base.
+- The 4 s timer starts when `$bS` is called, not on the turn of the swap, so queued swaps share the time and the wait is at most about 4 s.
+- `website/docs/styles.md` now names `#loading` bodies too.

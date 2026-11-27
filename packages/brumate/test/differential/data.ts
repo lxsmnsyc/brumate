@@ -138,6 +138,8 @@ skip('Holds a `#defer` block, which only the server renders, so the browser show
   'DeferredWrittenBody',
   'deferredWritten',
   'deferredStyled',
+  'deferredStyledIf',
+  'deferredStyledFor',
 ]);
 
 skip('Needs a prop that holds a record of promises, which the test does not make.', [
