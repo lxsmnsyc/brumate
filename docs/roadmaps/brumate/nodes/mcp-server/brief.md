@@ -19,10 +19,7 @@ owns: []
 shared: []
 reserves: []
 provides: []
-depends_on:
-  - on: skill-tasks
-    kind: hard
-    why: the pieces before it show which tools agents use
+depends_on: []
 ---
 
 > 2026-11-12: a must feature of 0.9.0 (docs/debates/0.9.0-cut/debate.md). Its dependency skill-tasks is done, and its outcome shows which checks agents need.

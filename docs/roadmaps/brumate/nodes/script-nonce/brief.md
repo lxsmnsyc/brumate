@@ -1,7 +1,7 @@
 ---
 id: script-nonce
 title: The default script tags carry the nonce of the render
-status: active
+status: done
 priority: 
 type: fix
 story: client-scripts
@@ -21,7 +21,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-26
-spent:
+spent: 365137
 owns:
   - docs/roadmaps/brumate/nodes/script-nonce/**
 shared:

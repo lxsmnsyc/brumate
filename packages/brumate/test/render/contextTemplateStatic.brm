@@ -1,0 +1,13 @@
+<script>
+  import { $setContext } from 'brumate/signals';
+  import ContextTemplateLater from './ContextTemplateLater.brm';
+  import { CallContext } from './callContext.ts';
+
+  $setContext(CallContext, { shown: box(4) });
+</script>
+
+#template box(value: number) {
+  <span class="v">{value}</span>
+}
+
+<ContextTemplateLater />

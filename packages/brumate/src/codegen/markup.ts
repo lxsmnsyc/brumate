@@ -2039,20 +2039,19 @@ export class Emitter {
     const params = first && last ? copy(this.file.source, first.start, last.end) : '';
     const type = this.options.mode === 'server' ? ': Promise<$$b.Raw>' : '';
     const scope = this.plan.bodyScopes.get(template.body)!;
-    // In the browser, a call of a template that updates in place makes a call that the insert
-    // renders, or updates, with the arguments. The template's code is `name$`.
-    const call = this.options.mode === 'client' && templateArgs(this.plan, this.file.source, scope);
-    const name = call ? `${template.name}$` : template.name;
-    if (call) {
-      // Each argument is passed with the default value that the parameter gives it.
-      const own = call.names ? call.params : '...$$a';
-      const given = call.names ? `[${call.names.join(', ')}]` : '$$a';
-      const owner = this.scopeVar(instanceScope(this.plan, scope.parent!));
-      const ref = JSON.stringify(`${this.plan.id}#T${scope.id}`);
-      this.line(
-        `function ${template.name}(${own}) { return $$b.templateCall(${ref}, ${owner}, ${name}, ${given}); }`,
-      );
-    }
+    // A call of a template makes a call that each insert renders, or updates in place with the
+    // arguments, so each insert has its own scope on the server and in the browser, and the page
+    // state can send the call. The template's code is `name$`.
+    const call = templateArgs(this.plan, this.file.source, scope);
+    const name = `${template.name}$`;
+    // Each argument is passed with the default value that the parameter gives it.
+    const own = call?.names ? call.params : '...$$a';
+    const given = call?.names ? `[${call.names.join(', ')}]` : '$$a';
+    const owner = this.scopeVar(instanceScope(this.plan, scope.parent!));
+    const ref = JSON.stringify(`${this.plan.id}#T${scope.id}`);
+    this.line(
+      `function ${template.name}(${own}) { return $$b.templateCall(${ref}, ${owner}, ${name}, ${given}); }`,
+    );
     this.line(`${this.async}function ${name}(${params})${type} {`);
     const fn = this.currentFn;
     this.line(`let $$html = '';`);

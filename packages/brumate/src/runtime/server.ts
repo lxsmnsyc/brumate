@@ -1380,10 +1380,17 @@ export class Context {
     if (args === undefined && /#t\d/.test(ref)) {
       // A `#template` renders where the component that gets it inserts it, so it reads the
       // contexts there, as children do.
-      const render = value as unknown as (...rest: unknown[]) => Promise<unknown>;
+      const render = value as unknown as (...rest: unknown[]) => unknown;
       function template(...rest: unknown[]): Lazy {
+        const call = render(...rest);
         // The insert links the template's scope to where it is inserted.
-        return new Children(scope, async (ctx, at) => insert(await render(...rest), ctx, at));
+        const rendered = new Children(scope, async (ctx, at) => insert(call, ctx, at));
+        // The page state sends the call of the template, which the browser makes again.
+        const sent = typeof call === 'object' && call !== null && functionReferences.get(call);
+        if (sent) {
+          functionReferences.set(rendered, sent);
+        }
+        return rendered;
       }
       functionReferences.set(template, new FunctionReference(ref, scope));
       return template as T;
@@ -2011,6 +2018,38 @@ export function lazy(
   ) => Promise<string>,
 ): Lazy {
   return { [LAZY]: renderAt };
+}
+
+/**
+ * A call of a `#template` of the file that has a scope, such as the value of `$memo(row(n))`. Each
+ * insert renders it with a new scope, as the browser does, so two inserts of one value have one
+ * scope each. The page state sends it as a reference to the template, `ref`, with the scope that
+ * holds the template and the arguments, and the browser makes its own call of them.
+ */
+class TemplateCall implements Lazy {
+  readonly [LAZY]: Lazy[typeof LAZY];
+
+  constructor(
+    ref: string,
+    owner: ScopeId,
+    renderCall: (...args: unknown[]) => Promise<unknown>,
+    args: unknown[],
+  ) {
+    functionReferences.set(this, new FunctionReference(ref, owner, args));
+    // The insert links the template's scope to where it is inserted.
+    this[LAZY] = async (ctx, at, tag, anchor, place) =>
+      insert(await renderCall(...args), ctx, at, tag, anchor, place);
+  }
+}
+
+/** Makes a call of a `#template` of the file. See `TemplateCall`. */
+export function templateCall(
+  ref: string,
+  owner: ScopeId,
+  renderCall: (...args: unknown[]) => Promise<unknown>,
+  args: unknown[],
+): Lazy {
+  return new TemplateCall(ref, owner, renderCall, args);
 }
 
 function isLazy(value: unknown): value is Lazy {
@@ -4401,6 +4440,8 @@ interface KeptPage {
   expires: number;
   /** The versions of the tags of the `cached` functions that the page called. */
   tags: Record<string, string>;
+  /** The nonce that the page was rendered with, which a request replaces with its own. */
+  nonce?: string;
 }
 
 /** The key of a page in the store: its URL, and the base of a client navigation, by build. */
@@ -4409,13 +4450,20 @@ export function pageKey(url: URL, request: Request, build: string | undefined): 
   return `brumate:page:${build ?? ''}:${base}:${url.pathname}${url.search}`;
 }
 
-/** The page that the store keeps for a key, when it is still fresh. */
-export async function keptPage(key: string): Promise<Response | undefined> {
+/**
+ * The page that the store keeps for a key, when it is still fresh. `nonce` is the nonce of the
+ * request: the page takes it in place of the one it was rendered with.
+ */
+export async function keptPage(key: string, nonce?: string): Promise<Response | undefined> {
   const text = await cacheStore().get(key);
   if (!text) {
     return undefined;
   }
   const page = JSON.parse(text) as KeptPage;
+  // A page rendered with no nonce has none to replace, so the request renders its own.
+  if (page.nonce === undefined && nonce !== undefined) {
+    return undefined;
+  }
   const tags = Object.keys(page.tags);
   const versions = await tagVersions(tags);
   if (page.expires <= Date.now()) {
@@ -4430,14 +4478,27 @@ export async function keptPage(key: string): Promise<Response | undefined> {
   const maxAge = Number(/max-age=(\d+)/.exec(headers.get('cache-control') ?? '')?.[1] ?? 0);
   headers.set('age', String(Math.max(0, Math.floor(maxAge - (page.expires - Date.now()) / 1000))));
   headers.set('x-brumate-cache', 'hit');
-  return new Response(page.body, { status: page.status, headers });
+  // Every nonce attribute of the page takes the nonce of the request, or goes when it has none.
+  let { body } = page;
+  if (page.nonce !== undefined && page.nonce !== nonce) {
+    // A function, so a `$&` in the nonce is text and not a pattern of the replacement.
+    const replacement = nonce === undefined ? '' : ` nonce="${escapeAttribute(nonce)}"`;
+    body = body.replaceAll(` nonce="${escapeAttribute(page.nonce)}"`, () => replacement);
+    headers.delete('content-length');
+  }
+  return new Response(body, { status: page.status, headers });
 }
 
-/** Keeps a public page in the store until its `max-age` ends. */
+/**
+ * Keeps a public page in the store until its `max-age` ends. A page that holds its nonce outside
+ * a `nonce` attribute, such as in a meta policy, in script text or in a header, is not kept:
+ * a later request could not replace that copy.
+ */
 export async function keepPage(
   key: string,
   response: Response,
   event: RequestEvent,
+  nonce?: string,
 ): Promise<void> {
   const maxAge = Number(
     /max-age=(\d+)/.exec(response.headers.get('cache-control') ?? '')?.[1] ?? 0,
@@ -4460,6 +4521,16 @@ export async function keepPage(
   }
   // The body streams, so the tags of late bodies, such as of `#loading`, are in only after it ends.
   const body = await response.clone().text();
+  if (nonce !== undefined) {
+    // What is left once the attributes that a request replaces are out must not name the nonce.
+    const escaped = escapeAttribute(nonce);
+    const outside = body.replaceAll(` nonce="${escaped}"`, '');
+    for (const text of [outside, ...kept.map(([, value]) => value)]) {
+      if (text.includes(nonce) || text.includes(escaped)) {
+        return;
+      }
+    }
+  }
   const tags: Record<string, string> = {};
   for (const [tag, version] of event.cacheTags) {
     tags[tag] = version ?? versions[tag]!;
@@ -4470,6 +4541,7 @@ export async function keepPage(
     body,
     expires: Date.now() + maxAge * 1000,
     tags,
+    ...(nonce === undefined ? {} : { nonce }),
   };
   await cacheStore().set(key, JSON.stringify(page), maxAge);
 }

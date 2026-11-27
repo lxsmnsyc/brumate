@@ -1,7 +1,7 @@
 ---
 id: nitro-scripts
 title: The Nitro entry writes no script tag
-status: todo
+status: done
 priority: 
 type: feature
 story: client-scripts

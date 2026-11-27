@@ -4,6 +4,14 @@ import type { Handler } from './references.ts';
 import { loading, modules, options, valueRenders } from './state.ts';
 import type { ClientModule, Scope } from './state.ts';
 
+/** Counts the stops of the loader. Code that loads after a stop links and starts nothing. */
+export let stops: number = 0;
+
+/** Ends the code loads in flight: their continuations see that `stops` changed. */
+export function endLoads(): void {
+  stops++;
+}
+
 export function loadModule(id: string): Promise<ClientModule> {
   let promise = loading.get(id);
   if (!promise) {
@@ -24,6 +32,11 @@ export function loadModule(id: string): Promise<ClientModule> {
 /** True for a reference to a `#template` that a component got as a prop, such as `Page#t3`. */
 export function isTemplate(ref: string): boolean {
   return /#t\d/.test(ref);
+}
+
+/** True for a reference to a call of a `#template` that the page state holds, such as `Page#T3`. */
+export function isTemplateCall(ref: string): boolean {
+  return /#T\d/.test(ref);
 }
 
 /**

@@ -45,6 +45,18 @@ export function templateCall(
 }
 
 /**
+ * A call of a `#template` of a component that the page state holds, such as the value of a memo
+ * that the server computed. The template's `T` export renders it with the owner, as the call of
+ * the browser does, so each insert has its own scope and an insert updates it in place.
+ */
+export function sentCall(ref: string, owner: Scope | undefined, args: unknown[]): TemplateCall {
+  return new TemplateCall(ref, owner, args, (at) => {
+    const render = loadedFunction(ref);
+    return render ? insertOut(render(owner, ...args), at) : '';
+  });
+}
+
+/**
  * The output of a template that cloned its markup: the clone, and the template's scope, which the
  * insert links to its call.
  */
@@ -52,9 +64,29 @@ class RawNodes {
   readonly n: DocumentFragment;
   readonly s?: ScopeId;
 
+  /** The nodes of the clone, once an insert took them. */
+  private taken: Node[] | undefined;
+
   constructor(nodes: DocumentFragment, scope?: ScopeId) {
     this.n = nodes;
     this.s = scope;
+  }
+
+  /**
+   * The nodes for an insert. The first insert takes the clone. Another insert of the same output,
+   * such as a `const` of a template with no scope that two inserts show, gets a copy, since a node
+   * is in one place only.
+   */
+  take(): DocumentFragment {
+    if (!this.taken) {
+      this.taken = [...this.n.childNodes];
+      return this.n;
+    }
+    const copy = document.createDocumentFragment();
+    for (const node of this.taken) {
+      copy.append(node.cloneNode(true));
+    }
+    return copy;
   }
 }
 
@@ -107,7 +139,7 @@ export function insertOut(
   }
   linkCalls(value, scope);
   if (HAS_TEMPLATES && value instanceof RawNodes) {
-    return value.n;
+    return value.take();
   }
   if (!((HAS_CHILDREN || HAS_TEMPLATES) && value instanceof Children)) {
     return insertValue(value);

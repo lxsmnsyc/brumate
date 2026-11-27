@@ -22,8 +22,8 @@ import {
   parseId,
 } from '../shared.ts';
 import type { ScopeId } from '../shared.ts';
-import { RenderedChildren, childrenReady, templateReference } from './children.ts';
-import { codeReady, isTemplate, loadedFunction } from './code.ts';
+import { RenderedChildren, childrenReady, sentCall, templateReference } from './children.ts';
+import { codeReady, isTemplate, isTemplateCall, loadedFunction } from './code.ts';
 import { fail } from './errors.ts';
 import { track } from './guesses.ts';
 import { call, handlerReferences, resolve } from './references.ts';
@@ -98,6 +98,9 @@ export function callable(value: unknown, seen: Set<object>): unknown {
   if (value instanceof FunctionReference) {
     if (HAS_TEMPLATES && isTemplate(value.ref)) {
       return templateReference(value.ref, scopes.get(value.scope));
+    }
+    if (HAS_TEMPLATES && isTemplateCall(value.ref)) {
+      return sentCall(value.ref, scopes.get(value.scope), value.args ?? []);
     }
     // The code of the components on the page loads with the page, and handlers and updates wait
     // for it. So the function runs at once and returns its result, as on the server.

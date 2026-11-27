@@ -1,8 +1,0 @@
-# Log: produce-map-set
-
-- 2026-11-19: Step 1 (7ffcc76f). `produce(base, recipe, name?)` warns once for each name when an object that is not drafted comes back with no result. The compiler passes the name in dev only, by the `hideNames` flag of the plan (the vite plugin sets it for builds): `addValueEdits` (server, render) and `Rewriter.rewriteProduce` (client). `Patch.appendArgument` inserts before the closing parenthesis and handles a trailing comma. `shared-module.ts` (module-level `$produce`) has no dev flag, so it warns without the name.
-- `import.meta.env?.DEV` must be written in that literal form: vitest and Vite replace only it, and `vi.stubEnv('DEV', false)` does not reach the cast form `(import.meta as ...).env` used in navigate.ts. It needs `@ts-expect-error`, since `ImportMeta` has no `env` in this package.
-- Step 2 (17e657e1). Drafts of `Map` and `Set` are a Proxy over an empty Map or Set of the same type, with module-level methods that read `this`. `produce-collections.ts` takes the helpers of `produce.ts` as a `Host` object, because oxlint `import/no-cycle` rejects the two files importing each other. `DraftState` gained `final`, so a draft that moved to another key is finalized once (a set is rebuilt, so twice would give two sets).
-- The render fixture `produceMap.brm` is in `render.test.ts` and `features.test.ts`, with a snapshot and a resume test. The brief names `test/client/`, which does not exist; the render and resume suites are where compiled pages are tested.
-- The snapshot `render/produce.txt` changed: the dev compile now has `, "todos"`.
-- Full `pnpm test` failed 64 tests in 8 files under load (other workers ran at the same time; timeouts of 5 s). The same 8 files passed alone (1282 tests). e2e passed.

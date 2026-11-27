@@ -25,7 +25,8 @@ Values cross from the server to the browser in two ways: in the page, for the st
 | Elements in `ref` signals                          | As a reference to the element that the server rendered.                                            |
 | Client functions                                   | Event handlers, functions passed as props, and server function stubs, as references to their code. |
 | Components                                         | As a reference to the component, for a dynamic tag such as `<{tag}>`.                              |
-| `children` and `#template` markup                  | As the HTML that the server rendered.                                                              |
+| `children`                                         | As the HTML that the server rendered, or a reference to the code that renders them.                |
+| Calls of a `#template`                             | As a reference to the template, with its arguments. The browser renders the call at each insert.   |
 
 ### Raw HTML that the page printed
 

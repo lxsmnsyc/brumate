@@ -1,0 +1,17 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import TplItem from './TplItem.brm';
+
+  let shown = $signal(box('item'));
+  let open = $signal(false);
+</script>
+
+#template box(label: string) {
+  <TplItem label=(label) />
+}
+
+<button class="open" onClick=(() => (open = true))>Open</button>
+<div class="a">{shown}</div>
+#if (open) {
+  <div class="b">{shown}</div>
+}

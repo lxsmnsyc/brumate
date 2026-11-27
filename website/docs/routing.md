@@ -313,6 +313,7 @@ The server also keeps each public page, in the store of [`cached`](./server-func
 
 - Middleware runs first, so a check of access still runs for each request. A request that read the user before the page, such as in middleware, gets a page rendered for it.
 - A page records the tags of the `cached` functions that it called. `revalidate(tag)` drops the pages that used the tag, with the results.
+- A kept page is served with the nonce of the request on its scripts, so a page with a nonce policy can be kept. A page whose nonce appears anywhere else, such as in a `<meta>` policy, in the text of a script or in a header the route sets, is not kept and renders for each request.
 - A kept page is used until `max-age` ends. `stale-while-revalidate` is for the CDN or the browser: the server renders again after `max-age`.
 - A kept page gets the `nonce` of each request on its scripts, from brumate 0.9.1, so it works under a nonce policy. A page whose nonce shows anywhere else, such as in the text of a script, renders on each request and is not kept. See [Content Security Policy](./reference-security.md#content-security-policy).
 - `handle(request, { pageCache: false })` turns it off, such as when a CDN keeps the pages.

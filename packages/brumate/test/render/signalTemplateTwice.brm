@@ -1,0 +1,13 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let shown = $signal(box(1));
+</script>
+
+#template box(value: number) {
+  <span class="v">{value}</span>
+}
+
+<button onClick=(() => (shown = box(2)))>Add</button>
+<div class="a">{shown}</div>
+<div class="b">{shown}</div>

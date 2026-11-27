@@ -1,0 +1,13 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import TemplatePropTwice from './TemplatePropTwice.brm';
+
+  let n = $signal(1);
+</script>
+
+#template box(value: number) {
+  <span class="v">{value}</span>
+}
+
+<button onClick=(() => n++)>Add</button>
+<TemplatePropTwice shown=(box(n)) />

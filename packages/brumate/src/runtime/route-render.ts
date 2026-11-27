@@ -335,7 +335,7 @@ export async function renderRoute(
     (request.method === 'GET' || request.method === 'HEAD');
   const key = keep ? pageKey(url, request, options.build) : undefined;
   if (key && !event.personal) {
-    const kept = await keptPage(key);
+    const kept = await keptPage(key, options.nonce);
     if (kept) {
       return kept;
     }
@@ -346,7 +346,7 @@ export async function renderRoute(
       actions,
     });
     if (key && /^\s*public\b/.test(response.headers.get('cache-control') ?? '')) {
-      await keepPage(key, response, event);
+      await keepPage(key, response, event, options.nonce);
     }
     return response;
   } catch (error) {

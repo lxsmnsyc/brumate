@@ -8,7 +8,7 @@ import { MemoError, madeStores } from '../shared.ts';
 import type { ScopeId, StoreRead } from '../shared.ts';
 import { HOLDS, Store, findStored, isBridged, pendingOf, sameData, sendStore } from '../store.ts';
 import type { StoreLike } from '../store.ts';
-import { loadModule } from './code.ts';
+import { loadModule, stops } from './code.ts';
 import { findRoot, resolveScope } from './scopes.ts';
 import { DEV, scopes } from './state.ts';
 import type { Scope } from './state.ts';
@@ -213,8 +213,9 @@ export function resumeStoreReads(
         continue;
       }
       // The sources of a scope run in one pass, so a repair of two slots updates once.
+      const at = stops;
       void loadModule(findRoot(scope).m!).then((module) => {
-        if (scopes.get(scope.id) !== scope) {
+        if (scopes.get(scope.id) !== scope || at !== stops) {
           return;
         }
         pass(() => {

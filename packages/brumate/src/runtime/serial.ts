@@ -165,7 +165,11 @@ const BindingPlugin = createPlugin<Binding, ReferenceNode>({
 const FunctionPlugin = createPlugin<object, ReferenceNode>({
   tag: 'brumate/function',
   skipPlainObjects: true,
-  test: (value) => typeof value === 'function' && functionReferences.has(value),
+  // An object is a call of a `#template`, which the browser makes again from its reference.
+  test: (value) =>
+    (typeof value === 'function' || typeof value === 'object') &&
+    value !== null &&
+    functionReferences.has(value),
   parse: parsers((value) => {
     const reference = functionReferences.get(value)!;
     // The arguments of a handler that `$handler` made go with it.
@@ -228,7 +232,11 @@ const InternalPlugin = createPlugin<Internal, { a: SerovalNode }>({
 const ChildrenPlugin = createPlugin<object, ReferenceNode>({
   tag: 'brumate/children',
   skipPlainObjects: true,
-  test: (value) => typeof value === 'object' && value !== null && CHILDREN_REF in value,
+  // Children with no export of their own hold the key with no reference, and send their HTML.
+  test: (value) =>
+    typeof value === 'object' &&
+    value !== null &&
+    (value as { [CHILDREN_REF]?: unknown })[CHILDREN_REF] !== undefined,
   parse: parsers((value) => {
     const reference = (value as { [CHILDREN_REF]: ChildrenReference })[CHILDREN_REF];
     const node: Record<string, unknown> = { a: reference.ref, b: reference.scope };
