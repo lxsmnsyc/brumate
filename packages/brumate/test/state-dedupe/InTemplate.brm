@@ -1,0 +1,17 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Wrap from './Wrap.brm';
+  import { pages } from './pages.ts';
+
+  const kept = pages.c!.body;
+  let key = $signal(0);
+</script>
+
+<button class="key" onClick=(() => key++)>key</button>
+<template class="kept"><div><Wrap doc=kept /></div></template>
+<div class="again">
+  #key (key) {
+    <span class="k">{key}</span>
+    <Wrap doc=kept />
+  }
+</div>

@@ -67,12 +67,13 @@ async function renderView(
   props: Record<string, unknown>,
   ctx: Context,
   scope: ScopeId | undefined,
+  place: number | undefined,
 ): Promise<string> {
   if (!view.loading) {
-    return component(viewComponent(view, props), {}, ctx, scope);
+    return component(viewComponent(view, props), {}, ctx, scope, undefined, undefined, place);
   }
   const id = ctx.boundary();
-  const fallback = await component(view.loading, props, ctx, scope);
+  const fallback = await component(view.loading, props, ctx, scope, undefined, undefined, place);
   ctx.defer(id, (child) => component(viewComponent(view, props), {}, child, scope));
   return `<!--l${id}-->${fallback}<!--/l-->`;
 }
@@ -92,18 +93,19 @@ function viewIds(view: ResolvedView): string[] {
 }
 
 function viewComponent(view: ResolvedView, props: Record<string, unknown>): Component {
-  return (_props, ctx) => {
+  return (_props, ctx, place) => {
     const own: Record<string, unknown> = { ...props };
     for (const [name, slot] of Object.entries(view.slots)) {
       // Comments mark the slot, its layout's scope, the scope of its route and the route's key,
-      // so the client can replace only the routes that change.
-      own[name] = lazy(async (at, scope) => {
+      // so the client can replace only the routes that change. The view renders at the place of
+      // the insert of the layout.
+      own[name] = lazy(async (at, scope, _tag, _anchor, inserted) => {
         const root = at.peek();
-        const html = await renderView(slot, props, at, scope);
+        const html = await renderView(slot, props, at, scope, inserted);
         return `<!--R${scope ?? -1}:${name}:${root}:${encodeURIComponent(slot.key)}-->${html}<!--/R-->`;
       });
     }
-    return view.component(own, ctx);
+    return view.component(own, ctx, place);
   };
 }
 

@@ -1,0 +1,14 @@
+<script>
+  import { $getContext, $store } from 'brumate/signals';
+  import { Doc, Level } from './pages.ts';
+
+  const doc = $getContext(Doc);
+  const level = $store($getContext(Level));
+</script>
+
+<div class="reader">
+  #key (level) {
+    <span class="lv">{level}</span>
+    {doc}
+  }
+</div>

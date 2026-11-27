@@ -1,0 +1,15 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { pages } from './pages.ts';
+
+  const doc = pages.a!.body;
+  let key = $signal(0);
+</script>
+
+<button class="route-key" onClick=(() => key++)>key</button>
+<div class="route">
+  #key (key) {
+    <span class="rk">{key}</span>
+    {doc}
+  }
+</div>

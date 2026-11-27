@@ -5,7 +5,7 @@ export const rpc = {  };
 const $$css = ".flex:where([b-c-1oupne3]) {\n    display: flex;\n  }";
 let $$t: any;
 
-export default async function Offscreen($$props: Record<string, any>, $$ctx: $$b.Context): Promise<string> {
+export default async function Offscreen($$props: Record<string, any>, $$ctx: $$b.Context, $$place?: number): Promise<string> {
   let $$html = '';
   const $$s1 = $$ctx.scope(1, undefined, "Offscreen_1oupne3");
   $$html += $$ctx.style("Offscreen_1oupne3", $$css);
@@ -51,7 +51,7 @@ export default async function Offscreen($$props: Record<string, any>, $$ctx: $$b
       return $$html;
     })();
     $$ctx.portal($$portal0);
-    $$html += await $$b.component(OffscreenChild, { "value": (count) }, $$ctx, $$s2, 8);
+    $$html += await $$b.component(OffscreenChild, { "value": (count) }, $$ctx, $$s2, 8, undefined, $$place && 1);
     $$ctx.slots($$s2, [draft], ["draft"]);
     $$html += "<!--/b-->";
   } else {

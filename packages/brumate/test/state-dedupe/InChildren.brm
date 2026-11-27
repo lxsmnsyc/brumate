@@ -1,0 +1,23 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Box from './Box.brm';
+  import Link from './Link.brm';
+  import { pages } from './pages.ts';
+
+  const linked = pages.a!.body;
+  const boxed = pages.b!.body;
+  let key = $signal(0);
+</script>
+
+<button class="key" onClick=(() => key++)>key</button>
+<div class="linked">
+  #key (key) {
+    <span class="k">{key}</span>
+    <Link>{linked}</Link>
+  }
+</div>
+<div class="boxed">
+  #key (key) {
+    <Box>{boxed}</Box>
+  }
+</div>

@@ -173,6 +173,7 @@ export function generateServer(file: SFCFile, plan: Plan): string {
   const generics = file.generics ? `<${file.generics}>` : '';
   // The script can import a name that is the name of the component.
   const fn = componentFunctionName(file, plan.name);
+  const signature = emitter.lines.length;
   emitter.line(
     `export default async function ${fn}${generics}($$props: ${propsType(file)}, $$ctx: $$b.Context): Promise<string> {`,
   );
@@ -183,6 +184,17 @@ export function generateServer(file: SFCFile, plan: Plan): string {
   emitter.emitComponentContent(setup);
   emitter.line('return $$html;');
   emitter.close();
+  // The place where the caller renders the root, for raw HTML that prints between markers. See
+  // `Emitter.place`. Only a component whose markup reads it takes it.
+  for (let index = signature + 1; index < emitter.lines.length; index++) {
+    if (emitter.lines[index]!.includes('$$place')) {
+      emitter.lines[signature] = emitter.lines[signature]!.replace(
+        '$$ctx: $$b.Context)',
+        () => '$$ctx: $$b.Context, $$place?: number)',
+      );
+      break;
+    }
+  }
   // The ID lets the page state hold the component, such as the value of a dynamic tag.
   emitter.line(`${fn}.brumateId = ${JSON.stringify(plan.id)};`);
 

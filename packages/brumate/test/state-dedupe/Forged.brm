@@ -1,0 +1,13 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  // One of the two is raw HTML that copies the marker of the other.
+  const { first, second } = $props<{ first: unknown; second: unknown }>();
+  let key = $signal(0);
+</script>
+
+<button class="key" onClick=(() => key++)>key</button>
+#key (key) {
+  <div class="first">{first}</div>
+  <div class="second">{second}</div>
+}

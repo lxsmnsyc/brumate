@@ -1,0 +1,72 @@
+<script>
+  import { $memo, $setContext, $signal, $toStore } from 'brumate/signals';
+  import { getEvent } from 'brumate/server';
+  import Child from './Child.brm';
+  import Reader from './Reader.brm';
+  import { Doc, Level, pages } from './pages.ts';
+
+  const page = pages.a!;
+  let show = $signal(true);
+  let key = $signal(0);
+  let count = $signal(0);
+  let level = $signal(0);
+  $setContext(Doc, page.body);
+  $setContext(Level, $toStore(level));
+
+  async function stamp() {
+    'use server';
+    const shared = globalThis as { stamps?: number };
+    shared.stamps = (shared.stamps ?? 0) + 1;
+    return shared.stamps;
+  }
+
+  async function bump() {
+    'use server';
+    getEvent().refresh(stamp);
+  }
+
+  async function tensOf(n: number) {
+    'use server';
+    return n * 10;
+  }
+
+  const loaded = $memo(stamp());
+  // Loads again when `count` changes.
+  const tens = $memo(tensOf(count));
+</script>
+
+<div class="printed">{page.body}</div>
+<button class="show" onClick=(() => (show = !show))>show</button>
+<button class="key" onClick=(() => key++)>key</button>
+<button class="count" onClick=(() => count++)>count</button>
+<button class="level" onClick=(() => level++)>level</button>
+<button class="refresh" onClick=(() => bump())>refresh</button>
+<div class="if">
+  #if (show) {
+    {page.body}
+  }
+</div>
+<div class="keyed">
+  #key (key) {
+    <span class="k">{key}</span>
+    {page.body}
+  }
+</div>
+<div class="loading">
+  #loading (loaded) {
+    <span class="stamp">{loaded}</span>
+    {page.body}
+  } #else {
+    <p>wait</p>
+  }
+</div>
+<div class="tens">
+  #loading (tens) {
+    <span class="t">{tens}</span>
+    {page.body}
+  } #else {
+    <p>wait</p>
+  }
+</div>
+<Child doc=page.body count=count />
+<Reader />

@@ -26,7 +26,15 @@ import {
 import { MODIFIERS } from './events.ts';
 import { closesParagraph, firstTag } from '../nesting.ts';
 import type { Raw } from './html.ts';
-import { BridgeDataError, callPlugins, serialOptions, plugins, syncPlugins } from './serial.ts';
+import {
+  BridgeDataError,
+  callPlugins,
+  serialOptions,
+  plugins,
+  setPrinted,
+  syncPlugins,
+} from './serial.ts';
+import type { Printed } from './serial.ts';
 import { serverSecrets } from './secrets.ts';
 import {
   Binding,
@@ -431,6 +439,127 @@ export interface ScopeEntry extends PropSink {
   source?: ItemSource;
 }
 
+/** Raw HTML shorter than this stays in the state: the markers would cost about as much. */
+const PRINTED_MIN = 256;
+
+const TAG =
+  /<!--[\s\S]*?-->|<(\/?)([a-zA-Z][^\s/>]*)(?:\s+[^\s/>"'=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>"'=<`]+))?)*\s*\/?>/g;
+const VOID_TAGS = new Set([
+  'area',
+  'base',
+  'br',
+  'col',
+  'embed',
+  'hr',
+  'img',
+  'input',
+  'link',
+  'meta',
+  'source',
+  'track',
+  'wbr',
+]);
+const TEXT_TAGS = new Set(['script', 'style', 'textarea', 'title']);
+/** Markup that the browser's parse does not keep as written. See `balanced`. */
+const LOST_IN_PARSE =
+  /<(?:pre|textarea|listing)\b(?:[^>"']|"[^"]*"|'[^']*')*>[\r\n]|<template\b[^>]*\bshadowroot(?:mode)?\s*=|<\/?(?:html|head|body|frameset)\b|<script\b/i;
+
+/**
+ * True when every element of the HTML closes, in order, and no `<` is left over, so the browser
+ * keeps the end marker after it as a sibling of the start marker. A table part, a `<p>` or an
+ * `<li>` without its end tag does not count, since the parser would close it somewhere else.
+ * Nor does HTML whose read-back differs from it:
+ * - a `<pre>`, `<textarea>` or `<listing>` whose text starts with a line break, which the parser
+ *   drops;
+ * - a declarative shadow root, which leaves the page as a template;
+ * - an `<html>`, `<head>`, `<body>` or `<frameset>` tag, after which the parser puts the end
+ *   marker elsewhere;
+ * - a `<script>`, which runs before the record reads the range and can change it.
+ */
+function balanced(html: string): boolean {
+  if (LOST_IN_PARSE.test(html)) {
+    return false;
+  }
+  const open: string[] = [];
+  let at = 0;
+  TAG.lastIndex = 0;
+  for (let match = TAG.exec(html); match; match = TAG.exec(html)) {
+    if (html.slice(at, match.index).includes('<')) {
+      return false;
+    }
+    at = TAG.lastIndex;
+    const name = match[2]?.toLowerCase();
+    if (name === undefined) {
+      continue;
+    }
+    if (match[1]) {
+      if (open.pop() !== name) {
+        return false;
+      }
+    } else if (TEXT_TAGS.has(name)) {
+      const end = html.toLowerCase().indexOf(`</${name}`, at);
+      if (end === -1) {
+        return false;
+      }
+      at = end;
+      TAG.lastIndex = end;
+      open.push(name);
+    } else if (!VOID_TAGS.has(name)) {
+      // `/>` closes nothing in HTML.
+      open.push(name);
+    }
+  }
+  return open.length === 0 && !html.slice(at).includes('<');
+}
+
+/**
+ * The 4 characters of the tokens of a render, from its route and base: the same page gets the
+ * same markers, and text of the page is unlikely to hold one.
+ */
+function printedPrefix(seed: string): string {
+  // FNV-1a.
+  let hash = 0x811c9dc5;
+  for (const char of seed) {
+    hash = Math.imul(hash ^ char.charCodeAt(0), 0x01000193) >>> 0;
+  }
+  return hash.toString(36).slice(-4).padStart(4, '0');
+}
+
+/** A printed range: its start marker with the token, the HTML, and its end marker. */
+const PRINTED_RANGE = /<!--d([\da-z]{4}\.\d+)-->([\s\S]*?)<!--\/d-->/g;
+
+/**
+ * Leaves out of `printed` each token whose start marker the page holds more than once, so the
+ * state record writes the HTML of its value, and `unmark` removes every copy of its markers.
+ */
+function dropCopiedTokens(printed: Printed, html: string): void {
+  const seen = new Set<string>();
+  const copied = new Set<string>();
+  for (const match of html.matchAll(START_MARKER)) {
+    const token = match[1]!;
+    if (seen.has(token)) {
+      copied.add(token);
+    }
+    seen.add(token);
+  }
+  for (const token of copied) {
+    const value = printed.values.get(token);
+    if (value) {
+      printed.tokens.delete(value);
+    }
+  }
+}
+
+/** The start marker of a printed range, with its token. */
+const START_MARKER = /<!--d([\da-z]{4}\.\d+)-->/g;
+
+/** The page without the markers of the ranges whose token the state record did not write. */
+function unmark(html: string, used: Set<string>): string {
+  return html.replace(PRINTED_RANGE, (range, token: string, inner: string) =>
+    used.has(token) ? range : inner,
+  );
+}
+
 /**
  * Tracks the scopes of one render. A `#loading` body renders in a child
  * context, so its scopes are written with its markup.
@@ -458,6 +587,16 @@ export class Context {
   /** The scope that the render used last, since it uses one a few times in a row. */
   private last: ScopeEntry | undefined;
   private readonly root: Context;
+  /**
+   * The raw HTML that this render printed between `<!--d{token}-->` and `<!--/d-->`, by the
+   * object, so its state record reads it back from the page. Only the context of the page has
+   * it: the markup of a `#loading` or `#defer` body is in a template when its record runs.
+   */
+  printed: Printed | undefined;
+  /** How many values this render printed between markers. */
+  printedCount = 0;
+  /** The 4 characters of the tokens of this render. See `printedPrefix`. */
+  printedPrefix = '0000';
   /** The keys of the signals that a visible `$client` waits for. See `near`. */
   private waited?: Set<string>;
   /** The ID spaces of the blocks that the render is in, from the outside in. */
@@ -966,6 +1105,39 @@ export class Context {
 
   private record(scope: ScopeId): ScopeState {
     return this.entry(scope).record;
+  }
+
+  /**
+   * Prints raw HTML between markers when the state of the page may hold it, so the record
+   * reads it back from the page instead of holding it twice. HTML that holds a marker of its
+   * own, or is short, prints as it is. The first print of a value is the one that counts.
+   */
+  printRaw(value: Raw, html: string, scope: ScopeId | undefined): string {
+    const printed = this.printed;
+    if (
+      !printed ||
+      html.length < PRINTED_MIN ||
+      printed.tokens.has(value) ||
+      /<!--\/?d/.test(html) ||
+      !balanced(html)
+    ) {
+      return html;
+    }
+    const token = `${this.printedPrefix}.${this.printedCount++}`;
+    printed.tokens.set(value, token);
+    printed.values.set(token, value);
+    this.undo.push(() => printed.tokens.delete(value));
+    // In development, the browser names the component when it cannot read the value back.
+    if (printed.names) {
+      let entry = scope === undefined ? undefined : this.find(scope);
+      while (entry && entry.record.m === undefined && entry.record.p !== undefined) {
+        entry = this.find(entry.record.p);
+      }
+      if (entry?.record.m !== undefined) {
+        printed.names.set(token, entry.record.m);
+      }
+    }
+    return `<!--d${token}-->${html}<!--/d-->`;
   }
 
   /** The record of a scope in the state of this render, if it is there. */
@@ -1746,13 +1918,17 @@ export function settled(nodes: Memo[]): boolean {
 
 const LAZY: unique symbol = Symbol.for('brumate.lazy');
 
-/** Markup that renders where it is inserted, so it can read the contexts there. */
+/**
+ * Markup that renders where it is inserted, so it can read the contexts there. `place` is the
+ * place of the insert, for raw HTML that prints between markers. See `Context.printRaw`.
+ */
 export interface Lazy {
   [LAZY]: (
     ctx: Context,
     scope: ScopeId | undefined,
     tag?: string,
     anchor?: number,
+    place?: number,
   ) => Promise<string>;
 }
 
@@ -1763,7 +1939,7 @@ export interface Lazy {
  */
 export function children(
   from: ScopeId,
-  renderBody: (ctx: Context) => Promise<string>,
+  renderBody: (ctx: Context, at?: ScopeId, place?: number) => Promise<string>,
   ref?: string,
 ): Lazy {
   return new Children(from, renderBody, ref);
@@ -1790,22 +1966,24 @@ class Children implements Lazy {
 
   constructor(
     from: ScopeId,
-    renderBody: (ctx: Context, at?: ScopeId) => Promise<string>,
+    renderBody: (ctx: Context, at?: ScopeId, place?: number) => Promise<string>,
     ref?: string,
   ) {
     if (ref !== undefined) {
       this[CHILDREN_REF] = new ChildrenReference(ref, from);
     }
-    this[LAZY] = async (ctx, at, tag, anchor) => {
+    this[LAZY] = async (ctx, at, tag, anchor, place) => {
       // The browser keeps what the server rendered at this insert, when it reads the page later.
       const reference = this[CHILDREN_REF];
       if (reference && reference.at === undefined && anchor !== undefined) {
         reference.at = at;
         reference.anchor = anchor;
       }
+      // Children whose HTML the page state holds print no markers, which that HTML would carry.
+      const where = ref === undefined ? 0 : place;
       const html = await (at === undefined
-        ? renderBody(ctx)
-        : ctx.children(from, at, () => renderBody(ctx, at), tag));
+        ? renderBody(ctx, at, where)
+        : ctx.children(from, at, () => renderBody(ctx, at, where), tag));
       if (ref === undefined) {
         this[RAW] ??= html;
       }
@@ -1824,7 +2002,13 @@ export function spacerTag(ctx: Context): string {
 
 /** Makes markup that renders where it is inserted, such as the children of a layout. */
 export function lazy(
-  renderAt: (ctx: Context, scope: ScopeId | undefined) => Promise<string>,
+  renderAt: (
+    ctx: Context,
+    scope: ScopeId | undefined,
+    tag?: string,
+    anchor?: number,
+    place?: number,
+  ) => Promise<string>,
 ): Lazy {
   return { [LAZY]: renderAt };
 }
@@ -1860,7 +2044,8 @@ export function actionResult(ctx: Context, fn: unknown): unknown {
 
 /**
  * Renders a value inserted in markup. `ctx`, `scope` and `anchor` are where it
- * is inserted, for markup that renders there.
+ * is inserted, for markup that renders there. `place` is the place of the insert in the page,
+ * which the compiler gives: 1 where raw HTML stays between markers. See `Context.printRaw`.
  */
 export function insert(
   value: unknown,
@@ -1868,6 +2053,7 @@ export function insert(
   scope?: ScopeId,
   tag?: string,
   anchor?: number,
+  place?: number,
 ): string | Promise<string> {
   // A value that is ready renders without a promise, because most inserts are plain text.
   if (
@@ -1875,10 +2061,24 @@ export function insert(
     (typeof value === 'object' || typeof value === 'function') &&
     typeof (value as PromiseLike<unknown>).then === 'function'
   ) {
-    return Promise.resolve(value).then((resolved) => insert(resolved, ctx, scope, tag, anchor));
+    return Promise.resolve(value).then((resolved) =>
+      insert(resolved, ctx, scope, tag, anchor, place),
+    );
   }
   if (isLazy(value) && ctx) {
-    return value[LAZY](ctx, scope, tag, anchor);
+    return value[LAZY](ctx, scope, tag, anchor, place);
+  }
+  // Raw HTML at a place where the parser keeps it between markers (1, which the compiler and the
+  // callers pass) can print between them. See `printRaw`. Children and the output of templates
+  // do not.
+  if (
+    place === 1 &&
+    ctx &&
+    isRaw(value) &&
+    value.s === undefined &&
+    typeof rawHTML(value) === 'string'
+  ) {
+    return ctx.printRaw(value, rawHTML(value), scope);
   }
   // The output of a template links its scope to where it is inserted, so a `#try` there catches
   // its errors.
@@ -1903,7 +2103,13 @@ export function insert(
 // A compiled component answers a string. Its type is `Markup` of brumate/elements, an object type
 // that a string stands in for. The bundle cannot import that type without a copy of its own.
 // oxlint-disable-next-line typescript/no-explicit-any -- Components take any props.
-export type Component<P = any> = (props: P, ctx: Context) => Promise<string | object>;
+// `place` is where the caller renders the root, for raw HTML that prints between markers. See
+// `insert`.
+export type Component<P = any> = (
+  props: P,
+  ctx: Context,
+  place?: number,
+) => Promise<string | object>;
 
 /** True for a promise, or any object with a `then` function, which markup waits for. */
 function isThenable(value: unknown): value is PromiseLike<unknown> {
@@ -1926,7 +2132,8 @@ export function attribute(name: string, value: unknown): string | Promise<string
 
 /**
  * Renders a child component. With `scope` and `anchor`, records the child's
- * scope so the parent can update its props on the client.
+ * scope so the parent can update its props on the client. `place` is where its root renders. See
+ * `insert`.
  */
 export function component<P>(
   Child: Component<P>,
@@ -1935,6 +2142,7 @@ export function component<P>(
   scope?: ScopeId,
   anchor?: number,
   paragraph?: string,
+  place?: number,
 ): Promise<string> {
   // A request for a `#defer` body sends only that body, so the rest of the page renders no more
   // components once the body has started, and loads no more of their data.
@@ -1950,13 +2158,13 @@ export function component<P>(
   const given = (props as { children?: unknown } | undefined)?.children;
   // Children that the browser renders itself need no HTML from the server.
   if (!(given instanceof Children) || given[CHILDREN_REF]) {
-    return checkParagraph(Child(props, ctx) as Promise<string>, ctx, paragraph);
+    return checkParagraph(Child(props, ctx, place) as Promise<string>, ctx, paragraph);
   }
   // Children that the component did not insert render after it, inside its root scope, so the
   // page state has their HTML for the browser.
   const root = ctx.peek();
   return checkParagraph(
-    (Child(props, ctx) as Promise<string>).then(async (html) => {
+    (Child(props, ctx, place) as Promise<string>).then(async (html) => {
       if (given[RAW] === undefined) {
         await given[LAZY](ctx, root);
       }
@@ -2524,33 +2732,41 @@ function serializeState(
       onRecord(code, initial);
     }
   }
-  if (last) {
-    let code: string | undefined;
-    try {
-      code = crossSerialize(packed, {
-        plugins: syncPlugins,
-        ...serialOptions(),
-        refs,
-        assignSharedRefsOnly: true,
-      });
-    } catch {
-      // The stream gives the same error for a value that cannot be sent, with the same references.
-      refs.clear();
+  // Raw HTML that the page printed between markers is read back from the page. Only values
+  // parsed in this call count: a promise that settles later writes its HTML.
+  setPrinted(state instanceof Context ? state.printed : undefined);
+  try {
+    if (last) {
+      let code: string | undefined;
+      try {
+        code = crossSerialize(packed, {
+          plugins: syncPlugins,
+          ...serialOptions(),
+          refs,
+          assignSharedRefsOnly: true,
+        });
+      } catch {
+        // The stream gives the same error for a value that cannot be sent, with the same references.
+        refs.clear();
+      }
+      if (code !== undefined) {
+        setPrinted(undefined);
+        send(code, true);
+        onDone();
+        return;
+      }
     }
-    if (code !== undefined) {
-      send(code, true);
-      onDone();
-      return;
-    }
+    crossSerializeStream(packed, {
+      plugins,
+      ...serialOptions(),
+      refs,
+      onSerialize: send,
+      onError,
+      onDone,
+    });
+  } finally {
+    setPrinted(undefined);
   }
-  crossSerializeStream(packed, {
-    plugins,
-    ...serialOptions(),
-    refs,
-    onSerialize: send,
-    onError,
-    onDone,
-  });
 }
 
 /**
@@ -2643,8 +2859,22 @@ export function stateScript(
   if (attributes.catches !== undefined) {
     extra += ` b-catch="${attributes.catches}"`;
   }
-  return `<script${extra}>${attributes.define ? RECORD : ''}$bR(($R,$b)=>(${code}))</script>`;
+  // A record that reads printed HTML back reads it while the page parses, before a `#loading`
+  // swap or any client code changes the markup.
+  const readBack = scopes && code.includes('$b.d(') ? READ_PRINTED : '';
+  return `<script${extra}>${attributes.define ? RECORD : ''}${readBack}$bR(($R,$b)=>(${code}))</script>`;
 }
+
+/**
+ * Reads the HTML between each `<!--d{token}-->` and its `<!--/d-->` into `self.$bP`, by token,
+ * and removes the markers, so the page is the same as one without them. `$b.d` takes it from
+ * there. A range whose end is not a sibling of its start, before the next start, stays, and
+ * `$b.d` throws for it. The first range of a token counts. The record writes no token whose marker
+ * the page holds twice (see `dropCopiedTokens`), so a copy in raw HTML, before or after the range,
+ * is never read. `readPrinted` of navigation does the same for a page it fetched.
+ */
+const READ_PRINTED =
+  "(function(){var w=document.createTreeWalker(document,128),r=/^d[\\da-z]{4}\\.\\d+$/,n,s=[],m=self.$bP=self.$bP||{},e={'&':'&amp;','\\x3C':'&lt;','>':'&gt;','\\u00a0':'&nbsp;'};while(n=w.nextNode())r.test(n.data)&&s.push(n);s.forEach(function(a){for(var h='',x=a.nextSibling,y,k;x;x=y){y=x.nextSibling;if(x.nodeType===8){if(x.data==='/d'){x.remove();a.remove();(k=a.data.slice(1))in m||(m[k]=h);break}if(r.test(x.data))break;h+='\\x3C!--'+x.data+'-->'}else h+=x.nodeType===1?x.outerHTML:x.nodeType===3?x.data.replace(/[&\\x3C>\\u00a0]/g,function(c){return e[c]}):''}})})();";
 
 // Moves the head markup of a `#loading` body into the head, and sets the title.
 // A `<title>` of `#head` keeps its text: the head gets a title of its own for `document.title`.
@@ -2782,6 +3012,8 @@ function createQueue<T>(): Queue<T> {
 }
 
 export interface RenderOptions {
+  /** False keeps printed raw HTML in the page state too, as before the spike. For tests. */
+  printed?: boolean;
   /** The `onError` of the app, which gets the errors of a render without a request event. */
   onError?: ServerErrorHandler;
   /** The `onTrace` of the app, which gets the spans of a render. */
@@ -2952,6 +3184,22 @@ export async function render<P>(
   const scriptTag =
     options.nonce === undefined ? '<script>' : `<script nonce="${escapeAttribute(options.nonce)}">`;
   const ctx = new Context(undefined, options.rpc, options.base);
+  ctx.inOrder =
+    !options.defer &&
+    rendersInOrder(options.inOrder ?? 'bots', options.request ?? options.event?.request);
+  // The page's record follows its markup in the document, so it can read printed HTML back. A
+  // render in order puts the `#catch` bodies in the page on the server, over markup that may
+  // hold printed ranges, so it keeps the HTML in the state. Crawlers get that render.
+  if (!options.defer && options.printed !== false && !ctx.inOrder) {
+    ctx.printed = {
+      tokens: new WeakMap(),
+      values: new Map(),
+      used: new Set(),
+      names: options.dev ? new Map() : undefined,
+    };
+    // The same page gets the same tokens, so a static build is the same each time.
+    ctx.printedPrefix = printedPrefix(`${options.route ?? ''} ${options.base ?? 0}`);
+  }
   if (options.actions) {
     ctx.actions = options.actions;
   }
@@ -2966,9 +3214,6 @@ export async function render<P>(
   if (options.defer) {
     ctx.target = { ...options.defer };
   }
-  ctx.inOrder =
-    !options.defer &&
-    rendersInOrder(options.inOrder ?? 'bots', options.request ?? options.event?.request);
   const event =
     options.event ??
     (options.request
@@ -2998,14 +3243,15 @@ export async function render<P>(
   // The first part of each component runs with the event, and so do memos, which the compiler gives `$$ctx`.
   let rendered: string;
   try {
-    rendered = (await ctx.run(() => Root(props, ctx))) as string;
+    // The root is the page: raw HTML at its top level may move into the body, so its place is 2.
+    rendered = (await ctx.run(() => Root(props, ctx, 2))) as string;
   } catch (error) {
     endRender?.(true, error);
     throw error;
   }
   endRender?.();
   ctx.send();
-  const html = beforeBodyEnd(rendered, ctx.portals.join(''));
+  let html = beforeBodyEnd(rendered, ctx.portals.join(''));
   // The queue of `pending` is made only when something is pending, because it costs a lot for a small page.
   let queue: Queue<string> | undefined;
   function pending(): Queue<string> {
@@ -3220,6 +3466,11 @@ export async function render<P>(
     };
   }
 
+  // Raw HTML of the page can hold a copy of a marker. The state holds the value of a token whose
+  // start marker shows more than once, so no copy, before or after, takes its place.
+  if (ctx.printed && ctx.printedCount > 0) {
+    dropCopiedTokens(ctx.printed, `${ctx.headHTML()}${html}`);
+  }
   let state = '';
   // The state of the page is serialized before this returns, so a value that cannot be sent
   // fails the render here, with its name, instead of leaving the page without its state.
@@ -3237,6 +3488,12 @@ export async function render<P>(
   );
   if (failure !== undefined) {
     throw unsendable(failure, ctx);
+  }
+  // The markers of values that the state does not hold go, so the page carries only those that
+  // the record reads.
+  if (ctx.printed && ctx.printedCount > 0) {
+    rendered = unmark(rendered, ctx.printed.used);
+    html = beforeBodyEnd(rendered, ctx.portals.join(''));
   }
   let page = html;
   if (inOrder) {

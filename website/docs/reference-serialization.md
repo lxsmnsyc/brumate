@@ -27,6 +27,19 @@ Values cross from the server to the browser in two ways: in the page, for the st
 | Components                                         | As a reference to the component, for a dynamic tag such as `<{tag}>`.                              |
 | `children` and `#template` markup                  | As the HTML that the server rendered.                                                              |
 
+### Raw HTML that the page printed
+
+The page state does not hold raw HTML twice. When the page printed a `raw()` value of 256 characters or more, the state names the place in the page instead, and the browser reads the HTML back from there while the page parses.
+
+- The server prints the value between `<!--d…-->` and `<!--/d-->` comments, and the page record writes `$b.d("…")` in place of the HTML. The browser removes the comments as it reads them.
+- Only the page state does this. A `#loading` or `#defer` body, a promise that settles later and a server function answer send the HTML.
+- The value prints between the comments only where the parser keeps it in place: inside a `<div>`, `<article>`, `<section>`, `<main>` or another element that holds any content.
+- Raw HTML in an `<a>`, a `<p>`, a `<span>`, a `<button>`, a list item, a table, a `<select>`, a `<template>`, a `#head` body or a `#template` stays in the state.
+- Raw HTML that the parser would change stays in the state too: an element that does not close, a `<pre>` or `<textarea>` that starts with a line break, an `<html>` or `<body>` tag, a `<script>`, or a declarative shadow root.
+- A render in order, which crawlers get, keeps every value in the state.
+- The comments come from the route, so a static build gives the same pages each time.
+- In development, a value that the browser cannot read back throws an error that names the component.
+
 ## Only through server functions
 
 | Value           | Direction              | Notes                                                                                           |
