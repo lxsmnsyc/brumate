@@ -91,7 +91,8 @@ export function readPrinted(root: Node): void {
   for (const start of starts) {
     const html = readRange(start);
     if (html !== undefined) {
-      read[start.data.slice(1)] = html;
+      // The first range of a token counts, as in `READ_PRINTED`.
+      read[start.data.slice(1)] ??= html;
       start.remove();
     }
   }

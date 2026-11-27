@@ -17,11 +17,19 @@ export const pages: Record<string, { body: unknown; title: string }> = {
 };
 
 /** Raw HTML whose read-back would differ from it, which the page keeps in the state. */
-export const refused: Record<'pre' | 'textarea' | 'listing' | 'shadow', unknown> = {
+export const refused: Record<
+  'pre' | 'textarea' | 'listing' | 'shadow' | 'carriage' | 'document' | 'script',
+  unknown
+> = {
   pre: raw(`<pre>\n${section('pre')}</pre>`),
   textarea: raw(`<textarea>\n${'text '.repeat(60)}</textarea>`),
   listing: raw(`<listing>\n${section('listing')}</listing>`),
   shadow: raw(`<div><template shadowrootmode="open">${section('shadow')}</template></div>`),
+  carriage: raw(`<pre>\r${section('carriage')}</pre>`),
+  // An email or a preview of a CMS: after `</body>` the parser puts the end marker in `<html>`.
+  document: raw(`<html><head></head><body>${section('document')}</body></html>`),
+  // The script runs before the record reads the range, and changes it.
+  script: raw(`<p id="q">${section('script')}</p><script>q.textContent = 'changed';</script>`),
 };
 
 /** Raw HTML that does not close its element: the page keeps it in the state. */

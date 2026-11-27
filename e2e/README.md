@@ -8,7 +8,7 @@ pnpm e2e
 
 ## Options
 
-- `--only website,todos,tracker,nitro,kit,ui,browser-async,scripts,transitions` runs only these suites.
+- `--only website,todos,tracker,nitro,kit,ui,browser-async,scripts,transitions,printed` runs only these suites.
 - `--no-build` uses the builds that are there. By default it runs `pnpm build`, then the build of each suite.
 - `--headed` shows the browser.
 - `--install-browser` downloads Playwright's Chromium when no Chrome is found.
@@ -84,6 +84,12 @@ Each check is a named step. Any uncaught error, console error or failed request 
 - Root boundary: a block outside every `#loading` keeps the old content until its memo settles.
 - `#loading (memo)`: the fallback shows again, and the same nodes and input value come back.
 - `#try`: a rejected wait shows the `#catch`.
+
+`printed` compiles small components with the built package, renders them in Node, and serves the pages. It checks the raw HTML that the page state leaves out and reads back from the page, in Chrome's parser.
+
+- Raw HTML in a `<div>` leaves the state, and the page reads it back with no marker left.
+- Raw HTML with `<html>` and `<body>` tags, in a `<button>`, in an `<li>`, or with a `<script>` stays in the state. The same HTML between markers shows that Chrome moves or changes it.
+- A `#try` whose `#loading` fails: in order, the `#catch` body replaces the whole body. Streamed, the page reads the value before the swap.
 
 ## Failures
 

@@ -7,6 +7,9 @@
   const textarea = refused.textarea;
   const listing = refused.listing;
   const shadow = refused.shadow;
+  const carriage = refused.carriage;
+  const whole = refused.document;
+  const script = refused.script;
   let key = $signal(0);
 </script>
 
@@ -18,5 +21,8 @@
     <div>{textarea}</div>
     <div>{listing}</div>
     <div>{shadow}</div>
+    <div>{carriage}</div>
+    <div>{whole}</div>
+    <div>{script}</div>
   }
 </div>

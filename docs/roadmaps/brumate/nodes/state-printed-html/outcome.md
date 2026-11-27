@@ -29,6 +29,14 @@ The server leaves long raw HTML out of the page state, and the browser reads it 
   - Review case 5: the compile test also checks that the todos app of the benchmark (`benchmarks/brumate/src`) has no marked insert.
   - Review case 6: same markers on two renders of the same route, different on another route, the dev name in the record and in the error, and the stop at a second start, for both readers.
 - `.changeset/state-printed-html.md`, minor.
+- Fixes of the PR review (#539, 2026-11-27):
+  - B1: a render in order (crawlers, `inOrder`) sets no `ctx.printed`. Its `#catch` bodies replace markup on the server with `replaceBlock`, which ended a block at `<!--/d-->` and left `$b.d` naming a range that is gone. Counting `d` markers there would also need the replaced values dropped from the record that is already written. Crawlers gain nothing from a smaller state, so the simpler rule is the safe one. A streamed `#catch` swaps in the browser after the record read the range, so it keeps the saving.
+  - S1, S3, N1: `balanced()` (through `LOST_IN_PARSE`) refuses `<html>`, `<head>`, `<body>`, `<frameset>`, `<script>`, and a lone `\r` after `<pre>`.
+  - S2: `NOT_PRINTABLE` holds `li`, `dd`, `dt`, `button`, `nobr` and `p`. A start tag of raw HTML closes these from inside a `<div>` (the `li`/`dd`/`dt` rule walks through `div`, `address` and `p`; `button` and `nobr` close one in scope; a block closes a `<p>`). The ruby tags only generate implied end tags under the `<div>`, which closes nothing above it.
+  - N2: both readers keep the first range of a token.
+  - Chrome: the suite `printed` of `e2e/run.mjs` (`e2e/suites/printed.mjs`) compiles probe components with the built package and checks the cases in Chrome. For each refused case it also serves the same HTML between markers, which shows that Chrome moves the end marker (`<html>`/`<body>`, `<button>`, `<li>`) or that the script changes the range.
+  - Docs: "Raw HTML that the page printed" in `website/docs/reference-serialization.md`.
+  - Bytes after the fixes, gzip level 9 of the website build of the e2e run: `/docs/context/` 26 584 B (-20.3% against the base 33 373 B), `/ui/dialog/` 35 697 B (-17.2% against 43 096 B), `/` 20 149 B.
 
 ## Proof
 
@@ -55,7 +63,7 @@ The server leaves long raw HTML out of the page state, and the browser reads it 
 - The brief names `src/serial.ts`, `src/shared.ts` and `src/html.ts`. The files are in `src/runtime/`.
 - `packages/brumate/test/__snapshots__/render/*.txt`: 5 snapshots take the new `$$place` argument and the place of inserts and component calls.
 - e01a1fc0 (the case B measurement of the spike) is not ported: it holds no product code.
-- No note in `website/docs/reference-serialization.md`, which the spike proposed: it is outside the brief's paths.
+- `website/docs/reference-serialization.md`, `e2e/run.mjs`, `e2e/README.md` and `e2e/suites/printed.mjs` are outside the brief's paths. The PR review asked for the docs note and the Chrome cases.
 
 ## Stubs left
 
@@ -76,9 +84,10 @@ The server leaves long raw HTML out of the page state, and the browser reads it 
 
 ## Verification
 
-- `pnpm --filter brumate exec vitest run test/state-dedupe.test.ts`: 13 pass.
+- `pnpm --filter brumate exec vitest run test/state-dedupe.test.ts`: 14 pass after the review fixes. The in-order test fails without the B1 fix with the reviewer's output.
+- After the review fixes: `state-dedupe`, `render`, `features`, `navigate`, `routes`, `resume` and `differential*` test files, 1 269 pass. `node e2e/run.mjs --only printed --no-build`: 11 ok.
 - `pnpm --filter brumate test` (full): the snapshot file `render.test.ts` updated with `-u` (5 snapshots). The other failures were timeouts under load. A rerun of each failed file alone passes (1 120 tests). `test/module-signals.test.ts` and `test/styles/style-files-postcss.test.ts` pass together on a third run.
-- `node e2e/run.mjs`: 225 `ok` lines, none failed, exit 0.
+- `node e2e/run.mjs`: 225 `ok` lines, none failed, exit 0. After the review fixes: 11 suites, 215 steps passed, 0 failed, exit 0.
 - `node benchmarks/navigation/run.mjs --check --no-build --pairs docs-server,ui-server,docs-static,ui-static` (Chrome): 4 `ok`, swap `routes`.
 - `pnpm build`, `pnpm --filter website build` on the branch and on the base.
 - `pnpm lint`: no errors. `pnpm format:check`: pass. `pnpm typecheck`: pass.

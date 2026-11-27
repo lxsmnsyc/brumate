@@ -462,15 +462,19 @@ const VOID_TAGS = new Set([
 const TEXT_TAGS = new Set(['script', 'style', 'textarea', 'title']);
 /** Markup that the browser's parse does not keep as written. See `balanced`. */
 const LOST_IN_PARSE =
-  /<(?:pre|textarea|listing)\b(?:[^>"']|"[^"]*"|'[^']*')*>\r?\n|<template\b[^>]*\bshadowroot(?:mode)?\s*=/i;
+  /<(?:pre|textarea|listing)\b(?:[^>"']|"[^"]*"|'[^']*')*>[\r\n]|<template\b[^>]*\bshadowroot(?:mode)?\s*=|<\/?(?:html|head|body|frameset)\b|<script\b/i;
 
 /**
  * True when every element of the HTML closes, in order, and no `<` is left over, so the browser
  * keeps the end marker after it as a sibling of the start marker. A table part, a `<p>` or an
  * `<li>` without its end tag does not count, since the parser would close it somewhere else.
- * Nor does HTML whose read-back differs from it: a `<pre>`, `<textarea>` or `<listing>` whose text
- * starts with a newline, which the parser drops, and a declarative shadow root, which leaves the
- * page as a template.
+ * Nor does HTML whose read-back differs from it:
+ * - a `<pre>`, `<textarea>` or `<listing>` whose text starts with a line break, which the parser
+ *   drops;
+ * - a declarative shadow root, which leaves the page as a template;
+ * - an `<html>`, `<head>`, `<body>` or `<frameset>` tag, after which the parser puts the end
+ *   marker elsewhere;
+ * - a `<script>`, which runs before the record reads the range and can change it.
  */
 function balanced(html: string): boolean {
   if (LOST_IN_PARSE.test(html)) {
@@ -2839,10 +2843,11 @@ export function stateScript(
  * Reads the HTML between each `<!--d{token}-->` and its `<!--/d-->` into `self.$bP`, by token,
  * and removes the markers, so the page is the same as one without them. `$b.d` takes it from
  * there. A range whose end is not a sibling of its start, before the next start, stays, and
- * `$b.d` throws for it. `readPrinted` of navigation does the same for a page it fetched.
+ * `$b.d` throws for it. The first range of a token counts, so raw HTML that copies a later marker
+ * cannot replace it. `readPrinted` of navigation does the same for a page it fetched.
  */
 const READ_PRINTED =
-  "(function(){var w=document.createTreeWalker(document,128),r=/^d[\\da-z]{4}\\.\\d+$/,n,s=[],m=self.$bP=self.$bP||{},e={'&':'&amp;','\\x3C':'&lt;','>':'&gt;','\\u00a0':'&nbsp;'};while(n=w.nextNode())r.test(n.data)&&s.push(n);s.forEach(function(a){for(var h='',x=a.nextSibling,y;x;x=y){y=x.nextSibling;if(x.nodeType===8){if(x.data==='/d'){x.remove();a.remove();m[a.data.slice(1)]=h;break}if(r.test(x.data))break;h+='\\x3C!--'+x.data+'-->'}else h+=x.nodeType===1?x.outerHTML:x.nodeType===3?x.data.replace(/[&\\x3C>\\u00a0]/g,function(c){return e[c]}):''}})})();";
+  "(function(){var w=document.createTreeWalker(document,128),r=/^d[\\da-z]{4}\\.\\d+$/,n,s=[],m=self.$bP=self.$bP||{},e={'&':'&amp;','\\x3C':'&lt;','>':'&gt;','\\u00a0':'&nbsp;'};while(n=w.nextNode())r.test(n.data)&&s.push(n);s.forEach(function(a){for(var h='',x=a.nextSibling,y,k;x;x=y){y=x.nextSibling;if(x.nodeType===8){if(x.data==='/d'){x.remove();a.remove();(k=a.data.slice(1))in m||(m[k]=h);break}if(r.test(x.data))break;h+='\\x3C!--'+x.data+'-->'}else h+=x.nodeType===1?x.outerHTML:x.nodeType===3?x.data.replace(/[&\\x3C>\\u00a0]/g,function(c){return e[c]}):''}})})();";
 
 // Moves the head markup of a `#loading` body into the head, and sets the title.
 // A `<title>` of `#head` keeps its text: the head gets a title of its own for `document.title`.
@@ -3152,8 +3157,13 @@ export async function render<P>(
   const scriptTag =
     options.nonce === undefined ? '<script>' : `<script nonce="${escapeAttribute(options.nonce)}">`;
   const ctx = new Context(undefined, options.rpc, options.base);
-  // The page's record follows its markup in the document, so it can read printed HTML back.
-  if (!options.defer && options.printed !== false) {
+  ctx.inOrder =
+    !options.defer &&
+    rendersInOrder(options.inOrder ?? 'bots', options.request ?? options.event?.request);
+  // The page's record follows its markup in the document, so it can read printed HTML back. A
+  // render in order puts the `#catch` bodies in the page on the server, over markup that may
+  // hold printed ranges, so it keeps the HTML in the state. Crawlers get that render.
+  if (!options.defer && options.printed !== false && !ctx.inOrder) {
     ctx.printed = {
       tokens: new WeakMap(),
       used: new Set(),
@@ -3176,9 +3186,6 @@ export async function render<P>(
   if (options.defer) {
     ctx.target = { ...options.defer };
   }
-  ctx.inOrder =
-    !options.defer &&
-    rendersInOrder(options.inOrder ?? 'bots', options.request ?? options.event?.request);
   const event =
     options.event ??
     (options.request

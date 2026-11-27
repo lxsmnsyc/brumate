@@ -47,7 +47,10 @@ import { copy, unmarked } from '../sourcemap.ts';
 import { insertValue } from '../runtime/html.ts';
 import { paragraphComponents } from '../nesting.ts';
 
-/** Elements whose content the parser reads as text, moves, or keeps out of the document. */
+/**
+ * Elements whose content the parser reads as text, moves, keeps out of the document, or that a
+ * tag of raw HTML inside them can close. Raw HTML anywhere under one stays in the state.
+ */
 const NOT_PRINTABLE = new Set([
   'template',
   'textarea',
@@ -78,6 +81,15 @@ const NOT_PRINTABLE = new Set([
   // A nested `<a>` or `<form>` in the HTML would be moved or dropped.
   'a',
   'form',
+  // A start tag in the HTML closes these from inside a `<div>`: `<li>`, `<dd>` and `<dt>` close
+  // an open one through `<div>`, `<button>` and `<nobr>` close one in scope, and a block closes
+  // a `<p>`.
+  'li',
+  'dd',
+  'dt',
+  'button',
+  'nobr',
+  'p',
 ]);
 /** Elements that hold any flow content, so the parser closes nothing that raw HTML in them opens. */
 const PRINTABLE_PARENTS = new Set([

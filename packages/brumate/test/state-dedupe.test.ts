@@ -313,6 +313,16 @@ describe('places where the parser may move raw HTML', () => {
       features(`${script}#template show(value) {\n  {value}\n}\n<span>{show(doc)}</span>\n`),
     ).toBe(false);
     expect(features(`${script}<div>{doc}</div>\n`)).toBe(true);
+    // A tag of the HTML would close these from inside the `<div>`: a `<button>`, an `<li>`.
+    for (const around of [
+      ['<button>', '</button>'],
+      ['<ul><li>', '</li></ul>'],
+      ['<dl><dd>', '</dd></dl>'],
+      ['<dl><dt>', '</dt></dl>'],
+      ['<nobr>', '</nobr>'],
+    ]) {
+      expect(features(`${script}${around[0]}<div>{doc}</div>${around[1]}\n`)).toBe(false);
+    }
     expect(getFeatures(results.get('Refused.brm')!).printed).toBe(true);
     // The todos app of the benchmark prints text in a `<p>`, a `<button>` and a `<li>` only.
     const todos = resolve(import.meta.dirname, '../../../benchmarks/brumate/src');
@@ -330,6 +340,22 @@ describe('places where the parser may move raw HTML', () => {
     expect(state).toContain('$b.r("\\x3Ctextarea>\\n');
     expect(state).toContain('$b.r("\\x3Clisting>\\n');
     expect(state).toContain('shadowrootmode');
+    expect(state).toContain('$b.r("\\x3Cpre>\\r');
+    expect(state).toContain('$b.r("\\x3Chtml>\\x3Chead>');
+    expect(state).toContain('\\x3Cscript>q.textContent');
+  }, 30_000);
+
+  it('keeps the HTML in the state of a render in order, whose #catch replaces markup', async () => {
+    const server = await import(file('TryCatch.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    const full = await runtime.render(server.default, {}, { inOrder: true, printed: false });
+    const page = await runtime.render(server.default, {}, { inOrder: true });
+    expect(full.html).toMatch(/<!--b[\d.]+:\d+--><p class="caught">caught<\/p><!--\/b-->/);
+    expect(page.html).toBe(full.html);
+    expect(page.state).not.toContain('$b.d(');
+    // Streamed, the page reads the range before the browser swaps the `#catch` body in.
+    const streamed = await runtime.render(server.default, {});
+    expect(streamed.html).toMatch(/<!--d[\da-z]{4}\.0-->/);
   }, 30_000);
 
   it('leaves no marker in a page whose state holds none of the printed values', async () => {
@@ -374,7 +400,10 @@ describe('tokens of printed raw HTML', () => {
     const reader = /(\(function\(\)\{var w=document[\s\S]*?\)\(\);)\$bR\(/.exec(state)![1]!;
     const { readPrinted } = await import('../src/runtime/html.ts');
     const global = globalThis as { $bP?: Record<string, string> };
-    const page = '<div><!--dabcd.0--><p>lost end</p><!--dabcd.1--><p>one</p><!--/d--></div>';
+    // A start without an end, then a range. Then raw HTML that copies the range's marker.
+    const page =
+      '<div><!--dabcd.0--><p>lost end</p><!--dabcd.1--><p>one</p><!--/d--></div>' +
+      '<div><!--dabcd.1--><p>fake</p><!--/d--></div>';
     for (const read of [
       // oxlint-disable-next-line no-eval -- The reader of a state record from the server.
       () => (0, eval)(reader),
@@ -383,9 +412,12 @@ describe('tokens of printed raw HTML', () => {
       document.body.innerHTML = page;
       global.$bP = {};
       read();
+      // The first range of a token counts.
       expect(global.$bP).toEqual({ 'abcd.1': '<p>one</p>' });
       // The start without an end stays, and `$b.d` throws for it.
-      expect(document.body.innerHTML).toBe('<div><!--dabcd.0--><p>lost end</p><p>one</p></div>');
+      expect(document.body.innerHTML).toBe(
+        '<div><!--dabcd.0--><p>lost end</p><p>one</p></div><div><p>fake</p></div>',
+      );
     }
   });
 });
