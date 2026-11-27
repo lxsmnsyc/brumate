@@ -247,6 +247,8 @@ Type a note, then switch: the field empties, because the body renders again for 
 ```
 
 - A template can read the values of the component.
+- The body of a template runs once for each place that shows its call, and not at all for a call that no place shows. A call kept in a value, such as a `const`, a memo, a signal or a prop, runs where the value is inserted, so a call shown twice gives two copies. The page state sends such a call, so the browser can insert it again, such as in a block that opens later.
+- A handler can call a template, and a memo of a template call updates every place that shows it, also after the page resumes.
 - Declare templates at the top level of the markup or at the start of a block body.
 - A template can be passed as a prop, so a component renders your markup for its data. See [Components](./components.md#templates-as-props).
 
@@ -379,3 +381,10 @@ Use it for tabs, steps of a form, or panels that the user switches between. Use 
 ## `#head`
 
 `#head` renders its body into the `<head>` of the page. See [`#head`](./page-metadata.md#head).
+
+## Related
+
+- [Blocks and markup](./reference-blocks.md): every block in one table.
+- [Markup](./markup.md): attributes, events and special elements.
+- [Async data](./async-data.md): `#loading` and `#defer`.
+- [State](./state.md): the values that blocks read.

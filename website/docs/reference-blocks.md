@@ -41,6 +41,7 @@ The syntax of markup in a `.brm` file: control flow blocks, attributes, events a
 - A `#template` at the top level of a file can be used anywhere in the file. One inside a body can be used in that body.
 - `#` starts a block only before one of these keywords followed by `(` or `{`, and not right after a letter or a digit. Any other `#` is text.
 - `#defer` cannot be inside a `#client` body, or in markup that the browser renders, such as a branch of an `#if` that changes. See [`#defer`](./async-data.md#defer).
+- `#defer` in the children of a component from another file is a compile error ([BRM217](./errors.md#brm217)) when that component can render them in the browser, such as an overlay that opens. So is one in a `#template` that you pass to it.
 - A hidden `#offscreen` body gets `display: none !important` on each element at its top level, and its text at the top level is emptied. Its effects, `$client` callbacks and `<window>` and `<document>` listeners do not run. See [`#offscreen`](./control-flow.md#offscreen).
 
 ## Inserts
@@ -50,7 +51,7 @@ The syntax of markup in a `.brm` file: control flow blocks, attributes, events a
 | `{value}`     | The value as text, escaped. `null`, `undefined` and `false` render nothing. |
 | `{raw(html)}` | HTML as it is, with `raw` from `brumate/html`. Insert only HTML you trust.  |
 | `{children}`  | The markup that a parent put inside the component's tag.                    |
-| `{row(3)}`    | The markup of a `#template` named `row`.                                    |
+| `{row(3)}`    | The markup of a `#template` named `row`, once for each place that shows it. |
 
 Expressions cannot contain markup. Use a block or a `#template` instead.
 
@@ -114,3 +115,10 @@ Attribute names that start with `b-` are reserved on elements, because brumate w
 | `<Name prop=value />`                   | A component. Its name starts with a capital letter, and can have dots, as in `<Icons.Close />`. |
 
 `<script>` is allowed at the top level and at the start of a block body. `<style>` is allowed at the top level only. See [Styles](./styles.md).
+
+## Related
+
+- [Control flow](./control-flow.md): each block with examples.
+- [Markup](./markup.md): attributes, events and special elements.
+- [Compile-time functions](./reference-signals.md): the functions of `brumate/signals`.
+- [Errors](./errors.md): every `BRM` code.
