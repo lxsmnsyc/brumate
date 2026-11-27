@@ -947,6 +947,48 @@ describe('#try with client code', () => {
     }
   });
 
+  it('ships nothing for a #try that inserts a plain member or element of a prop', () => {
+    const cases: [string, string][] = [
+      ['{ item: { name: string } }', 'item.name'],
+      ['{ item?: { name: string | null } }', 'item?.name'],
+      ['{ item: string[] }', 'item[0]'],
+      ['{ item: Array<number> }', 'item[0]'],
+      ['{ item: { tags: string[] } }', 'item.tags[1]'],
+    ];
+    for (const [type, expression] of cases) {
+      const { client } = compile(tryProps(type, expression), { filename: 'T.brm' });
+      expect(client).not.toContain('export const t');
+    }
+  });
+
+  it('ships the table for a #try that inserts a member of a named or wide type', () => {
+    const cases: [string, string][] = [
+      ['User', 'item.name'],
+      ['{ item: { name: unknown } }', 'item.name'],
+      ['{ item: { name: string } }', 'item'],
+      ['{ item: unknown[] }', 'item[0]'],
+      ['{ item: { name: string } }', 'item.other'],
+    ];
+    for (const [type, expression] of cases) {
+      const source = tryProps(type.startsWith('{') ? type : `{ item: ${type} }`, expression);
+      const { client } = compile(
+        source.replace('</script>', '  interface User { name: string }\n</script>'),
+        {
+          filename: 'T.brm',
+        },
+      );
+      expect(client).toContain('export const t');
+    }
+  });
+
+  it('ships nothing for a #try that inserts a plain context value', () => {
+    const { client } = compile(
+      `<script>\n  import { $getContext } from 'brumate/signals';\n  import { Ctx } from './ctx.ts';\n  const got = $getContext(Ctx);\n</script>\n#try {\n  <p>{got!.shown}</p>\n} #catch (error) {\n  <p>{String(error)}</p>\n}`,
+      { filename: 'T.brm' },
+    );
+    expect(client).not.toContain('export const t');
+  });
+
   it('ships the table for a #try that inserts a prop that can hold a template call', () => {
     for (const [type, expression] of [
       ['{ item?: unknown }', 'item'],

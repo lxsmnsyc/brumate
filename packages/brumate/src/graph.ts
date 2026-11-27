@@ -1,7 +1,7 @@
 import type { oxc } from './oxc.ts';
 import type { Block, Markup } from './ast.ts';
 import { forEachNode } from './ast.ts';
-import { isWithin, lookup } from './model.ts';
+import { isPlainType, isWithin, lookup } from './model.ts';
 import type {
   Declaration,
   DeclarationKind,
@@ -352,12 +352,14 @@ export function tryCatchesClient(model: SemanticModel, block: Block & { kind: 't
       continue;
     }
     for (const read of declaration.reads) {
-      if (
-        read.site.kind === 'insert' &&
-        isWithinAny(read.site.scope, inside) &&
-        showsRead(read.site.node, read.range.start)
-      ) {
-        return true;
+      if (read.site.kind !== 'insert' || !isWithinAny(read.site.scope, inside)) {
+        continue;
+      }
+      // A member of a prop that the file types as a plain value cannot hold a call.
+      for (const path of shownPaths(read.site.node, read.range.start)) {
+        if (path.length === 0 || !plainMember(declaration.propType, path)) {
+          return true;
+        }
       }
     }
   }
@@ -390,47 +392,134 @@ function canHoldTemplateCall(declaration: Declaration): boolean {
     declaration.kind === 'let' ||
     declaration.kind === 'template-param' ||
     declaration.moduleSignal === true ||
-    declaration.kind === 'context' ||
     declaration.store !== undefined
   );
 }
 
 /**
- * True if the value that an insert shows can be the value read at `start`: the name itself, a
- * member of it, or a branch of a condition, as in `{box.row}` or `{c ? c : 0}`. A read that only
- * goes into a call, an operator or a template string is used up there, and shows nothing.
+ * The member paths by which an insert can show the value read at `start`: `[]` for the name
+ * itself, `['name']` for `{user.name}` and `['[]']` for `{items[0]}`. A read that only goes into a
+ * call, an operator or a template string is used up there, and shows nothing, so it has no path.
  */
-function showsRead(node: oxc.Node, start: number): boolean {
+function shownPaths(node: oxc.Node, start: number, suffix: string[] = [], out: string[][] = []) {
   switch (node.type) {
     case 'Identifier':
-      return node.start === start;
+      if (node.start === start) {
+        out.push(suffix);
+      }
+      break;
     case 'MemberExpression':
-      return showsRead(node.object, start);
+      shownPaths(
+        node.object,
+        start,
+        [
+          !node.computed && node.property.type === 'Identifier' ? node.property.name : '[]',
+          ...suffix,
+        ],
+        out,
+      );
+      break;
     case 'ConditionalExpression':
-      return showsRead(node.consequent, start) || showsRead(node.alternate, start);
+      shownPaths(node.consequent, start, suffix, out);
+      shownPaths(node.alternate, start, suffix, out);
+      break;
     case 'LogicalExpression':
-      return showsRead(node.left, start) || showsRead(node.right, start);
+      shownPaths(node.left, start, suffix, out);
+      shownPaths(node.right, start, suffix, out);
+      break;
     case 'ParenthesizedExpression':
     case 'ChainExpression':
     case 'TSNonNullExpression':
     case 'TSAsExpression':
     case 'TSSatisfiesExpression':
-      return showsRead(node.expression, start);
+      shownPaths(node.expression, start, suffix, out);
+      break;
     case 'AwaitExpression':
-      return showsRead(node.argument, start);
+      shownPaths(node.argument, start, suffix, out);
+      break;
     case 'ArrayExpression':
       for (const element of node.elements) {
-        if (
-          element &&
-          showsRead(element.type === 'SpreadElement' ? element.argument : element, start)
-        ) {
-          return true;
+        if (element) {
+          shownPaths(
+            element.type === 'SpreadElement' ? element.argument : element,
+            start,
+            suffix,
+            out,
+          );
         }
       }
-      return false;
+      break;
     default:
-      return false;
+      break;
   }
+  return out;
+}
+
+/** The type without `null` and `undefined`, or undefined when it is not one type. */
+function withoutNullish(type: oxc.Node): oxc.Node | undefined {
+  if (type.type === 'TSParenthesizedType') {
+    return withoutNullish(type.typeAnnotation);
+  }
+  if (type.type !== 'TSUnionType') {
+    return type;
+  }
+  const rest: oxc.Node[] = [];
+  for (const member of type.types) {
+    if (member.type !== 'TSNullKeyword' && member.type !== 'TSUndefinedKeyword') {
+      rest.push(member);
+    }
+  }
+  return rest.length === 1 ? withoutNullish(rest[0]!) : undefined;
+}
+
+/**
+ * True if a member of a prop, found by `path` in the declared type, holds a plain value, so it
+ * cannot be a template call. Only inline object types and array types are followed. A named
+ * type, or anything else that the file does not write out, ships.
+ */
+function plainMember(type: oxc.Node | undefined, path: string[]): boolean {
+  let current = type;
+  for (const key of path) {
+    if (!current) {
+      return false;
+    }
+    if (isPlainType(current)) {
+      return true;
+    }
+    const one = withoutNullish(current);
+    if (!one) {
+      return false;
+    }
+    if (key === '[]') {
+      if (one.type === 'TSArrayType') {
+        current = one.elementType;
+      } else if (
+        one.type === 'TSTypeReference' &&
+        one.typeName.type === 'Identifier' &&
+        (one.typeName.name === 'Array' || one.typeName.name === 'ReadonlyArray') &&
+        one.typeArguments?.params.length === 1
+      ) {
+        current = one.typeArguments.params[0];
+      } else {
+        return false;
+      }
+    } else if (one.type === 'TSTypeLiteral') {
+      current = undefined;
+      for (const member of one.members) {
+        if (
+          member.type === 'TSPropertySignature' &&
+          !member.computed &&
+          member.key.type === 'Identifier' &&
+          member.key.name === key
+        ) {
+          current = member.typeAnnotation?.typeAnnotation;
+        }
+      }
+    } else {
+      return false;
+    }
+  }
+  return current !== undefined && isPlainType(current);
 }
 
 /** True if the expression of a site is a prop that is typed as a promise, such as `$memo(user)`. */
