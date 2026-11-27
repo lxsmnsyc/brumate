@@ -241,3 +241,10 @@ TypeScript 7 does not load plugins and has no API for other file types yet. So:
 
 - `brumate-tsc` comes with the TypeScript 6 compiler and runs it.
 - In an editor, TypeScript features in `.brm` files need TypeScript 5.0 to 6, such as the version that VS Code ships with.
+
+## Related
+
+- [Editors](./editor.md) sets up VS Code and other editors.
+- [Components](./components.md#props) describes props and `$props`.
+- [Compile errors](./errors.md) lists the codes that `brumate check` prints.
+- [Serializable values](./reference-serialization.md) lists what a signal or memo can hold when client code reads it.

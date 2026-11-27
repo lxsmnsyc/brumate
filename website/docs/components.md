@@ -78,7 +78,7 @@ const { title, size = 'medium', ...rest } = $props<{
 - A default value, such as `size = 'medium'`, applies when the caller does not pass the prop.
 - A rest element, such as `...rest`, collects the other props. Spread it onto an element with `{...rest}`.
 - On an element with a spread, the attributes apply in their order, so a later one wins. A `class` adds to the others: `<a class="link" {...rest}>` with `class="primary"` in `rest` gets `class="link primary"`.
-- Read props by their names. The props object and `...rest` can only be destructured, read one key at a time, or spread in markup. Any other use is a compile error (BRM115): a spread in script code, and passing them to a function, `$memo`, `$setContext`, a signal or a variable. The copy would lose the `ref` and the live props. Use `<button {...rest} class="box">` instead.
+- Read props by their names. The props object and `...rest` can only be destructured, read one key at a time, or spread in markup. Any other use is a compile error (BRM115): a spread in script code, passing them to a function, `$memo`, `$setContext`, a signal or a variable, and giving them as a value in markup, such as `title=rest`. The copy would lose the `ref` and the live props. A markup spread may hold the rest as a branch of `?:`, `&&`, `||` or `??` next to an object literal, `undefined`, `null` or `false`, such as `{...(open ? rest : {})}`. Use `<button {...rest} class="box">` instead.
 
 ### Props that change
 
@@ -342,6 +342,7 @@ Markup between the tags of a component is its `children` prop. Insert it with `{
 - Their values and handlers stay the caller's: `{count}` in the children is the caller's `count`.
 - The server renders the children with the page, also when the component does not insert them yet.
 - When the component inserts them later, such as when the `#if` opens, they show the current values. Their event handlers work.
+- A `#defer` block in the children of a component from another file that can render them in the browser, such as an overlay that opens, is a compile error (BRM217). The server cannot render the block again there. Use `#loading` with a server function.
 
 ### Templates as props
 
@@ -380,6 +381,8 @@ A `#template` is a piece of markup with parameters. Pass one as a prop to let a 
 - A call again at the same place, with new arguments, updates the markup in place, as a snippet of Svelte does. Its elements stay, and so does focus in them.
 - The template reads the values of the component that wrote it, and its markup updates when they change.
 - Its code loads in the browser with the page state, before an update needs it.
+- Each place that shows a call of the template gets its own scope, also when a memo, a signal, a `const` or a prop holds the call. The template body runs once for each such place, and not at all for a call that no place shows.
+- When a call throws in the browser, such as after a signal that holds it changes, the nearest `#try` around the insert shows its `#catch` body, as it does on the server.
 
 [Control flow](./control-flow.md#template) describes `#template`.
 
@@ -402,7 +405,14 @@ A prop can be a promise. See [Promises as props](./async-data.md#promises-as-pro
 ## What a component cannot do
 
 - Signals never leave the file. A function or a child receives the value of a signal, never the signal itself. This is how the compiler sees every read and every write.
-- A child cannot write a prop. It calls a function that the parent passes, as above.
+- A child cannot write a prop that it did not declare with `let`. It calls a function that the parent passes, or the parent binds the prop with `$bind`, as above.
 - Scripts, expressions and attribute values cannot contain markup. Use a `#template` for markup that is used as a value, and `#for` for lists.
 
 To share a value with every component inside a component, without passing it through each one, use a [context](./context.md).
+
+## Related
+
+- [State](./state.md) describes signals, memos and `$produce`.
+- [Control flow](./control-flow.md) describes `#template` and the other blocks.
+- [Context](./context.md) shares a value with every component inside one.
+- [TypeScript](./typescript.md#props-types) exports the props type of a component.

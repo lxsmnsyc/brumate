@@ -6,14 +6,18 @@ type: tutorial
 
 A brumate app is a Vite app with the brumate plugin and route files under `src/routes`. `vite dev` serves its pages. This page sets one up from scratch.
 
+## Before you start
+
+- Node 22.18 or newer, which runs `.ts` files directly.
+- pnpm. The commands below use it. `npm` and `npx` work the same way.
+- A folder for the project.
+
 ## Install
 
 ```bash
 pnpm add brumate
 pnpm add -D vite @brumate/tsc typescript
 ```
-
-The project needs Node 22.18 or newer, which runs `.ts` files directly.
 
 ## Project layout
 
@@ -107,7 +111,7 @@ Open `http://localhost:5173`. The page shows before any script runs, and the cli
 - A path that no route matches gets Vite's 404, unless the root has an `_error.brm`.
 - The plugin sets `appType: 'custom'` when the config leaves it unset. See [The dev server](./reference-plugin.md#the-dev-server).
 
-An app needs no server file in development. [Deploying](./deploying.md) describes the production server, with Nitro or a server of your own, and static sites.
+An app needs no server file in development. A production build builds the client first, because the server build reads its manifest to write the script tags. [Deploying](./deploying.md) describes the build, the production server, with Nitro or a server of your own, and static sites.
 
 ## Edit while it runs
 
@@ -142,7 +146,7 @@ pnpm brumate-tsc --noEmit
 
 [TypeScript](./typescript.md) describes what is checked, and [Editors](./editor.md) sets up VS Code. `npx brumate check` compiles every `.brm` file and type-checks the project in one run. `npx brumate skill` copies a skill for coding agents into `.claude/skills/brumate`.
 
-## Next
+## Next steps
 
 - [Your first app](./tutorial.md) builds a todo app step by step.
 - [Components](./components.md) describes the parts of a `.brm` file.

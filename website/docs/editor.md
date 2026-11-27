@@ -13,7 +13,7 @@ The extension is in [`packages/vscode`](https://github.com/lxsmnsyc/brumate/tree
 - Highlighting for markup, blocks, scripts, expressions and styles.
 - Types, completion, hover and go to definition from TypeScript, in `.brm` files and in `.ts` files that import them.
 - Completion, hover and errors in style blocks, for CSS, SCSS and Less.
-- The errors and warnings of the compiler, such as a compile-time function that is not imported, a value that is changed in place, or an image without `alt`.
+- The errors and warnings of the compiler, such as a compile-time function that is not imported, a value that is changed in place, or an image without `alt`. An error or warning with a code, such as `BRM117`, links to its entry in [Compile errors](./errors.md).
 
 It bundles a language server for styles and diagnostics, and a TypeScript plugin for types. It needs no native modules, so it works on every platform.
 
@@ -25,9 +25,15 @@ It bundles a language server for styles and diagnostics, and a TypeScript plugin
 
 ## Coding agents
 
-`brumate skill [folder]` copies a skill for `.brm` files into `folder/brumate`, by default `.claude/skills/brumate`. It teaches an agent the syntax, state and events, and lists every compile error with its cause and fix.
+`brumate skill [folder]` copies a skill for `.brm` files into `folder/brumate`, by default `.claude/skills/brumate`. It teaches an agent the syntax, state and events, and lists every compile error with its cause and fix. It also copies each skill that an installed `@brumate/*` package carries, such as `brumate-ui`, into its own folder next to it. `brumate check` gives the same compile and type errors in a terminal, with the code and a link for each. See [`brumate check`](./typescript.md#brumate-check).
 
 ## Limits
 
 - TypeScript 7 does not load plugins, so types in `.brm` files need TypeScript 5.0 to 6. VS Code ships with a version that works.
 - The diagnostics of the compiler read one file at a time. A warning that depends on how other files use a component can differ from the build, which reads the whole project.
+
+## Related
+
+- [TypeScript](./typescript.md) describes what the type check covers and `brumate check`.
+- [Getting started](./getting-started.md) sets up a project.
+- [Compile errors](./errors.md) lists every code that the editor shows.

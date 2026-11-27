@@ -107,3 +107,10 @@ The value of "db" in Saver_1x2y3z holds a Database, which cannot be sent to the 
 - An imported function that browser code calls goes to the browser with its module. Import server-only modules only from server functions and the setup of the script.
 
 [The reactive graph](./reactive-graph.md) describes the full model that the compiler uses to decide.
+
+## Related
+
+- [The reactive graph](./reactive-graph.md) describes how the compiler decides what ships.
+- [Client modules](./client-modules.md) describes how the browser code is split.
+- [Server functions](./server-functions.md) keeps work on the server.
+- [Serializable values](./reference-serialization.md) lists the values that can be sent.

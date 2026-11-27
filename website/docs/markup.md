@@ -122,6 +122,8 @@ Inserted text is escaped. `raw` from `brumate/html` inserts a string as HTML, su
 
 Insert only HTML that you trust. HTML from a user can run scripts in your page.
 
+The page state leaves out raw HTML of 256 characters or more that the page prints in a flow element such as a `<div>`. The browser reads it back from the page while it parses. Raw HTML in an `<a>`, a `<p>`, a `<button>`, a list item, a table, a `<template>` or a `#head` body stays in the state, and so does raw HTML that the parser would change, such as an unclosed element. A render in order, which crawlers get, keeps every value in the state.
+
 ## Events
 
 `onEvent=handler` runs the handler when the event fires. The name after `on` is the DOM event, so `onClick` listens to `click` and `onKeyDown` to `keydown`. The handler gets the event:
@@ -305,3 +307,10 @@ An element with a spread or a computed attribute is not checked, because any att
 }
 <button onClick=(() => (fields = [...fields, `Field ${fields.length + 1}`]))>Add a field</button>
 ```
+
+## Related
+
+- [Control flow](./control-flow.md) describes the `#` blocks of the markup.
+- [Effects](./effects.md) describes `$effect`, `$client` and `#client` for code that runs in the browser.
+- [Navigation](./navigation.md#view-transitions) describes view transitions between pages.
+- [Forms](./forms.md) describes forms, `$bind` on fields and submit handlers.
