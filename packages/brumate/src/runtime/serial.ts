@@ -232,7 +232,11 @@ const InternalPlugin = createPlugin<Internal, { a: SerovalNode }>({
 const ChildrenPlugin = createPlugin<object, ReferenceNode>({
   tag: 'brumate/children',
   skipPlainObjects: true,
-  test: (value) => typeof value === 'object' && value !== null && CHILDREN_REF in value,
+  // Children with no export of their own hold the key with no reference, and send their HTML.
+  test: (value) =>
+    typeof value === 'object' &&
+    value !== null &&
+    (value as { [CHILDREN_REF]?: unknown })[CHILDREN_REF] !== undefined,
   parse: parsers((value) => {
     const reference = (value as { [CHILDREN_REF]: ChildrenReference })[CHILDREN_REF];
     const node: Record<string, unknown> = { a: reference.ref, b: reference.scope };

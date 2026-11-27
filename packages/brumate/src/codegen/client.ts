@@ -87,7 +87,6 @@ function effectCall(callback: oxc.Node): 'effect' | 'asyncEffect' {
   return (callback as oxc.Function).async ? 'asyncEffect' : 'effect';
 }
 
-/** Whether a scope is within any scope of the list. */
 /** True if the site calls a `#template` of the file. */
 function callsTemplate(site: Site): boolean {
   for (const callee of site.calls) {
@@ -98,6 +97,7 @@ function callsTemplate(site: Site): boolean {
   return false;
 }
 
+/** Whether a scope is within any scope of the list. */
 function isWithinAny(scope: Scope, list: Scope[]): boolean {
   for (const item of list) {
     if (isWithin(scope, item)) {
@@ -466,6 +466,14 @@ class ClientGenerator {
     // The render of children runs in the update part, so the sites in them are part of it.
     for (const site of this.childrenSites()) {
       updates.push(site);
+    }
+    // So do the `T` exports of the templates whose calls the page state sends.
+    for (const scope of this.sentScopes()) {
+      for (const site of this.model.sites) {
+        if (isWithin(site.scope, scope) && !DEFERRED_SITES.has(site.kind)) {
+          updates.push(site);
+        }
+      }
     }
     this.reach.set('update', this.closure(updates));
     for (const declaration of this.model.declarations) {
@@ -842,7 +850,10 @@ class ClientGenerator {
    * copies into itself, such as a call `row(item)` in an update.
    */
   private partScopes(part: string): Scope[] {
-    const result = part === 'update' ? this.renderedScopes() : this.templateScopes(part);
+    const result =
+      part === 'update'
+        ? [...this.renderedScopes(), ...this.sentScopes()]
+        : this.templateScopes(part);
     for (const site of this.partSites(part)) {
       const used: Declaration[] = [...site.calls];
       for (const read of site.reads) {
@@ -2141,7 +2152,7 @@ class ClientGenerator {
    */
   private emitSentCall(scope: Scope): void {
     const template = scope.template!;
-    if (!templateArgs(this.plan, this.file.source, scope) || !this.calledAsValue(template.name)) {
+    if (!this.sentTemplates().includes(scope)) {
       return;
     }
     const templates = this.inside(scope);
@@ -2163,9 +2174,39 @@ class ClientGenerator {
     );
   }
 
+  /** The scopes that the `T` exports render: the sent templates and the templates they call. */
+  private sentScopes(): Scope[] {
+    const result: Scope[] = [];
+    for (const scope of this.sentTemplates()) {
+      for (const item of this.inside(scope)) {
+        if (!result.includes(item)) {
+          result.push(item);
+        }
+      }
+    }
+    return result;
+  }
+
+  /** The templates that get a `T` export, cached. See `emitSentCall`. */
+  private sent: Scope[] | undefined;
+
+  /** The templates whose call can be a value of the page state. See `emitSentCall`. */
+  private sentTemplates(): Scope[] {
+    if (!this.sent) {
+      this.sent = [];
+      for (const scope of this.model.scopes) {
+        if (scope.template && this.calledAsValue(scope.template.name)) {
+          this.sent.push(scope);
+        }
+      }
+    }
+    return this.sent;
+  }
+
   /**
-   * True if a site calls the template other than as the whole expression of an insert in markup,
-   * so its call can be a value that a slot holds: a memo, a signal, a prop or a `const`.
+   * True if a site calls or passes the template other than as the whole expression of an insert
+   * in markup, so its call can be a value that the page state holds: a memo, a signal, a prop, a
+   * context value or the call of a template that a prop passes.
    */
   private calledAsValue(name: string): boolean {
     for (const site of this.model.sites) {

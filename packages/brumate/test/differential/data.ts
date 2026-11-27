@@ -24,6 +24,7 @@ skip('The server render throws without the props of a parent: a function, a list
   'GapBlockCard',
   'KeptItems',
   'LateList',
+  'PassedTemplateKid',
   'PromiseChild',
   'PromiseChildDestructured',
   'ReinsertLabel',
@@ -62,6 +63,7 @@ skip(
   'The server render throws without the context that a parent provides, since a context has no default.',
   [
     'ContextAs',
+    'ContextTemplateLater',
     'CounterButtons',
     'CtxWriterLoopMid',
     'FnReadContextMid',

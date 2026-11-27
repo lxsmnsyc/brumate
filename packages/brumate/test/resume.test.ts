@@ -2714,6 +2714,46 @@ describe('resume', () => {
     expect(text('.a')).toBe('2');
   });
 
+  it('inserts a prop of a #template call with no slots in a block that opens', async () => {
+    await resume('propTemplateStatic', {});
+    expect(text('.a')).toBe('5');
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.b')).toBe('5'));
+  });
+
+  it('inserts a context value of a #template call in a block that opens', async () => {
+    await resume('contextTemplateStatic', {});
+    expect(text('.a')).toBe('4');
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.b')).toBe('4'));
+  });
+
+  it('updates both inserts of a memo of a #template call with a destructured default', async () => {
+    await resume('memoTemplateDestructured', {});
+    const [a, b] = document.querySelectorAll('.v');
+    expect(a!.getAttribute('b-b')).not.toBe(b!.getAttribute('b-b'));
+    click(document.querySelector('button')!);
+    await waitFor(() => expect(text('.b')).toBe('2'));
+    expect(text('.a')).toBe('2');
+  });
+
+  it('sends a memo of the call of a #template that a prop passes', async () => {
+    await resume('passedTemplateMemo', {});
+    expect(text('.a')).toBe('1');
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.b')).toBe('1'));
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(text('.b')).toBe('2'));
+    expect(text('.a')).toBe('2');
+  });
+
+  it('renders a component in a #template call that the page state sends', async () => {
+    await resume('signalTemplateComponent', {});
+    expect(text('.a')).toBe('item');
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.b')).toBe('item'));
+  });
+
   it('renders a component in a same-file #template that updates in the browser', async () => {
     await resume('tplImportHost', {});
     click(document.querySelector('.open')!);

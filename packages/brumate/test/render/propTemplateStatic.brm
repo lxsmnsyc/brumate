@@ -1,0 +1,9 @@
+<script>
+  import TemplatePropLater from './TemplatePropLater.brm';
+</script>
+
+#template box(value: number) {
+  <span class="v">{value}</span>
+}
+
+<TemplatePropLater shown=(box(5)) />

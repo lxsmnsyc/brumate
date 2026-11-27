@@ -14,7 +14,8 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
   function Broken(): Promise<string> {
     throw new Error('Broken');
   }
-  async function row(n: number): Promise<$$b.Raw> {
+  function row(...$$a) { return $$b.templateCall("Blocks_jlmev2#T2", $$s1, row$, $$a); }
+  async function row$(n: number): Promise<$$b.Raw> {
     let $$html = '';
     $$html += "<b>" + $$b.insert((n * 10)) + "</b>";
     return $$b.raw($$html);
@@ -267,7 +268,8 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
   function Broken(): Promise<string> {
     throw new Error('Broken');
   }
-  function row(n: number) {
+  function row(...$$a) { return $$b.templateCall("Blocks_jlmev2#T2", $$s1, row$, $$a); }
+  function row$(n: number) {
     let $$html = '';
     const $$e = $$b.clone($$t0), $$f = $$e[1];
     $$b.setContent($$e[0], (n * 10));

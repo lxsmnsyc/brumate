@@ -1,0 +1,13 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import PassedTemplateKid from './PassedTemplateKid.brm';
+
+  let n = $signal(1);
+</script>
+
+#template box(value: number) {
+  <span class="v">{value}</span>
+}
+
+<button class="add" onClick=(() => n++)>Add</button>
+<PassedTemplateKid item=box n=(n) />

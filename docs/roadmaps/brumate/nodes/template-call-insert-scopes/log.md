@@ -32,3 +32,19 @@
   the site calls a template. Pre-existing on base, needed for the signal case.
 - Differential: the 12 pages match. Resume tests added for each kind and for a resumed call
   inserted by a block that opens later (`signalTemplateLater`).
+
+## 2026-11-27, review round 1 (PR #541)
+
+- Blocking: the `T<n>` export did not import the components that its template renders
+  (`packages/ui` `client-part-imports.test.ts`, 8 problems). The sent templates now join the
+  scopes and sites of the update part. Page `signalTemplateComponent` times out on 05eccffb and
+  passes now.
+- A template with no slots, or with a destructured default, kept the eager `Promise<Raw>` on the
+  server, sent as a promise that never settles. Every template now gets the call wrapper.
+- A memo of a template that a prop passes crashed `ChildrenPlugin` (the key is on every
+  `Children`, with no reference). The `fn` wrapper now carries the reference of the inner call,
+  and the plugin skips children with no reference.
+- `plain` keeps `ref` and the owner's place.
+- The memo part still inlines the template. Calling `T<n>` from it was not small.
+- Two new child pages throw on their own on the server, as other children do, so they are opt-outs:
+  `PassedTemplateKid`, `ContextTemplateLater`.
