@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Observability
 
 `onTrace(span)` receives each span of the server and of the browser when it ends, with its name, its times and its trace. Use it to see where the time of a request or a click goes, or to send the spans to OpenTelemetry. Nothing runs, and no code ships for it, until you set it.
@@ -17,7 +21,7 @@ export function onTrace(span: TraceSpan) {
 }
 ```
 
-The server calls it with each span of a request: the request, its render, each memo that loaded, each server function that ran, and each `#loading` or `#defer` body. A call outside a Vite app passes the same function as the `onTrace` option of `handleRequest`.
+The server calls it with each span of a request: the request, its render, each memo that loaded, each server function that ran, and each `#loading` or `#defer` body. A call outside a Vite app passes the same function as the `onTrace` option of `handleRequest`, `handleRoute` or `render`.
 
 - A span is handed over once, when it ends, so a child comes before its parent. It is a finished record, not a live span: there is no way to add attributes while the work runs.
 - A throw or a rejection of `onTrace` is logged with `console.error`. It does not change the answer and does not reach `onError`.
@@ -77,7 +81,7 @@ When the browser has an `onTrace`, a server function call and a navigation send 
 <button onClick=press>Save {length}</button>
 ```
 
-```
+```text
 brumate.event    click App#press            browser
   brumate.load   App                        only when the code had to load
   brumate.run    App#press
@@ -140,7 +144,9 @@ import { otel } from 'brumate/otel';
 export const onTrace = otel({ tracerName: 'my-app' });
 ```
 
-`@opentelemetry/api` is an optional peer dependency. `brumate/otel` is the only part that imports it, so an app without the adapter never loads it. Without the package, the first span makes the handler throw an error that names it.
+`otel()` takes `tracerName`, which defaults to `brumate`, and `api`, the `@opentelemetry/api` module, for an app that has it somewhere `brumate/otel` cannot import it from.
+
+`@opentelemetry/api` is an optional peer dependency. `brumate/otel` is the only part that imports it, so an app without the adapter never loads it. Without the package, the first span makes the handler throw an error that names it, once. The server logs it, and later spans are dropped.
 
 - The adapter keeps the names, attributes, times and the tree of one trace. `brumate.request` is a server span, `brumate.fetch` and `brumate.navigation` are client spans, and the rest are internal.
 - Every span also has `brumate.label`, and `brumate.trace_id`, `brumate.span_id` and `brumate.parent_id`. The SDK makes the real ids, so the ids in your exporter differ from the ones `onTrace` gets. Use these attributes to match them.
@@ -165,3 +171,10 @@ The message of an error can still hold a value that your code put in it.
 - With `onTrace` in the browser, the code adds about 1.2 kB gzip to the loader and the core, and each call and navigation sends one header of about 55 bytes.
 
 Not done: metrics, logs, a hosted exporter, and sampling. Your `onTrace` decides which spans to keep.
+
+## Related
+
+- [Inspect and devtools](./inspect.md): the dev server shows the same work in the Server tab.
+- [Runtime API](./reference-server.md): `TraceHandler`, `TraceSpan` and the `onTrace` option of the render and request functions.
+- [Routing](./routing.md#errors-of-the-server): `onError` next to `onTrace` in `src/middleware.ts`.
+- [Plugin options](./reference-plugin.md): the `trace` option.

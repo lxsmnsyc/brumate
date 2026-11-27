@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Testing server functions and routes
 
 A component test with `mount` has no server, and a route test with `visit` needs none. This page shows how to answer server function calls in a test and how to test a route. Set up Vitest and write a first test with [Testing](./testing.md).
@@ -88,3 +92,10 @@ it('signs in and opens a new issue', async () => {
 Requests to other origins go to the `fetch` from before. Use `visit` or `mount` in a test, not both, since each starts a loader.
 
 For `mount`, triggers and accessibility checks, see [Testing](./testing.md).
+
+## Related
+
+- [Testing](./testing.md): set up Vitest, mount a component and check what streams in.
+- [Server functions](./server-functions.md): the functions that `answerCalls` answers.
+- [Server function protocol](./server-protocol.md): the request and the answer of each call.
+- [Routing](./routing.md): the routes, layouts and middleware that `visit` runs.

@@ -54,7 +54,7 @@ A `reset` of the form gives every form field the value that it started with. Cha
 
 ## The server render
 
-On the server nothing writes, so every shape renders the value that it starts with. The HTML is complete and a form works before the code loads. A part such as a Select that shows the text of its choice shows the key until the code loads, unless you give it a `render` template.
+On the server nothing writes, so every shape renders the value that it starts with. The HTML is complete and a form works before the code loads. A part such as a Select that shows the text of its choice shows the key until the code loads, unless you give its `SelectValue` a `render` template.
 
 ## The state props of every part
 
@@ -71,6 +71,7 @@ Each of these takes a plain value, or `$bind` as above. The change handler is na
 | `Select`                                                                                      | `selectedKey`, `isOpen`               |
 | `ComboBox`                                                                                    | `inputValue`, `selectedKey`, `isOpen` |
 | `Autocomplete`                                                                                | `inputValue`                          |
+| `ColorScheme`                                                                                 | `value`                               |
 | `Tabs`                                                                                        | `selectedKey`                         |
 | `ListBox`, `GridList`, `Menu`, `TagGroup`, `ToggleButtonGroup`                                | `selectedKeys`                        |
 | `Table`                                                                                       | `selectedKeys`, `sortDescriptor`      |

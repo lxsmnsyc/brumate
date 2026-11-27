@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # State
 
 State is the data of a component that can change in the browser. `$signal` declares a value that you write, and `$memo` declares a value that is computed from other values.
@@ -67,7 +71,7 @@ Code that runs while the component renders cannot write a signal. Its value at r
 </script>
 ```
 
-```
+```text
 Signal "count" can only be written in event handlers, effects, $client callbacks and functions (App.brm:5:3)
 ```
 
@@ -256,3 +260,10 @@ A handler is one update pass. The page changes when the handler returns, not at 
 The server renders the page with the values of every signal and memo. The browser only gets the values that its code reads, such as a signal that a handler writes and the memos that read it. A signal that no code in the browser writes stays on the server, and the page shows it as plain HTML.
 
 [What runs where](./what-runs-where.md) explains which code and values the browser gets.
+
+## Related
+
+- [Compile-time functions](./reference-signals.md): the signature and rules of each function of `brumate/signals`.
+- [Effects and browser code](./effects.md): run code when a value changes.
+- [Context](./context.md): share a value with the components inside.
+- [Reactive logic in modules](./reactive-modules.md): share state between components.

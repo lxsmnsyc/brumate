@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Protecting server functions
 
 A server function answers any caller. This page shows how to limit how often a caller can call it, and which sites can call it. [Security checks](./reference-security.md) lists what brumate checks for you.
@@ -17,7 +21,7 @@ async function signIn(email: string, password: string) {
 ```
 
 - Call it first thing in the function, before its first `await`, as `getEvent()`. After `max` calls in the window for one key, a call rejects with a `RateLimitError`: status 429, `Retry-After`, and the seconds to wait in `retryAfter`, in the browser too. The rest of the function does not run.
-- The window is a length such as `'10s'`, `'1m'` or `'1h'`, or a number of milliseconds. The count slides: it weighs the last window by how much of it is still inside the window, so a burst at the edge of a window does not get through.
+- The window is a length such as `'10s'`, `'1m'` or `'1h'`, or a count of milliseconds. The count slides: it weighs the last window by how much of it is still inside the window, so a burst at the edge of a window does not get through.
 - Each call counts before the limit decides, with one atomic increment, so calls that arrive at the same time cannot all pass. A refused call counts too, so a client that keeps trying stays refused until it slows down.
 - `rateLimit.strict`, 3 calls in 10 seconds, is a preset for functions that guess at secrets, such as a sign-in or a code check.
 - `rateLimit.middleware({ max, window })` limits every request under a folder of routes, endpoints and pages included, as its `_middleware.ts`, or every request of the app as the entry middleware. A request over the limit answers 429 with the message.
@@ -56,3 +60,10 @@ brumate({ origins: ['https://admin.example.com'] });
 ```
 
 [Security](./reference-security.md) describes the check.
+
+## Related
+
+- [Security checks](./reference-security.md): what brumate checks for you, and what stays your job.
+- [Server functions](./server-functions.md): the calls that a limit protects, and how to validate their arguments.
+- [Deploying](./deploying.md): passing the address of the client to the server.
+- [Routing](./routing.md#middleware): middleware that limits a folder of routes.

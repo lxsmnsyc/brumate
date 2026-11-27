@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Publishing components
 
 A package can ship `.brm` components for other apps to use. It ships them as source, and the Vite plugin of the app compiles them with the app's own files.
@@ -32,7 +36,7 @@ A package cannot ship routes. The routes of an app come only from its own `src/r
 }
 ```
 
-- `brumate` tells the plugin of the app that the package ships `.brm` files. `dir` names the folder to search, so test files stay out. Without `dir`, or with `"brumate": true`, the plugin searches the whole package. Folders named `node_modules` and hidden folders are skipped.
+- `brumate` tells the plugin of the app that the package ships `.brm` files. `dir` names the folder to search, or a list of folders, so test files stay out. Without `dir`, or with `"brumate": true`, the plugin searches the whole package. Folders named `node_modules` and hidden folders are skipped.
 - `version` is the version of this field. This version of brumate reads `1`. A package with another version fails the start of Vite with a message that names it.
 - `exports` lets the app import `@acme/ui/Button.brm`. Export each `.brm`, `.brm.ts` and `'use server'` file that the app imports. An export can name a `.brm.ts` module without its extension, such as `"./forms": "./src/forms.brm.ts"`, and the app imports it as `@acme/ui/forms`. The plugin reads the `import`, `module`, `node`, `browser` and `default` conditions, and a `brumate` condition if you need one.
 - `files` publishes the source.
@@ -170,7 +174,7 @@ The app compiles the package with its own version of brumate. The compiled code 
 
 ## A complete package
 
-```
+```text
 acme-ui/
   package.json
   tsconfig.json
@@ -244,3 +248,10 @@ export async function greet(name: string): Promise<string> {
 ```
 
 [`examples/ui-kit`](https://github.com/lxsmnsyc/brumate/tree/main/examples/ui-kit) is a package like this one, and [`examples/kit-app`](https://github.com/lxsmnsyc/brumate/tree/main/examples/kit-app) is an app that uses it.
+
+## Related
+
+- [Plugin options and modules](./reference-plugin.md): how the plugin treats packages of components.
+- [Reactive modules](./reactive-modules.md): the `.brm.ts` files that a package can ship.
+- [Server functions](./server-functions.md): validating and authorizing calls.
+- [Security](./reference-security.md): what a package that exposes server functions must check.

@@ -1,6 +1,15 @@
+---
+type: tutorial
+---
+
 # Your first app
 
 This tutorial builds a todo list in six steps: a list, a form that adds items, toggling items, a count of what is left, saving on the server, and a route. Each step shows the whole component, and every sample before the last runs in the page, so you can change it and see what happens.
+
+## Before you start
+
+- Nothing to install for steps 1 to 5. The samples run in the page.
+- Step 6 needs a project with a `src/routes` folder. [Getting started](./getting-started.md) sets one up (Node 22.18 or newer, and pnpm).
 
 ## 1. Show a list
 
@@ -346,7 +355,7 @@ The page is now at `/todos`, inside the layout of `src/routes/_layout.brm`. Add 
 
 Once the loader runs, a click on a link loads the next page without a full page load, and the layout stays. [Routing](./routing.md) and [Navigation](./navigation.md) describe both.
 
-## Next
+## Next steps
 
 - [Components](./components.md) splits the list into components with props.
 - [State](./state.md) describes signals, memos and `$produce` in depth.

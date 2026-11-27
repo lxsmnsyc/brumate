@@ -1,3 +1,7 @@
+---
+type: reference
+---
+
 # Compile-time functions
 
 The functions of `brumate/signals` describe state and behavior to the compiler. The compiler replaces every call and removes the import, so none of them ship. The one exception is `flush`, a function of the runtime, which keeps its import.
@@ -34,6 +38,7 @@ import { $memo, $signal } from 'brumate/signals';
 | `$store(source)`                  | the value of the store     | `const` or `let` at the top level of a script                            | [Context](./context.md#live-values-with-stores)            |
 | `$toStore(value)`                 | `Store<T>`                 | A value of `$setContext`                                                 | [Context](./context.md#live-values-with-stores)            |
 | `$route(path?)`                   | `{ url, search, params }`  | `const` at the top level of a script                                     | [Navigation](./navigation.md#the-route)                    |
+| `$searchParam(name, options?)`    | `T`, or `string \| null`   | `let` at the top level of a script                                       | [Navigation](./navigation.md#state-in-the-url)             |
 | `$navigation()`                   | `{ pending, from, to }`    | `const` at the top level of a script                                     | [Navigation](./navigation.md#while-a-page-loads)           |
 | `$id()`                           | `string`                   | `const` at the top level of a script                                     | [Page metadata](./page-metadata.md)                        |
 | `$title(value)`                   | `void`                     | Statement at the top level of a script. Replaced by `<title>` in `#head` | [Page metadata](./page-metadata.md)                        |
@@ -359,7 +364,7 @@ Marks a function that a script makes as an event handler, so a spread can pass i
 ## `$bind`
 
 ```ts
-function $bind<T>(value: T, set?: (next: T) => unknown): BindableMark<T>;
+function $bind<T>(value: T, set?: (next: T) => unknown): BoundSignal<T>;
 ```
 
 Passes a value that the receiver writes back.
@@ -410,5 +415,5 @@ These names are reserved, and calling one is a compile error that names the repl
 | `$watch`       | `$effect`.                                         |
 | `$settled`     | `$client`.                                         |
 | `$cleanup`     | A function returned from `$effect` or `$client`.   |
-| `$store`       | A `$signal` with a new value, or `$produce`.       |
+| `$hasContext`  | `$getContext(Context, undefined)`.                 |
 | `$get`, `$set` | Nothing. Signals cannot leave the file.            |

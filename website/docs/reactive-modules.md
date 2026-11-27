@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Reactive logic in modules
 
 A `.brm.ts` module holds state and logic that several components share. Its functions use `$signal`, `$memo` and the other compile-time functions, and a component calls one at the top level of its script.
@@ -240,3 +244,10 @@ A module signal is one value for the whole server process, as `export const cart
 - TypeScript sees an ordinary function call, so what the component destructures has the types that the function returns.
 
 A module function runs only as a copy in a component. Called anywhere else, such as from a `.ts` file, its compile-time functions throw, because nothing compiles them.
+
+## Related
+
+- [State](./state.md): signals and memos in a component.
+- [Compile-time functions](./reference-signals.md): what each function does at module level.
+- [Context](./context.md#derived-stores): stores and derived stores at module level.
+- [Async data](./async-data.md): memos that load.

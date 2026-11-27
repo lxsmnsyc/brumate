@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Styles
 
 A `<style>` block holds CSS for its component. Its selectors match only the elements of that component, so class names never clash between components.
@@ -70,7 +74,7 @@ A `<style global>` block holds rules that are not scoped, so a stylesheet of man
 - A global block travels with its component, like any other style: the page carries it once, before the first instance, and a page that does not render the component does not carry it.
 - It works with `lang="scss"` and `lang="less"`, as in `<style global lang="scss">`, and with `${expression}`.
 - `:global(…)` inside it is allowed and means nothing more than its content.
-- Like `<style>`, it is allowed at the top level of the file and of a block body. In a block it is unscoped too, so a global rule applies whether or not the block shows, and it matches elements outside the block.
+- Like `<style>`, it is allowed at the top level of the file and of a block body. In a block it is unscoped too, so a global rule applies whether the block shows, and it matches elements outside the block.
 
 ## Dynamic values
 
@@ -213,11 +217,11 @@ A `<style global>` block in the root layout works too.
 
 ## On the page
 
-In a build, the CSS of a component is not in its JavaScript. It goes through the CSS pipeline into `.css` assets, one per bundle of a route, plus shared chunks that several bundles use, and the files are cached across pages.
+In a build, the CSS of a component is not in its `.js` files. It goes through the CSS pipeline into `.css` assets, one per bundle of a route, plus shared chunks that several bundles use, and the files are cached across pages.
 
 A page carries each component's CSS twice. The server writes the CSS of the components a page renders into the page, as `<style>` elements in render order, so the first paint needs no stylesheet request. The stylesheets of the bundles hold the same CSS for the rest of the visit, and a first load links them with `rel="preload"` and a `<noscript>` link, so they do not block the paint, when the page rendered the components whose global rules they hold. A sheet that holds anything else, such as a CSS file that a module imports, or a sheet whose component marks a plugin removed, stays a blocking link, and so does every sheet a navigation request gets. A component that the browser renders later gets its CSS from the bundle's stylesheet.
 
-A client navigation waits for the stylesheets of the next page before it swaps the page, for at most 4 seconds, so no frame shows unstyled. A `#defer` body and a `#loading` body that the server streams wait for the stylesheets that their markup links before they show, for at most 4 seconds. Stylesheets that no element of the page uses any more are removed after a navigation.
+A client navigation waits for the stylesheets of the next page before it swaps the page, for at most 4 seconds, so no frame shows unstyled. A `#defer` body and a `#loading` body that the server streams wait for the stylesheets that their markup links before they show, for at most 4 seconds. Stylesheets that no element of the page uses any more are removed after a navigation. The request for a `#defer` body sends the style of the component that holds the block, so the body keeps the rules of its block `<style>` after a navigation that removed the stylesheet while only the fallback showed. A `#defer` body that a prerendered page fills in its own response waits for its stylesheets as well.
 
 The dev server keeps the CSS inline, and a hot update swaps the text of the `<style>`.
 
@@ -247,3 +251,10 @@ The dev server, and a build with a relative `base` (`'./'`, where the server can
 - In dev and in a build with a relative `base`, a `url()` inside a file that the CSS imports is not rewritten.
 
 [Style compilation](./style-compilation.md) explains how scoping and dynamic values are compiled.
+
+## Related
+
+- [Style compilation](./style-compilation.md) explains how scoping and dynamic values are compiled.
+- [Markup](./markup.md#class-and-style) describes `class` and `style` attributes.
+- [Control flow](./control-flow.md#a-style-in-a-block) describes the scope rules of a style in a block.
+- [The plugin options](./reference-plugin.md) lists the options that touch the CSS build.

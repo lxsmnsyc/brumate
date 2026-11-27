@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Navigation
 
 Links are plain `<a>` elements, so every page works with scripts turned off. Once the loader runs, it loads pages of your site itself, without a full page load, and keeps the parts of the page that stay the same.
@@ -312,3 +316,11 @@ With the same `viewTransitionName` on the list page and on the detail page, the 
 - The core sets the name as an inline style, so a `style=(…)` binding of the same element that updates during the transition can drop it. Give the name through `viewTransitionName` and keep the rest in the style.
 - A transition that starts while another one runs shares the names of the elements that they both mark, and the end of the first leaves them for the second.
 - A page that marks no element carries none of this code.
+
+## Related
+
+- [Routing](./routing.md): layouts, `href` and the route files that pages come from.
+- [Page metadata](./page-metadata.md): how `#head` and `<title>` follow a navigation.
+- [Forms and actions](./forms.md): form posts and redirects that load a page.
+- [Async data](./async-data.md): `#loading` bodies that stream in after a navigation.
+- [Security](./reference-security.md): nonces, Trusted Types and scripts of other sites.

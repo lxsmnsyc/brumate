@@ -1,3 +1,7 @@
+---
+type: reference
+---
+
 # Plugin options and modules
 
 The options of the Vite plugin, the modules that it provides, the `brumate` command, and the compiler API.
@@ -26,7 +30,7 @@ export default defineConfig({
 | `routeTypes`   | `string \| false`                                         | `'src/brumate-routes.d.ts'`                                      | The declaration file that gives `href` the paths of the routes. The plugin writes it when routes are added or removed. `false` writes none.                                                                                                                                                                                                                                                                                                                                                                 |
 | `navigate`     | `boolean \| { transition?: boolean, focus?: boolean }`    | `true`                                                           | Loads pages without a full page load. `{ transition: true }` swaps pages inside a view transition. `{ focus: false }` keeps the focus where it is after a navigation.                                                                                                                                                                                                                                                                                                                                       |
 | `prerender`    | `boolean \| PrerenderOptions`                             | `false`                                                          | Writes pages as static HTML files after the server build, or after the server environment under Nitro. `true` renders `/` and the pages its links lead to. See [Prerendering](./deploying.md#prerendering).                                                                                                                                                                                                                                                                                                 |
-| `clientOutDir` | `string`                                                  | the client output                                                | The output directory of the client build, relative to the root. The server build reads the manifest, the build ID and the hints from it, and prerendering writes pages there. Without it: `prerender.client`, then the output of the client environment when it differs from the server output, such as `.output/public` under Nitro, then `'dist/client'`.                                                                                                                                                 |
+| `clientOutDir` | `string`                                                  | the client output                                                | The output directory of the client build, relative to the root. The server build reads the manifest (`.vite/manifest.json`, or the `build.manifest` name), the build ID and the hints from it, and prerendering writes pages there. Without it: `prerender.client`, then the output of the client environment when it differs from the server output, such as `.output/public` under Nitro, then `'dist/client'`.                                                                                           |
 | `features`     | `'used' \| 'all'`                                         | `'used'`                                                         | The features of the core that the client build keeps. `'used'` leaves out the code of those that no component uses. `'all'` keeps every feature, for an app that compiles components in the browser. See [Client modules](./client-modules.md).                                                                                                                                                                                                                                                             |
 | `merge`        | `number`                                                  | `4096`                                                           | A component whose client parts are smaller than this many bytes in all, after minifying, ships them in its entry. `0` keeps one module per part.                                                                                                                                                                                                                                                                                                                                                            |
 | `exclude`      | `(directory: string) => boolean`                          | skips `node_modules`, `dist` and directories that start with `.` | Directories that are not searched for `.brm` files.                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
@@ -104,20 +108,21 @@ brumate skill [folder]
 
 - `brumate inspect` shows what each component ships to the browser, and why. See [Inspect and devtools](./inspect.md).
 - `brumate check` compiles every `.brm` file and type-checks the project. It prints each problem with its code and a link, and exits with 1 on an error. See [TypeScript](./typescript.md#brumate-check).
-- `brumate skill` copies the skill for `.brm` files into `folder/brumate`, for coding agents. The folder defaults to `.claude/skills`.
+- `brumate skill` copies the skill for `.brm` files into `folder/brumate`, for coding agents. It also copies each skill in the `skills` folder of the installed `@brumate/*` packages, such as `folder/brumate-ui`. The folder defaults to `.claude/skills`.
 
 ## Compiler API
 
 The `brumate` package exports the compiler, for tools.
 
-| Export                            | What it does                                                                                                                                                                                                                 |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `compile(source, options?)`       | Compiles a `.brm` file. Returns `server`, `client`, `parts`, `render`, `css`, `warnings`, `maps` (a source map for each module) and `modules` (the `.brm.ts` modules it calls into). Throws `CompileError` with every error. |
-| `inspect(source, options?)`       | Compiles a file and returns `{ report, text }`, the report of `brumate inspect`.                                                                                                                                             |
-| `analyzeProject(files)`           | Finds, for each file of a map of sources, the props that its parents can change.                                                                                                                                             |
-| `analyzeProjectProps(files)`      | The same, with the parents that change each prop.                                                                                                                                                                            |
-| `toTypeScript(source, filename?)` | The TypeScript that the type checker reads for a file, with source mappings.                                                                                                                                                 |
-| `parse(source, options?)`         | The syntax tree of a file. Throws `BrumateError` on a syntax error.                                                                                                                                                          |
+| Export                            | What it does                                                                                                                                                                                                                        |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `compile(source, options?)`       | Compiles a `.brm` file. Returns `server`, `client`, `parts`, `render`, `css`, `warnings`, `maps` (a source map for each module) and `modules` (the `.brm.ts` modules it calls into). Throws `CompileError` with every error.        |
+| `inspect(source, options?)`       | Compiles a file and returns `{ report, text }`, the report of `brumate inspect`.                                                                                                                                                    |
+| `analyzeProject(files)`           | Finds, for each file of a map of sources, the props that its parents can change.                                                                                                                                                    |
+| `analyzeProjectProps(files)`      | The same, with the parents that change each prop.                                                                                                                                                                                   |
+| `analyzeProjectDefers(files)`     | Finds, for each file, the `#defer` blocks that a component of another file can render in the browser, as `BrowserDefer` ranges (`start`, `end`, `component`). The compile of one file reports them as [BRM217](./errors.md#brm217). |
+| `toTypeScript(source, filename?)` | The TypeScript that the type checker reads for a file, with source mappings.                                                                                                                                                        |
+| `parse(source, options?)`         | The syntax tree of a file. Throws `BrumateError` on a syntax error.                                                                                                                                                                 |
 
 `compile` takes these options:
 
@@ -132,3 +137,10 @@ The `brumate` package exports the compiler, for tools.
 | `resolveModule` | `(specifier, importer) => { path, source } \| undefined` | Reads a [module of reactive logic](./reactive-modules.md) that the file imports. Defaults to reading it from disk next to `path`. |
 
 `inspect` takes the options of `compile`, and `parents`, the parents that change each prop, from `analyzeProjectProps`.
+
+## Related
+
+- [Deploying](./deploying.md): Nitro, a server of your own, prerendering and skew protection.
+- [Inspect and devtools](./inspect.md): `brumate inspect`, the build report and the devtools.
+- [TypeScript](./typescript.md): `brumate check` and the editor plugin.
+- [Testing](./testing.md): `virtual:brumate/testing`.

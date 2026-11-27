@@ -1,8 +1,16 @@
+---
+type: internals
+---
+
 # Page format
 
 The server writes markers into the HTML and the state into scripts. The core reads both to resume the page. This page describes that contract, for contributors and for tools that read brumate pages.
 
-The attributes that brumate writes start with `b-`, also the `b-c-<hash>` attribute of scoped styles. The compiler rejects an element attribute that starts with `b-`, and a spread writes one only when brumate made it.
+## Overview
+
+A render gives each scope that client code needs an ID, and writes marker comments and `b-` attributes where the browser must find a node. It then writes the state of the scopes as seroval records, one inline script each, which the core reads when the page starts. A `#loading` body streams after the page with a swap script, and a `#defer` body comes from a request of its own. Client navigation requests another page with a base above the IDs in use, so the new IDs never meet the old ones.
+
+The server also adds `b-html` to the `<html>` tag, with the names of the attributes that the page sent, so client navigation can tell them from the ones that a script sets. The attributes that brumate writes start with `b-`, also the `b-c-<hash>` attribute of scoped styles. The compiler rejects an element attribute that starts with `b-`, and a spread writes one only when brumate made it.
 
 ## Scope IDs
 
@@ -18,7 +26,7 @@ In the state, an ID with a dot is a string, and other IDs are numbers.
 
 - A component instance always gets an ID.
 - A body scope gets an ID when it has slots or anchors, or when it is an item of a `#for` or `#repeat` whose list can change.
-- A `#template` call gets an ID when its body has slots or anchors.
+- A `#template` call gets an ID when its body has slots or anchors. Each place that shows a call has its own scope, also when a memo, a signal, a `const`, a prop or a context value holds the call.
 
 `#loading` bodies get boundary IDs from a second counter, which also starts at the base. A boundary inside a `#loading` body gets an ID with a dot, from that body's counter.
 
@@ -35,9 +43,10 @@ An anchor is a node that client code must find. Each anchor has an index within 
 - `b-b` is the anchor.
 - An element whose only client code is its handlers has no `b-b` when an element around it in the same scope has one. The core finds the scope of its handlers with `closest('[b-b]')`. The compiler does this only when that element is one the browser keeps whole, so not a `<p>`, a heading, a table section or a `<select>`.
 - `b-on` lists the event handlers, separated by spaces. Each entry is `<event>[:<modifier>…]=<reference>`. A handler that a spread passed on adds `@<scope>`, the scope it runs in, and one that `$handler` made adds `@<arguments>`, its arguments as JSON encoded with `encodeURIComponent`, such as `click:prevent=Page_x1#h9@3@%5B1%5D`.
+- `b-near="<scope>.<slot>"` and `b-r="<scope>.<slot>"` mark an element that a `$client` callback with the `visible` trigger waits for through `ref=$bind(…)`. The loader finds the element by them.
 - `b-v="<scope>"` marks a top-level element of a component or of a block instance whose style variables can change. The value is one scope ID, or a space-separated list when the element carries the variables of several scopes, such as a component root that is also the top level of a block, with the component first.
 
-A reference is `<component ID>#<export name>`. The component ID is the component name and a hash of its path relative to the root. Handlers export as `h<n>`, and `$client` callbacks as `c<n>`.
+A reference is `<component ID>#<export name>`. The component ID is the component name and a hash of its path relative to the root. Handlers export as `h<n>`, `$client` callbacks as `c<n>`, and a `#template` that the browser inserts again as `T<n>`.
 
 ### Text
 
@@ -103,6 +112,9 @@ The server writes the fallback between `<!--l<id>-->` and `<!--/l-->`, where the
 - The `<template>` holds the body.
 - The script moves the body in, in place of the fallback and the markers. The first swap script of a page also defines `$bS`. An ID with a dot is a string, as in `$bS("5.0")`.
 - The state record holds the scopes of the body. It comes after the swap, so the markup of its scopes is in the page when the core reads it.
+- A body that links stylesheets which the page does not have yet waits for them, for 4 seconds at most, so it never shows unstyled. The swap preloads each one and moves the body in when they have loaded or failed. A swap that needs no wait runs at once.
+- While a swap waits, `$bR` holds the records in `self.$bQ`, and later swaps queue behind it. When it ends, the records go to `self.$brm` in order, so the core reads each one after its body is in the page.
+- The `$bF` call of the next `#reveal` fallback and the `$bH` call of the head run after the body. They go in a function that `$bS` takes as a second argument, such as `$bS(0,function(){$bH(0,"Title")})`.
 
 If the body fails, the fallback stays.
 
@@ -126,12 +138,12 @@ A `#loading` body that sets the head after the first render also sends `<templat
 
 When the trigger fires, the browser asks for the URL of the page with two headers:
 
-```
+```text
 x-brumate-defer: 2 0:1
 x-brumate-base: 0
 ```
 
-The server renders the route again with that base, and the `#loading` and `#defer` bodies whose IDs the boundary's ID starts with, such as boundary `0` for `0.0`. It answers with the markup that it streams for a `#loading` body, with the header `x-brumate-defer: 2`. The browser adds it to the page and runs its scripts with the page's nonce. Its state records have `b-root="d<boundary>"`, so their references are apart from the page's. The answer is 409 when the render puts boundary 2 at another anchor, and 404 when it has no such boundary.
+The server renders the route again with that base, and the `#loading` and `#defer` bodies whose IDs the boundary's ID starts with, such as boundary `0` for `0.0`. It answers with the markup that it streams for a `#loading` body, with the header `x-brumate-defer: 2`. The browser adds it to the page and runs its scripts with the page's nonce. Its state records have `b-root="d<boundary>"`, so their references are apart from the page's. The browser loads the stylesheets that the body links before it adds the body. When the block has a `<style>` of its own, the answer carries the `<style b-style>` of the component that holds the block. Client navigation removes a stylesheet that no element uses while only the fallback shows. The answer is 409 when the render puts boundary 2 at another anchor, and 404 when it has no such boundary.
 
 ### `#portal`
 
@@ -239,30 +251,52 @@ g: [[2, 0, 33, 1, 0, 0, 1, 1, 1]]
 
 Values with plugins of their own, and the call of `$b` that makes each one in a record:
 
-| Tag                 | In a record              | Value                                                                                                          |
-| ------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| `brumate/element`   | `$b.e(scope, anchor)`    | `ElementReference`: a `ref` signal whose element the server rendered. It holds the element's scope and anchor. |
-| `brumate/function`  | `$b.f(reference, scope)` | `FunctionReference`: a client function passed as a prop. It holds its reference and the scope it reads.        |
-| `brumate/raw`       | `$b.r(html)`             | HTML that the client may insert again, such as `children`.                                                     |
-| `brumate/component` | `$b.c(id)`               | A component, as its component ID, for dynamic tags.                                                            |
-| `brumate/upload`    | Not in the page          | A file in the arguments of a server function call. See [Server function protocol](./server-protocol.md).       |
+| Tag                 | In a record                          | Value                                                                                                                                                                                        |
+| ------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `brumate/element`   | `$b.e(scope, anchor)`                | `ElementReference`: a `ref` signal whose element the server rendered. It holds the element's scope and anchor.                                                                               |
+| `brumate/function`  | `$b.f(reference, scope)`             | `FunctionReference`: a client function passed as a prop, or a `#template` call, whose reference is `T<n>` and which also holds its arguments. It holds its reference and the scope it reads. |
+| `brumate/children`  | `$b.n(reference, scope, at, anchor)` | `children` that the browser renders again, as the export that renders them, with their scope and the place of their insert.                                                                  |
+| `brumate/raw`       | `$b.r(html)`                         | HTML that the client may insert again, such as `children`.                                                                                                                                   |
+|                     | `$b.d(token, component)`             | The same, when the page printed the HTML between markers. See [Raw HTML that the page printed](#raw-html-that-the-page-printed).                                                             |
+| `brumate/component` | `$b.c(id)`                           | A component, as its component ID, for dynamic tags.                                                                                                                                          |
+| `brumate/upload`    | Not in the page                      | A file in the arguments of a server function call. See [Server function protocol](./server-protocol.md).                                                                                     |
 
 Web values, such as `URL`, `Headers` and `ReadableStream`, use the plugins of `seroval-plugins/web`, which write code that makes them, such as `new URL(href)`.
 
+### Raw HTML that the page printed
+
+A `raw()` value that the page prints in a flow element, such as a `<div>`, can be long. The state does not hold it a second time. The server writes it between markers, and the record names the place:
+
+```brm
+<div><!--dk3x9.0--><article>…</article><!--/d--></div>
+```
+
+- The start marker is `<!--d<token>-->`. The token is 4 characters from the route and the base of the render, a dot, and a count: `k3x9.0`. The same page gets the same tokens, so a static build is the same each time.
+- A record that needs the HTML calls `$b.d("k3x9.0")`. In development it passes the name of the component that printed the HTML as a second argument, for the error below.
+- That record starts with a small script that reads each range into `self.$bP`, by token, and removes the markers while the page parses, so the page is the same as one without them. `$b.d` takes the HTML from `$bP`. The first range of a token counts. Client navigation reads the markers of the page it fetched, with `readPrinted`.
+- The value stays in the record, as `$b.r(html)`, when it has fewer than 256 characters, when it holds a marker of its own, or when the browser would read it back differently: an element that does not close, a `<pre>` or `<textarea>` that starts with a line break, a declarative shadow root, an `<html>`, `<head>`, `<body>` or `<frameset>` tag, or a `<script>`. It also stays when the page prints it where the parser can end the range early, such as in an `<a>`, a `<p>`, a `<span>`, a `<button>`, a list item, a table, a `<select>`, a `<template>`, a `#head` body or a `#template`.
+- Only the record of the page does this. A `#loading` or `#defer` body, a record that settles a promise, and a render in order, which crawlers get, keep the HTML in the record.
+- `$b.d` throws when the range has no end in the page, because the browser moved its end marker while it parsed. The compiler adds the reader code only to an app that has an insert where raw HTML can print this way.
+
+See [Serialization](./reference-serialization.md) for what each kind of value does.
+
 ### Attributes of records
 
-| Attribute  | On                                             | Meaning                                                                                                |
-| ---------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `nonce`    | Every record, with the `nonce` option          | The Content Security Policy nonce of the render.                                                       |
-| `b-state`  | Every record                                   | The script is a state record.                                                                          |
-| `b-scopes` | Records with scopes                            | The record adds scopes.                                                                                |
-| `b-next`   | Every record with scopes                       | A number above every scope and boundary ID of the render.                                              |
-| `b-route`  | The first record of a page from routes         | The key of the root route.                                                                             |
-| `b-root`   | Every record of a render with a `base` above 0 | The base, or `d<boundary>` for a `#defer` body. The core keeps a `refs` map for each root.             |
-| `b-offset` | Records that the client moved                  | The number the client added to the IDs in the markup. The core adds it to the scope IDs in the record. |
-| `b-drop`   | Set by the client on navigation                | The route scopes that the new page replaces. The core drops them and the scopes inside them.           |
-| `b-roots`  | Set by the client on navigation                | The route scopes of the new page. The core adds only them and the scopes inside them.                  |
-| `b-alias`  | Set by the client on navigation                | Pairs `<new>:<kept>`: layout scopes of the new page that stand for layouts the client keeps.           |
+| Attribute  | On                                             | Meaning                                                                                                        |
+| ---------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `nonce`    | Every record, with the `nonce` option          | The Content Security Policy nonce of the render.                                                               |
+| `b-state`  | Every record                                   | The script is a state record.                                                                                  |
+| `b-scopes` | Records with scopes                            | The record adds scopes.                                                                                        |
+| `b-next`   | Every record with scopes                       | A number above every scope and boundary ID of the render.                                                      |
+| `b-route`  | The first record of a page from routes         | The key of the root route.                                                                                     |
+| `b-load`   | Records of a page that has bundles             | The URLs of the bundles that the components of the record need, separated by spaces. The browser imports them. |
+| `b-fail`   | The record of a `#loading` body that failed    | The boundary ID. The record is the error, and the fallback stays.                                              |
+| `b-catch`  | The record after a `<template b-c="<key>">`    | The key of a `#try` whose `#catch` body replaced its body while the page streamed.                             |
+| `b-root`   | Every record of a render with a `base` above 0 | The base, or `d<boundary>` for a `#defer` body. The core keeps a `refs` map for each root.                     |
+| `b-offset` | Records that the client moved                  | The number the client added to the IDs in the markup. The core adds it to the scope IDs in the record.         |
+| `b-drop`   | Set by the client on navigation                | The route scopes that the new page replaces. The core drops them and the scopes inside them.                   |
+| `b-roots`  | Set by the client on navigation                | The route scopes of the new page. The core adds only them and the scopes inside them.                          |
+| `b-alias`  | Set by the client on navigation                | Pairs `<new>:<kept>`: layout scopes of the new page that stand for layouts the client keeps.                   |
 
 ## Props
 

@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Effects and browser code
 
 A component renders on the server, so its script never runs in the browser. To run code in the browser, use a handler, `$effect`, `$client` or a `#client` block. Each one starts at a different time.
@@ -420,3 +424,10 @@ Code that runs in the browser can throw: a handler, the promise that an async ha
 - On the server the same holds: a memo that throws fails where it is read, and the `#catch` body of a `#try` around the read renders. This holds wherever the memo is declared. An awaited memo, `const foo = await $memo(bar())`, throws where it is declared, since `await` reads it there.
 - In production, a memo that fails on the server and holds its error in the browser carries the message of a `ServerError`, or "The page could not compute a value". The real error shows in development only, with its name, message and `cause`. A stack is never sent.
 - A handler that throws stops there. An error of a memo or a binding that a write reaches does not stop the handler. It goes to the nearest `#try`.
+
+## Related
+
+- [State](./state.md): signals and memos that effects read.
+- [Compile-time functions](./reference-signals.md#effect): `$effect` and `$client` in detail.
+- [Blocks and markup](./reference-blocks.md): `#client`, `#try` and the other blocks.
+- [Errors](./errors.md#brm187): the update loop error.

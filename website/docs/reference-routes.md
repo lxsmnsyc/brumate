@@ -1,3 +1,7 @@
+---
+type: reference
+---
+
 # Route files
 
 The files under `src/routes` and what each one does. [Routing](./routing.md) explains them with examples.

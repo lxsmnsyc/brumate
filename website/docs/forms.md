@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Forms and actions
 
 A form can post to a server function. It works before any script loads, and with scripts turned off. Once the loader runs, the same form posts without a full page load.
@@ -414,3 +418,10 @@ After a form changes data, call `event.refresh(fn)` in its function with the ser
 - When `names` changes, `shown` takes its value. Here `event.refresh(list)` loads the new list after the post.
 - When the post fails, or returns without changing `names`, `shown` goes back to `names` once every server call of the page finishes.
 - Write `$optimistic` in a component. Writes from a reactive module function set the value, but do not go back after a failed post.
+
+## Related
+
+- [Server functions](./server-functions.md): the functions that forms post to, and how to validate arguments.
+- [Navigation](./navigation.md#forms): how the loader sends a form and shows the page that answers.
+- [Async data](./async-data.md): `$isPending` and loading again after a post.
+- [Security](./reference-security.md): origin checks for form posts.

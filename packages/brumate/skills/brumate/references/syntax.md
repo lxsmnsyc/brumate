@@ -215,6 +215,8 @@ A file uses another component by importing it, and renders it with a capitalized
 {price('Tax', total * 0.1)}
 ```
 
+A `$memo`, a signal, a `const` or a prop can hold a call. `{value}` shows it, in more than one place if you like. The body runs once for each place that shows it. A throw in the body reaches the `#try` around the place, in the browser as on the server.
+
 ## Other parts of the markup
 
 - `<window onKeyDown=(handler) />` and `<document onClick=(handler) />` listen to events of the window and the document. They close with `/>`.

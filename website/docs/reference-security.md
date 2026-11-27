@@ -1,3 +1,7 @@
+---
+type: reference
+---
+
 # Security checks
 
 What brumate checks for you, and what stays your job: calls from other sites, errors, untrusted input in markup, and inline scripts.
@@ -97,12 +101,13 @@ answer?.headers.set(
 );
 ```
 
-- `handle` writes the nonce on the script tags that it adds: the client entry in a build, the Vite client and the client entry in development. The inline scripts and the `<style>` and `<link>` elements of the render get it too.
+- `handle` sends the script tags of the client when you pass no `scripts`, and writes the nonce on each: the client entry in a build, the Vite client and the client entry in development. The inline scripts and the `<style>` and `<link>` elements of the render get it too.
 - `'strict-dynamic'` lets the client entry load the modules that it imports, so the policy needs no `'self'`.
-- An explicit `scripts` is written as given. Its tags need the nonce from you.
+- An explicit `scripts`, `''` too, is written as given. Its tags need the nonce from you.
 - `renderToStream` adds no script tags, so the tags in its `scripts` need the nonce from you.
 - A prerendered file has no nonce. See [Content Security Policy for prerendered pages](./deploying.md#content-security-policy-for-prerendered-pages).
-- From brumate 0.9.1, a page that the server keeps with [`cache`](./routing.md#caching-pages) gets the nonce of each request. Before, it kept the nonce of its first render.
+- Under Nitro, a prerendered page with `#defer` blocks is a shell that `handle` reads from the server assets. Its script tags get the nonce of the request. A `shell` that you pass to `handle` is sent as given.
+- A page that the server keeps with [`cache`](./routing.md#caching-pages) gets the nonce of each request on every `nonce` attribute, and none when the request has none. A page that holds its nonce elsewhere, such as in a meta policy, in the text of a script or in a header, is rendered again for each request and is not kept.
 
 A component that writes an inline script of its own with `raw()` gives it `getEvent().nonce`, which is the nonce of the render, or undefined without one.
 
@@ -116,7 +121,7 @@ A prerendered page is the exception. Its scripts are known at build time, and th
 
 A policy with `require-trusted-types-for 'script'` refuses a string in `innerHTML` and in the text of a script. The core inserts the markup that it renders, such as a body that an `#if` opens, and copies the scripts of a `#defer` body or of a page that the client router loads, so it needs a Trusted Types policy. It makes one named `brumate`, once, when it first inserts markup, and only where the browser has Trusted Types. Allow it next to the nonce:
 
-```
+```text
 script-src 'nonce-…' 'strict-dynamic'; require-trusted-types-for 'script'; trusted-types brumate
 ```
 
