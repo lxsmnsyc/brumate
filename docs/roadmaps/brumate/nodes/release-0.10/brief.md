@@ -35,6 +35,9 @@ depends_on:
   - on: release-0.9.1
     kind: hard
     why: the 0.10.0 docs say kept pages get the request's nonce from 0.9.1 (kept-page-nonce)
+  - on: docs-audit
+    kind: hard
+    why: the docs match the code before the release (the maintainer, 2026-11-27)
 ---
 
 # Release brumate 0.10.0
