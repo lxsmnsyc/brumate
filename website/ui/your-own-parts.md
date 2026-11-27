@@ -104,10 +104,13 @@ Put this component anywhere inside a [Disclosure](./disclosure.md), and it follo
 | `RadioGroupContext`               | RadioGroup                                                          | Its `value` and states, and `select`                                          |
 | `ToggleGroupContext`              | ToggleButtonGroup                                                   | `selectionMode`, `selectedKeys`, and `toggle`                                 |
 | `ToolbarContext`                  | Toolbar                                                             | `true` inside a toolbar                                                       |
+| `ToggleButtonContext`             | Nothing in `@brumate/ui`: set it yourself                           | The props and handlers of a ToggleButton, with `isSelected` and `onChange`    |
+| `SeparatorContext`                | Nothing in `@brumate/ui`: set it yourself                           | The props of a Separator, such as `orientation`                               |
+| `FieldInputContext`               | Autocomplete, ComboBox, ListBox, Menu                               | The attributes that a part around a field gives its Input or TextArea         |
 | `DisclosurePanelContext`          | Disclosure                                                          | `isExpanded`, `isDisabled` and the IDs, and `expand`                          |
 | `DisclosureGroupContext`          | DisclosureGroup                                                     | `expandedKeys`, and `toggle`                                                  |
 | `OverlayTriggerContext`           | DialogTrigger, MenuTrigger, Select, ComboBox, DatePicker and others | `isOpen` and the IDs of the trigger and the overlay, and `open` and `close`   |
-| `DialogContext`                   | Popover, Modal                                                      | The IDs that name the Dialog, and `close`                                     |
+| `DialogContext`                   | Popover, ModalOverlay                                               | The IDs that name the Dialog, and `close`                                     |
 | `ModalOverlayContext`             | ModalOverlay                                                        | `close`                                                                       |
 | `PopoverGroupContext`             | PopoverGroup                                                        | The `id` that marks the popovers of the group                                 |
 | `ColorPickerContext`              | ColorPicker                                                         | Its color as `value` and `color`, and `setValue`                              |

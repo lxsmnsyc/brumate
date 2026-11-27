@@ -5,7 +5,7 @@ What a [Popover](./popover.md) or a [Modal](./modal.md) does when the content of
 - **Focus goes to the Dialog.** An overlay takes focus once, when it has opened. Content that is still loading has nothing to focus, so focus goes to the Dialog itself, and a screen reader reads its title.
 - **Focus stays there** when the content arrives. `autofocus` inside a `#loading` body comes too late, and focus does not move to it.
 - **The content loads again each time the overlay opens.** A closed overlay renders nothing, so the components inside it start over on the next open.
-- **`#defer` does not work in an overlay.** The compiler reports it (BRM217). Use `#loading` instead.
+- **`#defer` does not work in an overlay.** A `#defer` in the content of an overlay from another file is a compile error (BRM217). Use `#loading` instead.
 
 `packages/ui/test/async-overlay.test.ts` checks each of these.
 
@@ -77,7 +77,7 @@ To focus a field of the late content, put the field outside the `#loading` body,
 
 ## `#defer` in an overlay
 
-A `#defer` block asks the server for its body, but only for a block that the server rendered. The server renders no overlay, so a `#defer` in a Dialog has no body to ask for, and its `#else` would stay, with no body. The compiler reports the block as an error, BRM217, in the file that writes it, though the overlay is in another file. See [`#defer`](../docs/async-data.md#defer).
+A `#defer` block asks the server for its body, but only for a block that the server rendered. The server renders no overlay, so a `#defer` in a Dialog has no body to ask for, and its `#else` would stay, with no body. The compiler reports the block as an error, BRM217, in the file that writes it, though the overlay is in another file. The check covers any component of the project that can render its children in the browser. It covers a `#template` that the page passes to one as a prop too. `brumate check` and the Vite plugin run it across the project. See [`#defer`](../docs/async-data.md#defer).
 
 Use `#loading` with a server function, as above. A server function runs on the server, so it can read the database and the cookies, as a `#defer` body can.
 

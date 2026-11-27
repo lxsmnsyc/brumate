@@ -10,8 +10,8 @@ The loader catches an event and runs its handler once the browser is done with t
 - **Space is prevented by key, and Enter keeps its default.** Space never scrolls the page. On Enter, a link follows and a submit button sends its form without any code, and the click that the browser sends after Enter does not press again.
 - **A disabled link has no `href`,** so there is nothing for the browser to follow. It leaves the order of Tab.
 - **A read-only box prevents its click** with the wrapper, so the browser never toggles it, and a screen reader announces no change.
-- **Tab stops at one item of a toolbar,** the one that had focus last. The other items leave the order of Tab, which is the roving tabindex of the WAI-ARIA toolbar.
-- **A toolbar prevents only Up and Down,** so the page does not scroll. Home and End can scroll the page while they move focus.
+- **Tab stops at one item of a toolbar,** the one that had focus last. The other items leave the order of Tab once focus has entered the toolbar, which is the roving tabindex of the WAI-ARIA toolbar.
+- **A toolbar prevents Home and End** once its code has loaded, so the page does not scroll. A vertical toolbar prevents Up and Down too. A key that arrives before then can scroll the page. A text field inside keeps the keys that move its caret.
 - **A handler checks where focus is** before it shows a part as focused, since focus can have moved on.
 
 ## The server renders first

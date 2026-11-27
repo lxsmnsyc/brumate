@@ -38,7 +38,7 @@
 
 ## Wrappers
 
-A handler runs after the event has finished dispatching, so the browser has acted on the event by then. A wrapper from `brumate/events` applies before the code of the handler loads. The compiler reads it in the markup, so write it in the attribute.
+A handler runs after the event has finished dispatching, so the browser has acted on the event by then. A wrapper from `brumate/events` applies while the event dispatches, before the code of the handler runs. The compiler reads it in the markup, so write it in the attribute.
 
 | Wrapper                     | Effect                                                                         |
 | --------------------------- | ------------------------------------------------------------------------------ |

@@ -34,9 +34,6 @@ Import a part from `@brumate/ui`, and use it as any component:
 - The code of the part and of your handler comes with the page, so the first press needs no request.
 - Without scripts, a native element still works: a link follows, a box checks, and a form posts.
 
-> [!NOTE]
-> `@brumate/ui` is in the brumate repository, and is not published yet.
-
 ## A skill for agents
 
 The package ships a skill in the Agent Skills format, for agents that write pages with the parts. Install it with one command. It also installs the skill of brumate:

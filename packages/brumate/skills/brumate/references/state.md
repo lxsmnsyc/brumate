@@ -157,7 +157,7 @@ A memo can hold a promise, such as the result of a server function. Markup and o
 - A server function is `async` with `'use server'` on its first line, in any script. It runs on the server and the browser calls it over the network. It reads no variable of the instance script: pass values as arguments. Its arguments and result are serializable data.
 - A `.ts` file that starts with `'use server'` makes every export a server function.
 - `#loading { … } #else { … }` renders the fallback first, and the body when the values it reads have loaded.
-- `#defer { … }` renders its body on the server later, in a request of its own. It cannot be in a `#client` body or in markup that the browser renders.
+- `#defer { … }` renders its body on the server later, in a request of its own. It cannot be in a `#client` body or in markup that the browser renders. A `#defer` in the children of a component from another file, such as an overlay that opens, is BRM217: use `#loading` with a server function.
 - `const result = $action(save)` gives the result of a form that posts to the server function `save` of the same file.
 
 ```brm wrong: Server function "save" must be async
