@@ -1,7 +1,7 @@
 ---
 id: module-memo-extra-load
 title: "Diagnose: an extra load of a module async memo, once on Node 24 CI"
-status: active
+status: done
 priority: should
 type: diagnose
 story:
@@ -21,7 +21,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-26
-spent:
+spent: 169862
 owns:
   - docs/roadmaps/brumate/nodes/module-memo-extra-load/**
 shared: []
