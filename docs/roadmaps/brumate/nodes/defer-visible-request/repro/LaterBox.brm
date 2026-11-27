@@ -1,0 +1,9 @@
+<script>
+  import { $props } from 'brumate/signals';
+  const { name }: { name: string | undefined } = $props();
+</script>
+
+<p class="later">{name ? `Signed in as ${name}.` : 'Not signed in.'}</p>
+<style>
+  .later { color: rgb(200, 0, 0); }
+</style>
