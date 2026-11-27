@@ -3745,6 +3745,56 @@ describe('#defer', () => {
     expect(body.headers.get('x-brumate-defer')).toBe('1');
   });
 
+  it('sends the style of a block in the request for its body', async () => {
+    const server = await import(file('deferredStyled.brm.ts'));
+    const page = await renderParts(server.default, {});
+    const anchor = /b-b="([^"]+)" b-defer="idle:([^:"]+):/.exec(page.html)!;
+    const parts = await renderParts(
+      server.default,
+      {},
+      { defer: { boundary: Number(anchor[2]), at: anchor[1]! } },
+    );
+    expect(parts.defer).toBe('found');
+    // A client navigation can remove the CSS of the route while only the fallback shows, so the
+    // body brings the rules of its block.
+    expect(await allPending(parts.pending)).toMatch(
+      /<template b-l="\d+"><style[^>]*>[^<]*\.greeting/,
+    );
+  });
+
+  it('waits for the stylesheets of a body that the response brings before it swaps in', async () => {
+    const server = await import(file('deferred.brm.ts'));
+    const tree = { page: async () => server };
+    const page = await renderParts(server.default, {});
+    const answer = (await handleRoute(tree, new Request('http://localhost/'), {
+      shell: page.html + page.state,
+    }))!;
+    vi.stubGlobal('fetch', vi.fn<typeof globalThis.fetch>());
+    onTestFinished(() => {
+      vi.unstubAllGlobals();
+    });
+    // The body links a stylesheet that the page does not have.
+    const html = (await answer.text()).replace(
+      '<template b-l="1">',
+      '<template b-l="1"><link rel="stylesheet" href="/slow.css">',
+    );
+    const [shell, ...bodies] = html.split(/(?=<template b-l=)/);
+    show(shell!);
+    await startLoader();
+    for (const body of bodies) {
+      appendChunk(body);
+    }
+    // The fallback stays until the sheet loads.
+    const preload = document.head.querySelector('link[rel=preload][href="/slow.css"]')!;
+    expect(preload).not.toBeNull();
+    expect(document.querySelector('.greeting')).toBeNull();
+    expect(document.querySelector('.fallback')).not.toBeNull();
+    preload.dispatchEvent(new Event('load'));
+    await waitFor(() => expect(document.querySelector('.greeting')).not.toBeNull());
+    expect(document.querySelector('.fallback')).toBeNull();
+    expect(document.head.querySelector('link[rel=preload]')).toBeNull();
+  });
+
   it('swaps in the bodies that the response brings, without asking for them', async () => {
     const server = await import(file('deferred.brm.ts'));
     const tree = { page: async () => server };

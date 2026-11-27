@@ -137,6 +137,7 @@ skip('Reads the request with `getEvent`, which a render in the browser does not 
 skip('Holds a `#defer` block, which only the server renders, so the browser shows its fallback.', [
   'DeferredWrittenBody',
   'deferredWritten',
+  'deferredStyled',
 ]);
 
 skip('Needs a prop that holds a record of promises, which the test does not make.', [

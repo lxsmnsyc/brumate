@@ -95,7 +95,10 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
 // A step that wants the crawler passes its own userAgent.
 async function useBrowserAgent(target) {
   const probe = await target.newPage();
-  const agent = (await probe.evaluate(() => navigator.userAgent)).replace('HeadlessChrome', 'Chrome');
+  const agent = (await probe.evaluate(() => navigator.userAgent)).replace(
+    'HeadlessChrome',
+    'Chrome',
+  );
   await probe.close();
   const newContext = target.newContext.bind(target);
   target.newContext = (options) => newContext({ userAgent: agent, ...options });

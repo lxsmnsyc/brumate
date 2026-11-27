@@ -394,4 +394,4 @@ Blocks.brumateId = "Blocks_jlmev2";
 <p>&lt;escaped&gt;   12</p>
 
 # State
-<script b-state b-scopes b-next="5">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Blocks_jlmev2",s:["b",["one","two"],$b.e(0,2)]},1:{k:12,p:0},4.1:{k:10,p:0,s:[new Error("The page could not render this part")]},g:[[5,0,97,2,0,1,"1.",0,0,1,1]]})))</script>
+<script b-state b-scopes b-next="5">function $bR(f){(self.$bQ||(self.$brm=self.$brm||[])).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Blocks_jlmev2",s:["b",["one","two"],$b.e(0,2)]},1:{k:12,p:0},4.1:{k:10,p:0,s:[new Error("The page could not render this part")]},g:[[5,0,97,2,0,1,"1.",0,0,1,1]]})))</script>

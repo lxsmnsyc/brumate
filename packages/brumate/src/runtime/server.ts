@@ -346,6 +346,12 @@ function findLastInserted<T extends { from: ScopeId }>(
   return undefined;
 }
 
+/** The ID of the scope in the `<scope>:<anchor>` of a `#defer` block. */
+function scopeOfAnchor(at: string): ScopeId {
+  const scope = at.slice(0, at.indexOf(':'));
+  return /^\d+$/.test(scope) ? Number(scope) : scope;
+}
+
 /** True if a boundary holds `target`, whose ID starts with the boundary's ID and a dot. */
 function holdsBoundary(id: ScopeId, target: ScopeId): boolean {
   return typeof target === 'string' && target.startsWith(`${id}.`);
@@ -608,6 +614,11 @@ export class Context {
   private inTarget = false;
   private readonly boundaries: Boundary[] = [];
   private readonly styles = new Set<string>();
+  /**
+   * In the request for a `#defer` body: the components that the render around the body styled, with
+   * their `css`. The page has their CSS, but a navigation may have removed it, so the answer asks again.
+   */
+  private readonly aroundStyles = new Map<string, string | undefined>();
   /** The `<link>` elements of the stylesheets that components asked for, in render order. */
   private readonly sheets: string[] = [];
   /** The URLs of the stylesheets that the page links already. */
@@ -1419,6 +1430,9 @@ export class Context {
     }
     styles.add(id);
     this.undo.push(() => styles.delete(id));
+    if (root.target && !this.inTarget) {
+      root.aroundStyles.set(id, css);
+    }
     if (css !== undefined) {
       return styleElement(id, css, root.nonce);
     }
@@ -1643,7 +1657,22 @@ export class Context {
       return;
     }
     target.status = 'found';
-    this.register(id, renderBody, true, false, '#defer');
+    // A block `<style>` is in the CSS of the component that holds the block, which the render around
+    // the body styled. The page may not have it: navigation removes a stylesheet that no element uses.
+    const owner = this.find(scopeOfAnchor(at))?.record.m;
+    const around = this.root.aroundStyles;
+    this.register(
+      id,
+      owner !== undefined && around.has(owner)
+        ? async (child) => {
+            this.root.styles.delete(owner);
+            return child.style(owner, around.get(owner)) + (await renderBody(child));
+          }
+        : renderBody,
+      true,
+      false,
+      '#defer',
+    );
   }
 
   private register(
@@ -2825,9 +2854,11 @@ export function streamState(
 /**
  * Defines `$bR`, which hands the code of a state record and its script to
  * the core, through `self.$brm`. The core runs the code when it starts, or
- * at once when it has started. The first record of each render defines it.
+ * at once when it has started. The first record of each render defines it. While a `#loading`
+ * swap waits for stylesheets, `self.$bQ` holds the records, so they run after the body is in place.
  */
-const RECORD = 'function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}';
+const RECORD =
+  'function $bR(f){(self.$bQ||(self.$brm=self.$brm||[])).push([document.currentScript,f])}';
 
 export interface StateAttributes {
   /** A number above every ID so far, on each record with scopes. */
@@ -2922,12 +2953,17 @@ const HEAD = `function $bH(i,t){var e=document.querySelector('template[b-h="'+i+
 // Shows a fallback that `#reveal (collapsed)` held in a <template>, when the body before it shows.
 const SHOW_FALLBACK = `function $bF(i){var t=document.querySelector('template[b-f="'+i+'"]');t&&t.replaceWith(t.content)}`;
 
+// A body that links stylesheets the page does not have waits for them, as the body of a `#defer`
+// request does (`preloadSheets`), and the swaps and the records after it wait their turn. A swap
+// that needs no wait runs at once. The wait is 4 s, as `WAIT` in sheets.ts.
+const WAIT_SWAP = `function $bS(i){var t=document.querySelector('template[b-l="'+i+'"]'),s=t?t.content.querySelectorAll('link[rel~=stylesheet][href]'):[],w=[],a=[],n=self.$bN|0,e=0,k,l,c;for(;e<s.length;e++){k=s[e].getAttribute('href');if(!document.querySelector('link[href="'+k+'"]')){l=document.createElement('link');l.rel='preload';l.as='style';l.href=k;c=s[e].getAttribute('nonce');c&&l.setAttribute('nonce',c);w.push(new Promise(function(r){l.onload=l.onerror=r}));a.push(l);document.head.append(l)}}if(!a.length&&!n)return $bX(i);self.$bN=n+1;self.$bQ=self.$bQ||[];self.$bW=(self.$bW||Promise.resolve()).then(function(){return Promise.race([Promise.all(w),new Promise(function(r){setTimeout(r,4e3)})])}).then(function(){a.forEach(function(l){l.remove()});$bX(i);if(!--self.$bN){var q=self.$bQ;self.$bQ=0;(self.$brm=self.$brm||[]).push.apply(self.$brm,q)}})}`;
+
 // Moves a `#loading` body from its <template> into the page, in place of the fallback.
-const SWAP = `function $bS(i){var t=document.querySelector('template[b-l="'+i+'"]'),w=document.createTreeWalker(document.body,128),s,n,d=0;while(n=w.nextNode())if(n.data==='l'+i){s=n;break}if(!s||!t)return;var p=s.parentNode;for(n=s.nextSibling;n;){if(n.nodeType===8){if(n.data==='/l'){if(!d)break;d--}else if(/^l\\d/.test(n.data))d++}var x=n.nextSibling;p.removeChild(n);n=x}p.insertBefore(t.content,s);p.removeChild(s);n&&p.removeChild(n);t.remove()}`;
+const SWAP = `${WAIT_SWAP}function $bX(i){var t=document.querySelector('template[b-l="'+i+'"]'),w=document.createTreeWalker(document.body,128),s,n,d=0;while(n=w.nextNode())if(n.data==='l'+i){s=n;break}if(!s||!t)return;var p=s.parentNode;for(n=s.nextSibling;n;){if(n.nodeType===8){if(n.data==='/l'){if(!d)break;d--}else if(/^l\\d/.test(n.data))d++}var x=n.nextSibling;p.removeChild(n);n=x}p.insertBefore(t.content,s);p.removeChild(s);n&&p.removeChild(n);t.remove()}`;
 
 // In development, the swap keeps the fallback that it removes and the body that it adds, by
 // boundary, so the devtools can show the fallback again.
-const SWAP_DEV = `function $bS(i){var t=document.querySelector('template[b-l="'+i+'"]'),w=document.createTreeWalker(document.body,128),s,n,d=0;while(n=w.nextNode())if(n.data==='l'+i){s=n;break}if(!s||!t)return;var p=s.parentNode,f=[];for(n=s.nextSibling;n;){if(n.nodeType===8){if(n.data==='/l'){if(!d)break;d--}else if(/^l\\d/.test(n.data))d++}var x=n.nextSibling;f.push(p.removeChild(n));n=x}(self.$bD||(self.$bD={}))[i]={f:f,b:[].slice.call(t.content.childNodes)};p.insertBefore(t.content,s);p.removeChild(s);n&&p.removeChild(n);t.remove()}`;
+const SWAP_DEV = `${WAIT_SWAP}function $bX(i){var t=document.querySelector('template[b-l="'+i+'"]'),w=document.createTreeWalker(document.body,128),s,n,d=0;while(n=w.nextNode())if(n.data==='l'+i){s=n;break}if(!s||!t)return;var p=s.parentNode,f=[];for(n=s.nextSibling;n;){if(n.nodeType===8){if(n.data==='/l'){if(!d)break;d--}else if(/^l\\d/.test(n.data))d++}var x=n.nextSibling;f.push(p.removeChild(n));n=x}(self.$bD||(self.$bD={}))[i]={f:f,b:[].slice.call(t.content.childNodes)};p.insertBefore(t.content,s);p.removeChild(s);n&&p.removeChild(n);t.remove()}`;
 
 /**
  * The record that tells the browser a `#loading` body failed. Its code is the error, and the
