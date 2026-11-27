@@ -4,17 +4,17 @@ import Child from './Child.brm';
 export const rpc = {  };
 let $$t: any;
 
-export default async function Parent($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
+export default async function Parent($$props: Record<string, never>, $$ctx: $$b.Context, $$place?: number): Promise<string> {
   let $$html = '';
   const $$s1 = $$ctx.scope(1, undefined, "Parent_4bs4t8");
   let count = (1);
   const label = 'Count';
-  const $$children0 = $$b.children($$s1, async ($$ctx) => {
+  const $$children0 = $$b.children($$s1, async ($$ctx, $$at, $$place) => {
     let $$html = '';
     $$html += "<em>" + (typeof ($$t = $$b.insert((label), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</em>";
     return $$html;
   }, "Parent_4bs4t8#n0");
-  $$html += await $$b.component(Child, { "value": (count), "onChange": $$ctx.fn(((value) => (count = value)), "Parent_4bs4t8#h3", $$s1), children: $$children0 }, $$ctx, $$s1, 0) + await $$b.component(Child, { "value": (5), "onChange": $$ctx.fn(((value) => console.log(value)), "Parent_4bs4t8#h6", $$s1) }, $$ctx, $$s1);
+  $$html += await $$b.component(Child, { "value": (count), "onChange": $$ctx.fn(((value) => (count = value)), "Parent_4bs4t8#h3", $$s1), children: $$children0 }, $$ctx, $$s1, 0, undefined, $$place) + await $$b.component(Child, { "value": (5), "onChange": $$ctx.fn(((value) => console.log(value)), "Parent_4bs4t8#h6", $$s1) }, $$ctx, $$s1, undefined, undefined, $$place);
   $$ctx.slots($$s1, [count, label], ["count","label"]);
   return $$html;
 }

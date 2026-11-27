@@ -48,6 +48,8 @@ export interface Features {
   scripts: boolean;
   /** `viewTransition` and `viewTransitionName` attributes, named while a transition runs. */
   viewTransitions: boolean;
+  /** Inserts where raw HTML can print between markers, which the page state reads back. */
+  printed: boolean;
 }
 
 /** No feature at all, which a build that has no component uses. */
@@ -75,6 +77,7 @@ export function noFeatures(): Features {
     moduleMemos: false,
     scripts: false,
     viewTransitions: false,
+    printed: false,
   };
 }
 
@@ -133,6 +136,8 @@ export function getFeatures(result: CompileResult): Features {
     // Set where the emit finds a `<script src>` or `<script inline>` in markup.
     scripts: result.plan.scripts,
     viewTransitions: result.plan.viewTransitions,
+    // Set where the emit gives an insert of the server a place that can be 1.
+    printed: result.plan.printed,
   };
 }
 
@@ -162,6 +167,7 @@ export function joinFeatures(all: Features[]): Features {
     joined.moduleMemos ||= features.moduleMemos;
     joined.scripts ||= features.scripts;
     joined.viewTransitions ||= features.viewTransitions;
+    joined.printed ||= features.printed;
   }
   return joined;
 }
@@ -190,6 +196,7 @@ const GLOBALS: Record<keyof Features, string> = {
   moduleMemos: '__BRUMATE_HAS_MODULE_MEMOS__',
   scripts: '__BRUMATE_HAS_SCRIPTS__',
   viewTransitions: '__BRUMATE_HAS_VIEW_TRANSITIONS__',
+  printed: '__BRUMATE_HAS_PRINTED__',
 };
 
 /** True for code that reads a feature, such as the core. */

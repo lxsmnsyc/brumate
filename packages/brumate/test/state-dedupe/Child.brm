@@ -1,0 +1,12 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { doc, count } = $props<{ doc: unknown; count: number }>();
+</script>
+
+<div class="child">
+  #key (count) {
+    <span class="n">{count}</span>
+    {doc}
+  }
+</div>

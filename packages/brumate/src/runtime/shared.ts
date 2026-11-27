@@ -2,8 +2,8 @@
 // seroval, so the core, which reads the page state without it, stays small.
 // The plugins that write and read these values are in `serial.ts`.
 
-import { HAS_BINDINGS, HAS_BRIDGES, HAS_CHILDREN, HAS_STORES } from './features.ts';
-import { Internal, ownValue, raw } from './html.ts';
+import { HAS_BINDINGS, HAS_BRIDGES, HAS_CHILDREN, HAS_PRINTED, HAS_STORES } from './features.ts';
+import { Internal, ownValue, printedHTML, raw } from './html.ts';
 import type { Raw } from './html.ts';
 import { Bridged, Store } from './store.ts';
 import type { SerialEntry, ValuePlugin } from './values.ts';
@@ -343,6 +343,12 @@ export const stateValues: {
   i: (value: unknown) => Internal;
   /** HTML that the client may insert again. */
   r: (html: string) => Raw;
+  /**
+   * HTML that the server printed and left out of the state, read back from the page. In
+   * development the server names the component that printed it. Only a build with such inserts
+   * has it, so the others pay nothing for it.
+   */
+  d?: (token: string, component?: string) => Raw;
   /** Children, by the export that renders them and their scope. */
   n: (ref: string, scope: ScopeId, at?: ScopeId, anchor?: number) => ChildrenReference;
   /**
@@ -405,6 +411,10 @@ export const stateValues: {
         new Bridged<unknown, unknown>(undefined, undefined, id, snapshot, writable === 1)
     : unused,
 };
+
+if (HAS_PRINTED) {
+  stateValues.d = (token, component) => raw(printedHTML(token, component));
+}
 
 /**
  * The stores of providers that the page state made, until the core links them to their scopes:

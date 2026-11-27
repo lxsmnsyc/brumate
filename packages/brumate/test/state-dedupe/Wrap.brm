@@ -1,0 +1,7 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { doc } = $props<{ doc: unknown }>();
+</script>
+
+{doc}

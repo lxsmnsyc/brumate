@@ -1,0 +1,24 @@
+<script>
+  import { $memo } from 'brumate/signals';
+  import { pages } from './pages.ts';
+
+  const body = pages.a!.body;
+
+  async function fail(): Promise<string> {
+    throw new Error('The memo fails');
+  }
+
+  const late = $memo(fail());
+</script>
+
+#try {
+  <div class="doc">{body}</div>
+  #loading (late) {
+    <span>{late}</span>
+  } #else {
+    <p class="fallback">Loading</p>
+  }
+  <p class="after">after</p>
+} #catch (error) {
+  <p class="caught">caught</p>
+}
