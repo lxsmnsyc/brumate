@@ -21,7 +21,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-25
-spent: 545673
+spent: 328405
 owns:
   - docs/roadmaps/brumate/nodes/defer-in-browser-render/**
 shared:

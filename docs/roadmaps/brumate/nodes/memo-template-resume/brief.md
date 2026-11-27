@@ -1,7 +1,7 @@
 ---
 id: memo-template-resume
 title: A memo of a template call inserted twice stays live after resume
-status: active
+status: done
 priority: should
 type: hotfix
 story:
@@ -21,7 +21,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-26
-spent:
+spent: 218619
 owns:
   - docs/roadmaps/brumate/nodes/memo-template-resume/**
 shared:

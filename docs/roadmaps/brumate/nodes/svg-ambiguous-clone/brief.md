@@ -1,7 +1,7 @@
 ---
 id: svg-ambiguous-clone
 title: An a inside svg keeps the SVG namespace when the browser renders it
-status: active
+status: done
 priority: should
 type: hotfix
 story:
@@ -21,7 +21,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-26
-spent:
+spent: 188391
 owns:
   - docs/roadmaps/brumate/nodes/svg-ambiguous-clone/**
 shared:

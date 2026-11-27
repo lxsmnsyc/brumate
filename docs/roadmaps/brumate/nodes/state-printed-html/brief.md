@@ -1,7 +1,7 @@
 ---
 id: state-printed-html
 title: The state leaves out raw HTML the markup printed
-status: active
+status: done
 priority: should
 type: feature
 story:
@@ -21,7 +21,7 @@ exclusive: [bench]
 fulfilled_by:
 gate: false
 added: 2026-11-26
-spent:
+spent: 620971
 owns:
   - packages/brumate/test/state-dedupe.test.ts
   - docs/roadmaps/brumate/nodes/state-printed-html/**
