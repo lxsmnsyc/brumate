@@ -117,3 +117,10 @@ The value of "url" in Page_1x2y3z is the value of a server environment variable,
 | `defineEnv(schema, options?)`       | Checks the variables of `schema.server` and `schema.public` and returns their values, typed. Throws for a wrong one. |
 | `options.source`                    | Where the values come from. Defaults to `process.env`. The browser's copy of the file passes the public values.      |
 | `Env<S>`, `EnvSchema`, `EnvOptions` | The types of the values, of the schema and of the options.                                                           |
+
+## Related
+
+- [Plugin options and modules](./reference-plugin.md#options): the `env` option.
+- [Server functions](./server-functions.md): reading the values in `'use server'` code.
+- [Security](./reference-security.md): what stays out of the browser and the page state.
+- [Deploying](./deploying.md): setting the variables on the host.

@@ -53,9 +53,9 @@ export default {
 - `NITRO_PRESET`, or `preset` in the options of `nitro()`, builds for another host, such as `cloudflare-module` or `vercel`. The example is tested with the default Node preset. Brumate needs no Node APIs at runtime, so no compatibility flag is needed.
 - Pass the address of the client as `address`, for rate limits and `clientAddress`: `request.ip` on Nitro, which is the address of the socket, or the `cf-connecting-ip` header on Cloudflare. Without it, a rate limit with no `key` throws in production. Behind a proxy, name it with `configureRateLimit({ proxies })`. See [Rate limiting](./security.md#rate-limiting).
 - A host that stops a function when its response ends, such as Cloudflare Workers, gives `fetch` a context with `waitUntil`. Pass it on, as `handle(request, { waitUntil: (promise) => context.waitUntil(promise) })`, and `event.waitUntil` keeps work going on the host.
-- The entry writes no script tags. `handle` adds them: the Vite client and the client entry in development, and the hashed client entry in the build. The server environment reads the entry from the manifest of the client environment, which `vite build` builds first. Set `clientOutDir` in the options of `brumate()` when the client builds to another directory. See [The script tags](#the-script-tags).
+- The entry writes no script tags. `handle` adds them: the Vite client and the client entry in development, and the hashed client entry in the build. The server environment reads the entry from the manifest of the client environment, `.vite/manifest.json` in its output, which `vite build` builds first. Set `clientOutDir` in the options of `brumate()` when the client builds to another directory. See [The script tags](#the-script-tags).
 - Keep the results of [`cached`](./server-functions.md#results-that-requests-share) and the pages that the server keeps in Nitro's storage, so every instance of the app shares them: `setCacheStore(storageStore(useStorage('cache')))` at the top of the entry, with `useStorage` from `nitro/storage`. Configure the `cache` mount with a driver such as Redis in the options of `nitro()`.
-- For a Content Security Policy, pass a new `nonce` to `handle` for each request and send it in the policy. The script tags get it. See [Content Security Policy](./reference-security.md#content-security-policy).
+- For a Content Security Policy, pass a new `nonce` to `handle` for each request and send it in the policy. The script tags get it, and so does a page that [`cache`](./routing.md#caching-pages) keeps. See [Content Security Policy](./reference-security.md#content-security-policy).
 - `prerender` in the options of `brumate()` writes pages to `.output/public` in the same build. See [Prerendering](#prerendering).
 - Nitro is in beta. The example uses version `3.0.260903-beta`.
 
@@ -114,7 +114,7 @@ vite build --outDir dist/client
 vite build --ssr src/server.ts --outDir dist/server
 ```
 
-The server build reads the file of the client entry from the manifest of the client build, which the plugin turns on. A server build that finds no client manifest fails with "Build the client first". When the client builds to a directory other than `dist/client`, set `clientOutDir` in the options of `brumate()`.
+The server build reads the file of the client entry from the manifest of the client build, `.vite/manifest.json` in its output. The plugin turns it on, unless `build.manifest` is set. A server build that finds no client manifest fails with a message that says "Build the client first". When the client builds to a directory other than `dist/client`, set `clientOutDir` in the options of `brumate()`.
 
 The server entry exports the two request handlers that the plugin builds:
 
@@ -175,11 +175,11 @@ createServer(async (request, response) => {
 
 ### The script tags
 
-`handle` of `virtual:brumate/routes` writes the script tags of each page when its options have no `scripts`. In development, they are the Vite client and the client entry, the `input` of the client build, or `virtual:brumate/start` when the app has no entry. In a build, the tag is the client entry, with `async`, so it starts while `#loading` content still streams. An explicit `scripts` replaces the default tags, and is written as given. Pass `''` for pages that load no client code, or your own tags, such as an entry other than the one in the manifest. Your own tags in development list the Vite client too. Under a nonce policy, pass `nonce` instead of writing the tags: the default tags carry it.
+`handle` of `virtual:brumate/routes` writes the script tags of each page when its options have no `scripts`. In development, they are the Vite client and the client entry, the `input` of the client build, or `virtual:brumate/start` when the app has no entry. In a build, the tag is the client entry, with `async`, so it starts while `#loading` content still streams. An explicit `scripts` replaces the default tags, and is written as given. Pass `''` for pages that load no client code, or your own tags, such as an entry other than the one in the manifest. Your own tags in development list the Vite client too. In development, the paths of the tags follow `base`. Under a nonce policy, pass `nonce` instead of writing the tags: the default tags carry it.
 
 ## Early hints
 
-The client build writes the URLs of the loader and the core, which every page loads, to `.brumate/hints.json` in its output. The routes of the server build read it, so a page gets them three ways:
+The client build writes the URLs of the loader and the core, which every page loads, to `.brumate/hints.json` in its output. A build of several environments, such as Nitro's, writes it to the client output too. A server build that finds none warns "Build the client first". The routes of the server build read it, so a page gets them three ways:
 
 - A `<link rel="modulepreload">` for each at the start of its head, so the browser loads the core with the HTML.
 - `Link` headers with the same URLs. Hosts such as Cloudflare turn them into `103 Early Hints` for the next visits.
@@ -297,6 +297,7 @@ const answer = await route(request, html === undefined ? {} : { shell: html });
 - The routes send the shell at once, then the body of each `#defer` block with the `load` or `idle` trigger, in the same response, as a `#loading` body streams. The browser does not ask for them.
 - Each body renders in a request of its own, so middleware runs for it, and it can read the user. The response is `private, no-cache`.
 - A `visible` block, and a block whose body fails, keep their fallback until the browser asks, as on a page without a shell.
+- The bodies that the shell response fills in wait for their stylesheets before they swap in, as the bodies of a request do.
 - The request for a `#defer` body, with the header `x-brumate-defer`, and client navigation render the route as usual, whatever `shell` is.
 - A static host without a server answers with the file. The browser asks for each body when its trigger fires, and without a server the block keeps its fallback.
 
@@ -367,3 +368,10 @@ The dev server has no build ID, so nothing is checked there.
 - Send server function calls, `POST` requests to `/_brumate/…` by default, to `handle`.
 - Set `origins` in the plugin options if pages on another origin of yours call server functions. See [Security](./reference-security.md).
 - Check what each route ships with `report: true` or a `budget`. See [Inspect](./inspect.md).
+
+## Related
+
+- [Plugin options and modules](./reference-plugin.md): `clientOutDir`, `prerender`, `skew` and the other options.
+- [Security](./reference-security.md): the Content Security Policy, origins and Trusted Types.
+- [Server functions](./server-functions.md): the calls that `handle` of `virtual:brumate/server` answers.
+- [Inspect](./inspect.md): what each route ships, with `report` and `budget`.
