@@ -6,8 +6,14 @@ export { BrumateError, getLocation } from './error.ts';
 export type { Location } from './error.ts';
 export { buildGraph } from './graph.ts';
 export type { Edge, Graph, GraphNode, GraphOptions } from './graph.ts';
-export { analyzeProject, analyzeProjectProps, resolveRelative, summarize } from './project.ts';
-export type { ComponentUsage, ProjectProps, Resolve } from './project.ts';
+export {
+  analyzeProject,
+  analyzeProjectDefers,
+  analyzeProjectProps,
+  resolveRelative,
+  summarize,
+} from './project.ts';
+export type { BrowserDefer, ComponentUsage, ProjectProps, Resolve } from './project.ts';
 export type * from './model.ts';
 export { isWithin, lookup } from './model.ts';
 export { parse } from './parser.ts';

@@ -13,7 +13,8 @@ import { ModuleError, isReactiveModule, resolveFromDisk } from './modules.ts';
 import { findSignalImports, planModuleSignals } from './module-signals.ts';
 import type { BrumatePackage } from './packages.ts';
 import { findPackages, resolveComponentPackage } from './packages.ts';
-import { analyzeProjectProps } from './project.ts';
+import { analyzeProjectDefers, analyzeProjectProps } from './project.ts';
+import type { BrowserDefer } from './project.ts';
 import { findPackageServerFile, findServerImport } from './server-files.ts';
 
 /** A place in a file. Lines and columns start at 1. */
@@ -93,12 +94,14 @@ function checkFile(
   absolute: string,
   liveProps: Set<string> | undefined,
   packages: BrumatePackage[],
+  browserDefers?: BrowserDefer[],
 ): CheckRecord[] {
   try {
     const result = compile(source, {
       filename: file,
       path: absolute,
       liveProps,
+      browserDefers,
       serverImport: (specifier) =>
         specifier.startsWith('.')
           ? findServerImport(absolute, specifier)
@@ -333,6 +336,7 @@ export async function check(root: string, options: CheckOptions = {}): Promise<C
     ? { sources: new Map<string, string>(), targets: [] }
     : await collectSources(root, paths);
   const props = analyzeProjectProps(sources);
+  const defers = analyzeProjectDefers(sources, undefined, props);
 
   const packages = findPackages(root);
   for (const file of targets) {
@@ -344,6 +348,7 @@ export async function check(root: string, options: CheckOptions = {}): Promise<C
         file,
         parents && new Set(parents.keys()),
         packages,
+        defers.get(file),
       ),
     );
   }

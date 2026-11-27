@@ -1,0 +1,19 @@
+<script>
+  import { $getContext } from 'brumate/signals';
+  import { CurrentUser } from '../user.ts';
+  const user = $getContext(CurrentUser);
+</script>
+
+#head {
+  <title>Later</title>
+}
+
+<h1>Later</h1>
+#defer ('visible') {
+  <p class="later">{user ? `Signed in as ${user}.` : 'Not signed in.'}</p>
+  <style>
+    .later { color: rgb(200, 0, 0); }
+  </style>
+} #else {
+  <p class="later-fallback">Checking who you are…</p>
+}

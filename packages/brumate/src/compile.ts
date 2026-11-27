@@ -28,6 +28,7 @@ import { buildGraph } from './graph.ts';
 import { lookup } from './model.ts';
 import type { oxc } from './oxc.ts';
 import type { Diagnostic } from './model.ts';
+import type { BrowserDefer } from './project.ts';
 import { parse } from './parser.ts';
 import { createPlan } from './plan.ts';
 import type { Plan } from './plan.ts';
@@ -41,6 +42,11 @@ export interface CompileOptions {
    * `*` means every prop. Without it, every prop can change.
    */
   liveProps?: Set<string>;
+  /**
+   * The `#defer` blocks of the file that a component in another file renders in the browser, from
+   * `analyzeProjectDefers`. Each one is an error, since its body would never arrive.
+   */
+  browserDefers?: BrowserDefer[];
   /** The absolute path of the file, so SCSS and Less can import files next to it. */
   path?: string;
   /**
@@ -503,9 +509,18 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
     model.diagnostics.push({ severity: 'error', message, range }),
   );
   const graph = buildGraph(model, { liveProps: options.liveProps });
+  const deferDiagnostics: Diagnostic[] = [];
+  for (const found of options.browserDefers ?? []) {
+    deferDiagnostics.push({
+      severity: 'error',
+      message: `#defer cannot be in the content of <${found.component}>, which can render it in the browser. Use #loading with a server function`,
+      range: { start: found.start, end: found.end },
+    });
+  }
   const diagnostics = [
     ...model.diagnostics,
     ...graph.diagnostics,
+    ...deferDiagnostics,
     ...(options.a11y === false ? [] : checkAccessibility(file)),
   ];
   const errors = filterBySeverity(diagnostics, 'error');

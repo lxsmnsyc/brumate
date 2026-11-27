@@ -1,0 +1,17 @@
+<script>
+  import { $getContext } from 'brumate/signals';
+  import { CurrentUser } from '../user.ts';
+  import LaterBox from '../LaterBox.brm';
+  const user = $getContext(CurrentUser);
+</script>
+
+#head {
+  <title>Later</title>
+}
+
+<h1>Later</h1>
+#defer ('visible') {
+  <LaterBox name=user />
+} #else {
+  <p class="later-fallback">Checking who you are…</p>
+}

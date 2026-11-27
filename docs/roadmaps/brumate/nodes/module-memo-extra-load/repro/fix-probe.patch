@@ -1,0 +1,49 @@
+diff --git a/packages/brumate/src/runtime/client/context.ts b/packages/brumate/src/runtime/client/context.ts
+index a77f32ca..480cab07 100644
+--- a/packages/brumate/src/runtime/client/context.ts
++++ b/packages/brumate/src/runtime/client/context.ts
+@@ -195,6 +195,12 @@ function linkRead(scope: Scope, read: StoreRead): void {
+  * comes from its source in the exports `z` of the component, which runs once its code has loaded,
+  * with the resumed values of the scope. Resume never calls `set`.
+  */
++/** [RC-fix2] */
++export let linkEpoch = 0;
++export function endLinks(): void {
++  linkEpoch++;
++}
++
+ export function resumeStoreReads(
+   added: Scope[],
+   reads: (scope: Scope) => StoreRead[] | undefined,
+@@ -213,8 +219,9 @@ export function resumeStoreReads(
+         continue;
+       }
+       // The sources of a scope run in one pass, so a repair of two slots updates once.
++      const at = linkEpoch;
+       void loadModule(findRoot(scope).m!).then((module) => {
+-        if (scopes.get(scope.id) !== scope) {
++        if (scopes.get(scope.id) !== scope || at !== linkEpoch) {
+           return;
+         }
+         pass(() => {
+diff --git a/packages/brumate/src/runtime/client/resume.ts b/packages/brumate/src/runtime/client/resume.ts
+index d77adc6a..cb4f3919 100644
+--- a/packages/brumate/src/runtime/client/resume.ts
++++ b/packages/brumate/src/runtime/client/resume.ts
+@@ -34,7 +34,7 @@ import {
+   unindexed,
+ } from './blocks.ts';
+ import { loadComponent, loadModule, pageComponents } from './code.ts';
+-import { linkMadeStores, resumeStoreReads } from './context.ts';
++import { endLinks, linkMadeStores, resumeStoreReads } from './context.ts';
+ import { leaveGuesses, settled } from './guesses.ts';
+ import { failBoundary, replaceTry } from './errors.ts';
+ import { callable, handle, isBox, resetHandler } from './handlers.ts';
+@@ -310,6 +310,7 @@ export function dispose(): void {
+     delete (queue as { push?: unknown }).push;
+   }
+   stopObserving();
++  endLinks();
+ }
+ 
+ /**

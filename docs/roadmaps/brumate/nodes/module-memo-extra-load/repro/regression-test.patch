@@ -1,0 +1,40 @@
+diff --git a/packages/brumate/test/module-signals.test.ts b/packages/brumate/test/module-signals.test.ts
+index dbb625db..687efd5c 100644
+--- a/packages/brumate/test/module-signals.test.ts
++++ b/packages/brumate/test/module-signals.test.ts
+@@ -653,6 +653,35 @@ describe('an async memo of a module', () => {
+     expect(browser.calls.user).toBe(2);
+   });
+ 
++  it('links nothing from code that loads after the loader stopped', async () => {
++    const server = await import(file('AsyncPage.brm.ts'));
++    const { html, state } = await renderParts(server.default, {});
++    document.body.innerHTML = html + state;
++    document.body.querySelectorAll('script[b-state]').forEach(run);
++    vi.resetModules();
++    const { start } = await import('../src/runtime/loader.ts');
++    let release!: () => void;
++    const late = new Promise<void>((done) => (release = done));
++    const end = start({
++      load: async (id) => {
++        // The code of the reader loads after the loader stopped, as on a slow machine.
++        if (id.startsWith('AsyncReader')) {
++          await late;
++        }
++        return import(modules.get(id)!);
++      },
++    });
++    await sleep(20);
++    end();
++    release();
++    await sleep(20);
++    const browser = (await import(file('user.brm.ts'))) as UserModule;
++    // A scope of the stopped page that followed the memo would load it again on this write.
++    browser.setId(2);
++    await sleep(20);
++    expect(browser.calls.user).toBe(0);
++  });
++
+   it('waits with $resolve in a handler of the reader', async () => {
+     await resume('AsyncPage.brm');
+     click('.w-two');

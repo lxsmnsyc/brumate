@@ -515,6 +515,7 @@ Use it for markup that the server renders but that the first response does not n
 - If the page's data changed since it loaded, and the block is not where the browser has it, the fallback stays.
 - Without scripts, the fallback stays. A prerendered page needs a server for the request.
 - A `#defer` block can be inside a `#loading` or `#defer` body. It cannot be inside a `#client` body, or in markup that the browser renders, such as a branch of an `#if` that changes. The compiler reports it in the same file.
-- A component with a `#defer` block that the browser renders, such as inside the `#client` body of its parent, keeps the fallback. The compiler cannot see this across files.
+- A `#defer` block in the children of a component from another file is reported too (BRM217), when that component can render its children in the browser, such as a Popover or a Modal, which render them when they open. The same goes for a `#template` that the page passes to such a component as a prop, and for a `#template` of the page that is called in its children. The component can pass these on to another one. Use `#loading` with a server function there.
+- A component whose own markup has a `#defer` block keeps the fallback when a parent renders the component in the browser, such as inside its `#client` body. The compiler checks one file for this, and cannot see a parent in another file.
 
 `#client` renders its body in the browser, for markup that needs the browser. `#defer` renders it on the server, for markup that needs the server.

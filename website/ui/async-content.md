@@ -5,7 +5,7 @@ What a [Popover](./popover.md) or a [Modal](./modal.md) does when the content of
 - **Focus goes to the Dialog.** An overlay takes focus once, when it has opened. Content that is still loading has nothing to focus, so focus goes to the Dialog itself, and a screen reader reads its title.
 - **Focus stays there** when the content arrives. `autofocus` inside a `#loading` body comes too late, and focus does not move to it.
 - **The content loads again each time the overlay opens.** A closed overlay renders nothing, so the components inside it start over on the next open.
-- **`#defer` does not work in an overlay.** Its `#else` stays for good. Use `#loading` instead.
+- **`#defer` does not work in an overlay.** The compiler reports it (BRM217). Use `#loading` instead.
 
 `packages/ui/test/async-overlay.test.ts` checks each of these.
 
@@ -72,13 +72,12 @@ See [`#loading`](../docs/async-data.md#loading) for the block itself.
 | ------------------------------------------------- | ---------------------------------------------------- |
 | An element with `autofocus`, there from the start | That element                                         |
 | A `#loading` body that waits                      | The Dialog, and it stays there when the body arrives |
-| A `#defer` block                                  | The Dialog, with the `#else` of the block            |
 
 To focus a field of the late content, put the field outside the `#loading` body, with `autofocus`, and only the data inside. The reader can then type at once. Focus that moves on its own later can interrupt a screen reader.
 
 ## `#defer` in an overlay
 
-A `#defer` block asks the server for its body, but only for a block that the server rendered. The server renders no overlay, so a `#defer` in a Dialog has no body to ask for, and its `#else` stays. The compiler cannot report it, since the block is in the children of another component. See [`#defer`](../docs/async-data.md#defer).
+A `#defer` block asks the server for its body, but only for a block that the server rendered. The server renders no overlay, so a `#defer` in a Dialog has no body to ask for, and its `#else` would stay, with no body. The compiler reports the block as an error, BRM217, in the file that writes it, though the overlay is in another file. See [`#defer`](../docs/async-data.md#defer).
 
 Use `#loading` with a server function, as above. A server function runs on the server, so it can read the database and the cookies, as a `#defer` body can.
 
