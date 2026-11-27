@@ -109,14 +109,23 @@ it('builds HTML in the browser only for templates that render from HTML', () => 
       found.push(name);
     }
   }
-  // The templates with an ambiguous top element that hold places for what they insert build HTML.
+  // The templates with an ambiguous top element that hold places for what they insert build HTML,
+  // and so do the components whose top element is ambiguous (`<a>`): with no owner, the place of
+  // their markup is not known, so they render from HTML that the insert parses (0.9.1).
   expect(found).toEqual([
+    'AsLink.brm',
+    'ClonedAnchor.brm',
+    'Forward.brm',
+    'RestLink.brm',
+    'SpikeLink.brm',
+    'tagSpreadRest.brm',
     'tplAmbiguousBox.brm',
     'tplAmbiguousInner.brm',
     'tplChildrenParam.brm',
     'tplFunctionText.brm',
     'tplMarkText.brm',
     'tplSvgWrap.brm',
+    'viewTransition.brm',
   ]);
 }, 60000);
 
