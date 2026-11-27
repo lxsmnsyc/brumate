@@ -1,0 +1,14 @@
+<script>
+  const show = true;
+</script>
+
+#if (show) {
+  #defer ('idle') {
+    <p class="greeting">Hello</p>
+    <style>
+      .greeting { color: red; }
+    </style>
+  } #else {
+    <p class="fallback">Loading</p>
+  }
+}

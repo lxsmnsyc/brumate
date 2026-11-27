@@ -127,4 +127,4 @@ Loading.brumateId = "Loading_1sx8r1u";
 <!--/l-->
 
 # State
-<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Loading_1sx8r1u",s:$R[2]=[0]}})))</script>
+<script b-state b-scopes b-next="1">function $bR(f){(self.$bQ||(self.$brm=self.$brm||[])).push([document.currentScript,f])}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"Loading_1sx8r1u",s:$R[2]=[0]}})))</script>

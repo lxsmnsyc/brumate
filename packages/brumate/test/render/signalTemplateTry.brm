@@ -1,0 +1,19 @@
+<script>
+  import { check } from './templateTryCheck.ts';
+  import { $signal } from 'brumate/signals';
+
+  let c = $signal(boom(1));
+</script>
+
+#template boom(value: number) {
+  <span class="v">{check(value)}</span>
+}
+
+<button class="next" onClick=(() => (c = boom(2)))>Next</button>
+
+#try {
+  <div class="a">{c}</div>
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}
+

@@ -3555,8 +3555,8 @@ describe('#reveal', () => {
     expect(order).toEqual(['0', '1', '2']);
     // The body that shows brings the fallback of the next one in.
     const first = chunks.join('').split('<template b-l="1">')[0]!;
-    expect(first).toContain('$bS(0);function $bF(i)');
-    expect(first).toContain('$bF(1)');
+    expect(first).toContain('function $bF(i)');
+    expect(first).toContain('$bS(0,function(){$bF(1)})');
   });
 
   /** The bodies of a page in the order that its stream sends them, as the data arrives in `arrive`. */
@@ -3743,6 +3743,79 @@ describe('#defer', () => {
       { shell },
     ))!;
     expect(body.headers.get('x-brumate-defer')).toBe('1');
+  });
+
+  it('sends the style of a block in the request for its body', async () => {
+    const server = await import(file('deferredStyled.brm.ts'));
+    const page = await renderParts(server.default, {});
+    const anchor = /b-b="([^"]+)" b-defer="idle:([^:"]+):/.exec(page.html)!;
+    const parts = await renderParts(
+      server.default,
+      {},
+      { defer: { boundary: Number(anchor[2]), at: anchor[1]! } },
+    );
+    expect(parts.defer).toBe('found');
+    // A client navigation can remove the CSS of the route while only the fallback shows, so the
+    // body brings the rules of its block.
+    expect(await allPending(parts.pending)).toMatch(
+      /<template b-l="\d+"><style[^>]*>[^<]*\.greeting/,
+    );
+  });
+
+  it('sends the style of a block that an #if or a #for holds, in the request for its body', async () => {
+    for (const name of ['deferredStyledIf', 'deferredStyledFor']) {
+      // oxlint-disable-next-line no-await-in-loop -- One page at a time keeps the message clear.
+      const server = await import(file(`${name}.brm.ts`));
+      // oxlint-disable-next-line no-await-in-loop -- One page at a time keeps the message clear.
+      const page = await renderParts(server.default, {});
+      const anchors = [...page.html.matchAll(/b-b="([^"]+)" b-defer="idle:([^:"]+):/g)];
+      expect(anchors.length).toBeGreaterThan(0);
+      for (const [, at, boundary] of anchors) {
+        // oxlint-disable-next-line no-await-in-loop -- One block at a time keeps the message clear.
+        const parts = await renderParts(
+          server.default,
+          {},
+          { defer: { boundary: boundary!, at: at! } },
+        );
+        expect(parts.defer).toBe('found');
+        // oxlint-disable-next-line no-await-in-loop -- One block at a time keeps the message clear.
+        const body = await allPending(parts.pending);
+        expect(body, `${name} ${at}`).toMatch(/<template b-l="[^"]+"><style[^>]*>[^<]*\.greeting/);
+      }
+    }
+  });
+
+  it('waits for the stylesheets of a body that the response brings before it swaps in', async () => {
+    const server = await import(file('deferred.brm.ts'));
+    const tree = { page: async () => server };
+    const page = await renderParts(server.default, {});
+    const answer = (await handleRoute(tree, new Request('http://localhost/'), {
+      shell: page.html + page.state,
+    }))!;
+    vi.stubGlobal('fetch', vi.fn<typeof globalThis.fetch>());
+    onTestFinished(() => {
+      vi.unstubAllGlobals();
+    });
+    // The body links a stylesheet that the page does not have.
+    const html = (await answer.text()).replace(
+      '<template b-l="1">',
+      '<template b-l="1"><link rel="stylesheet" href="/slow.css">',
+    );
+    const [shell, ...bodies] = html.split(/(?=<template b-l=)/);
+    show(shell!);
+    await startLoader();
+    for (const body of bodies) {
+      appendChunk(body);
+    }
+    // The fallback stays until the sheet loads.
+    const preload = document.head.querySelector('link[rel=preload][href="/slow.css"]')!;
+    expect(preload).not.toBeNull();
+    expect(document.querySelector('.greeting')).toBeNull();
+    expect(document.querySelector('.fallback')).not.toBeNull();
+    preload.dispatchEvent(new Event('load'));
+    await waitFor(() => expect(document.querySelector('.greeting')).not.toBeNull());
+    expect(document.querySelector('.fallback')).toBeNull();
+    expect(document.head.querySelector('link[rel=preload]')).toBeNull();
   });
 
   it('swaps in the bodies that the response brings, without asking for them', async () => {
@@ -4025,6 +4098,66 @@ describe('head in #loading', () => {
     expect(document.head.querySelector('meta[name="author"]')?.getAttribute('content')).toBe('Ada');
     expect(text('.profile')).toBe('Ada');
     expect(document.querySelector('template')).toBeNull();
+  });
+});
+
+describe('stylesheets of a #loading body', () => {
+  /** Streams the `lateHead` page with a stylesheet in its body, and returns the preload of it. */
+  async function streamWithSheet(): Promise<Element> {
+    vi.stubGlobal('fetch', vi.fn<typeof globalThis.fetch>());
+    onTestFinished(() => {
+      vi.unstubAllGlobals();
+    });
+    const server = await import(file('lateHead.brm.ts'));
+    const { html, state, head, pending } = await renderParts(server.default, {});
+    document.head.innerHTML = head;
+    show(html + state);
+    server.release('Ada');
+    for await (const chunk of pending) {
+      appendChunk(
+        chunk.replace(
+          '<template b-l="0">',
+          '<template b-l="0"><link rel="stylesheet" href="/late.css">',
+        ),
+      );
+    }
+    return document.head.querySelector('link[rel=preload][href="/late.css"]')!;
+  }
+
+  it('applies the head of the body after the body, when the swap waits for a sheet', async () => {
+    const preload = await streamWithSheet();
+    expect(preload).not.toBeNull();
+    // The title and the head wait for the body.
+    expect(document.title).not.toBe('Profile of Ada');
+    expect(document.head.querySelector('meta[name="author"]')).toBeNull();
+    preload.dispatchEvent(new Event('load'));
+    await waitFor(() => expect(text('.profile')).toBe('Ada'));
+    expect(document.title).toBe('Profile of Ada');
+    expect(document.head.querySelector('meta[name="author"]')?.getAttribute('content')).toBe('Ada');
+  });
+
+  it('keeps swapping when a swap that waited throws', async () => {
+    const preload = await streamWithSheet();
+    const scope = globalThis as unknown as { $bX: (id: unknown) => void };
+    const swap = scope.$bX;
+    scope.$bX = () => {
+      scope.$bX = swap;
+      throw new Error('swap failed');
+    };
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => {
+      error.mockRestore();
+    });
+    preload.dispatchEvent(new Event('load'));
+    await waitFor(() => expect((globalThis as { $bN?: number }).$bN).toBe(0));
+    // The next body swaps in at once, and the records that waited are released.
+    document.body.innerHTML =
+      '<!--l9--><p class="old">old</p><!--/l--><template b-l="9"><p class="new">new</p></template>';
+    // oxlint-disable-next-line no-eval -- The swap code comes from the server render.
+    (0, eval)('$bS(9)');
+    expect(text('.new')).toBe('new');
+    expect(error).toHaveBeenCalledWith(expect.objectContaining({ message: 'swap failed' }));
+    expect((globalThis as { $bQ?: unknown }).$bQ).toBe(0);
   });
 });
 
@@ -11435,4 +11568,57 @@ describe('a context without a provider in markup that the browser renders', () =
       expect(seen).toContain(`The context "${key}" has no provider above this component`);
     });
   });
+});
+
+describe('a #template call that throws, inserted in a #try', () => {
+  for (const name of [
+    'constTemplateTryLater',
+    'signalTemplateTryLater',
+    'memoTemplateTryLater',
+    'propTemplateTryLater',
+  ]) {
+    it(`catches the error of ${name} in the #try of its insert`, async () => {
+      await resume(name, {});
+      expect(texts('.caught')).toEqual([]);
+      click(document.querySelector('.open')!);
+      await waitFor(() => expect(texts('.caught')).toEqual(['Error: bad']));
+      expect(texts('.a')).toEqual([]);
+    });
+  }
+
+  it('catches a call that a signal holds when a click makes it throw', async () => {
+    await resume('signalTemplateTryBad', {});
+    expect(texts('.a')).toEqual(['2']);
+    click(document.querySelector('.bad')!);
+    await waitFor(() => expect(texts('.caught')).toEqual(['Error: bad']));
+  });
+
+  it('catches a call that a memo holds when a click makes it throw', async () => {
+    await resume('memoTemplateTryBad', {});
+    expect(texts('.a')).toEqual(['2']);
+    click(document.querySelector('.bad')!);
+    await waitFor(() => expect(texts('.caught')).toEqual(['Error: bad']));
+  });
+
+  it('catches a call that a parent passes as a prop when a click makes it throw', async () => {
+    await resume('propTemplateTryBad', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(texts('.a')).toEqual(['2']));
+    click(document.querySelector('.bad')!);
+    await waitFor(() => expect(texts('.caught')).toEqual(['Error: bad']));
+  });
+
+  for (const [form, page] of [
+    ['a member of a signal', 'memberTemplateTryBad'],
+    ['a ternary of a signal', 'ternaryTemplateTryBad'],
+    ['a store from a context', 'contextTemplateTryBad'],
+    ['the rest of the props', 'restTemplateTryBad'],
+  ] as const) {
+    it(`catches a call in ${form} when a click makes it throw`, async () => {
+      await resume(page, {});
+      await waitFor(() => expect(texts('.a')).toEqual(['2']));
+      click(document.querySelector('.bad')!);
+      await waitFor(() => expect(texts('.caught')).toEqual(['Error: bad']));
+    });
+  }
 });

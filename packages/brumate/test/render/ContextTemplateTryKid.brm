@@ -1,0 +1,12 @@
+<script>
+  import { $getContext, $store } from 'brumate/signals';
+  import { CallStore } from './templateTryStore.ts';
+
+  const shown = $store($getContext(CallStore));
+</script>
+
+#try {
+  <div class="a">{shown}</div>
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

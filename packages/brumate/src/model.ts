@@ -67,6 +67,15 @@ export interface Declaration {
   propKey?: string;
   /** True for a prop whose `$props<T>` type is written as `Promise<...>`, or a union with one. */
   promise?: boolean;
+  /**
+   * True for a value that cannot hold a call of a `#template`: a prop typed as strings, numbers,
+   * booleans or literals only, and a signal that starts as such a literal.
+   */
+  plain?: boolean;
+  /** For a prop of a props type that the file writes out, the declared type of the prop. */
+  propType?: oxc.Node;
+  /** True for an import or a module variable that is a signal or a memo of a module. */
+  moduleSignal?: boolean;
   /** True for the props object (`const props = $props()`) and the rest of `$props()`. */
   whole?: boolean;
   /** For `const result = $action(fn)`, the name of the server function. */
@@ -316,4 +325,28 @@ export function lookup(scope: Scope, name: string): Declaration | undefined {
     }
   }
   return undefined;
+}
+
+/** True for a type of strings, numbers, booleans, literals, null and undefined only, or a union of them. */
+export function isPlainType(annotation: oxc.Node | undefined): boolean {
+  if (annotation?.type === 'TSUnionType') {
+    for (const type of annotation.types) {
+      if (!isPlainType(type)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  if (annotation?.type === 'TSParenthesizedType') {
+    return isPlainType(annotation.typeAnnotation);
+  }
+  return (
+    annotation?.type === 'TSStringKeyword' ||
+    annotation?.type === 'TSNumberKeyword' ||
+    annotation?.type === 'TSBooleanKeyword' ||
+    annotation?.type === 'TSBigIntKeyword' ||
+    annotation?.type === 'TSNullKeyword' ||
+    annotation?.type === 'TSUndefinedKeyword' ||
+    annotation?.type === 'TSLiteralType'
+  );
 }

@@ -465,4 +465,4 @@ Offscreen.brumateId = "Offscreen_1oupne3";
 <!--/P-->
 
 # State
-<script b-state b-scopes b-next="3">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Offscreen_1oupne3",s:["a",0,!0,!0,"color: red"]},"0.0":{k:2,p:0,c:{8:"0.2"},s:[""]},"0.0.0":{k:3,p:"0.0"},0.1:{k:5,p:"0.0"},0.2:{k:1,m:"OffscreenChild_1uvc7y5",o:"0.0",s:[0]},"2.0":{k:7,p:0},"2.0.0":{k:8,p:"2.0"}})))</script>
+<script b-state b-scopes b-next="3">function $bR(f){(self.$bQ||(self.$brm=self.$brm||[])).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Offscreen_1oupne3",s:["a",0,!0,!0,"color: red"]},"0.0":{k:2,p:0,c:{8:"0.2"},s:[""]},"0.0.0":{k:3,p:"0.0"},0.1:{k:5,p:"0.0"},0.2:{k:1,m:"OffscreenChild_1uvc7y5",o:"0.0",s:[0]},"2.0":{k:7,p:0},"2.0.0":{k:8,p:"2.0"}})))</script>

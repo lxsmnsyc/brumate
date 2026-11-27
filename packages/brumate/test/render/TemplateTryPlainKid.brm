@@ -1,0 +1,11 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { title = 'a' } = $props<{ title?: string }>();
+</script>
+
+#try {
+  <div class="a">{title}</div>
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

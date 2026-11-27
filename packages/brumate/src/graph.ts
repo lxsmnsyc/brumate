@@ -1,7 +1,7 @@
 import type { oxc } from './oxc.ts';
 import type { Block, Markup } from './ast.ts';
 import { forEachNode } from './ast.ts';
-import { isWithin, lookup } from './model.ts';
+import { isPlainType, isWithin, lookup } from './model.ts';
 import type {
   Declaration,
   DeclarationKind,
@@ -343,6 +343,26 @@ export function tryCatchesClient(model: SemanticModel, block: Block & { kind: 't
       return true;
     }
   }
+  // An insert that reads a value which can hold a call of a `#template` can show a call that
+  // throws when the value changes: the update of the template's scope then fails into this `#try`.
+  // The call is made in this file or in the file of a parent that passes it, so a value that only
+  // holds strings, numbers or booleans does not count.
+  for (const declaration of model.declarations) {
+    if (!canHoldTemplateCall(declaration)) {
+      continue;
+    }
+    for (const read of declaration.reads) {
+      if (read.site.kind !== 'insert' || !isWithinAny(read.site.scope, inside)) {
+        continue;
+      }
+      // A member of a prop that the file types as a plain value cannot hold a call.
+      for (const path of shownPaths(read.site.node, read.range.start)) {
+        if (path.length === 0 || !plainMember(declaration.propType, path)) {
+          return true;
+        }
+      }
+    }
+  }
   // A memo that threw holds its error, so each read of it throws.
   for (const declaration of model.declarations) {
     if (isMemoKind(declaration.kind) || declaration.moduleMemo) {
@@ -354,6 +374,152 @@ export function tryCatchesClient(model: SemanticModel, block: Block & { kind: 't
     }
   }
   return false;
+}
+
+/**
+ * True for a value that changes and can hold a call of a `#template`: a prop, a signal, a store
+ * or a context value, and a parameter of a template. See `Declaration.plain`.
+ */
+function canHoldTemplateCall(declaration: Declaration): boolean {
+  // The children of a component are markup of its parent, which holds their calls.
+  if (declaration.plain || (declaration.kind === 'prop' && declaration.propKey === 'children')) {
+    return false;
+  }
+  return (
+    declaration.kind === 'prop' ||
+    declaration.kind === 'props-rest' ||
+    declaration.kind === 'signal' ||
+    declaration.kind === 'let' ||
+    declaration.kind === 'template-param' ||
+    declaration.moduleSignal === true ||
+    declaration.store !== undefined
+  );
+}
+
+/**
+ * The member paths by which an insert can show the value read at `start`: `[]` for the name
+ * itself, `['name']` for `{user.name}` and `['[]']` for `{items[0]}`. A read that only goes into a
+ * call, an operator or a template string is used up there, and shows nothing, so it has no path.
+ */
+function shownPaths(node: oxc.Node, start: number, suffix: string[] = [], out: string[][] = []) {
+  switch (node.type) {
+    case 'Identifier':
+      if (node.start === start) {
+        out.push(suffix);
+      }
+      break;
+    case 'MemberExpression':
+      shownPaths(
+        node.object,
+        start,
+        [
+          !node.computed && node.property.type === 'Identifier' ? node.property.name : '[]',
+          ...suffix,
+        ],
+        out,
+      );
+      break;
+    case 'ConditionalExpression':
+      shownPaths(node.consequent, start, suffix, out);
+      shownPaths(node.alternate, start, suffix, out);
+      break;
+    case 'LogicalExpression':
+      shownPaths(node.left, start, suffix, out);
+      shownPaths(node.right, start, suffix, out);
+      break;
+    case 'ParenthesizedExpression':
+    case 'ChainExpression':
+    case 'TSNonNullExpression':
+    case 'TSAsExpression':
+    case 'TSSatisfiesExpression':
+      shownPaths(node.expression, start, suffix, out);
+      break;
+    case 'AwaitExpression':
+      shownPaths(node.argument, start, suffix, out);
+      break;
+    case 'ArrayExpression':
+      for (const element of node.elements) {
+        if (element) {
+          shownPaths(
+            element.type === 'SpreadElement' ? element.argument : element,
+            start,
+            suffix,
+            out,
+          );
+        }
+      }
+      break;
+    default:
+      break;
+  }
+  return out;
+}
+
+/** The type without `null` and `undefined`, or undefined when it is not one type. */
+function withoutNullish(type: oxc.Node): oxc.Node | undefined {
+  if (type.type === 'TSParenthesizedType') {
+    return withoutNullish(type.typeAnnotation);
+  }
+  if (type.type !== 'TSUnionType') {
+    return type;
+  }
+  const rest: oxc.Node[] = [];
+  for (const member of type.types) {
+    if (member.type !== 'TSNullKeyword' && member.type !== 'TSUndefinedKeyword') {
+      rest.push(member);
+    }
+  }
+  return rest.length === 1 ? withoutNullish(rest[0]!) : undefined;
+}
+
+/**
+ * True if a member of a prop, found by `path` in the declared type, holds a plain value, so it
+ * cannot be a template call. Only inline object types and array types are followed. A named
+ * type, or anything else that the file does not write out, ships.
+ */
+function plainMember(type: oxc.Node | undefined, path: string[]): boolean {
+  let current = type;
+  for (const key of path) {
+    if (!current) {
+      return false;
+    }
+    if (isPlainType(current)) {
+      return true;
+    }
+    const one = withoutNullish(current);
+    if (!one) {
+      return false;
+    }
+    if (key === '[]') {
+      if (one.type === 'TSArrayType') {
+        current = one.elementType;
+      } else if (
+        one.type === 'TSTypeReference' &&
+        one.typeName.type === 'Identifier' &&
+        (one.typeName.name === 'Array' || one.typeName.name === 'ReadonlyArray') &&
+        one.typeArguments?.params.length === 1
+      ) {
+        current = one.typeArguments.params[0];
+      } else {
+        return false;
+      }
+    } else if (one.type === 'TSTypeLiteral') {
+      current = undefined;
+      for (const member of one.members) {
+        if (
+          member.type === 'TSPropertySignature' &&
+          !member.computed &&
+          member.key.type === 'Identifier' &&
+          member.key.name === key
+        ) {
+          current = member.typeAnnotation?.typeAnnotation;
+        }
+      }
+    } else {
+      return false;
+    }
+  }
+  return current !== undefined && isPlainType(current);
 }
 
 /** True if the expression of a site is a prop that is typed as a promise, such as `$memo(user)`. */

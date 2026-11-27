@@ -1354,3 +1354,13 @@ describe('the stores of the forms', () => {
     stopWatching();
   });
 });
+
+describe('a #template call that a module signal holds', () => {
+  it('is caught by the #try of its insert when a click makes it throw', async () => {
+    await resume('ModuleTemplateTry.brm');
+    click('.set');
+    await vi.waitFor(() => expect(text('.a')).toBe('2'), { timeout: 2000 });
+    click('.bad');
+    await vi.waitFor(() => expect(text('.caught')).toBe('Error: bad'), { timeout: 2000 });
+  });
+});

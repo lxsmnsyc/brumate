@@ -96,4 +96,4 @@ Themes.brumateId = "Themes_945372";
 <!--/b-->
 
 # State
-<script b-state b-scopes b-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Themes_945372",v:{"theme-store":$b.s("dark",0,3,0)},s:["dark",!1]},1:{k:1,m:"ThemedLive_c4uktt",o:0,z:[["theme-store",0]],s:["dark"]}})))</script>
+<script b-state b-scopes b-next="2">function $bR(f){(self.$bQ||(self.$brm=self.$brm||[])).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Themes_945372",v:{"theme-store":$b.s("dark",0,3,0)},s:["dark",!1]},1:{k:1,m:"ThemedLive_c4uktt",o:0,z:[["theme-store",0]],s:["dark"]}})))</script>

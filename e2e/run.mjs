@@ -90,6 +90,26 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
   });
 }
 
+// The server treats an agent with "Headless" as a crawler and renders #loading and #defer bodies in
+// place, so no step would see streaming. Every context gets the agent of a real browser instead.
+// A step that wants the crawler passes its own userAgent.
+async function useBrowserAgent(target) {
+  const probe = await target.newPage();
+  const agent = (await probe.evaluate(() => navigator.userAgent)).replace(
+    'HeadlessChrome',
+    'Chrome',
+  );
+  await probe.close();
+  const newContext = target.newContext.bind(target);
+  target.newContext = (options) => newContext({ userAgent: agent, ...options });
+  target.newPage = async (options) => {
+    const context = await target.newContext(options);
+    const page = await context.newPage();
+    page.on('close', () => void context.close().catch(() => {}));
+    return page;
+  };
+}
+
 async function buildAll() {
   const steps = [['pnpm', ['build']], ...names.flatMap((name) => SUITES[name].build)];
   console.log('Building');
@@ -114,6 +134,7 @@ try {
     exitCode = 1;
   } else {
     browser = await chromium.launch({ ...launch, headless: !values.headed });
+    await useBrowserAgent(browser);
     for (const name of names) {
       console.log(`\n${name}`);
       const suite = SUITES[name];

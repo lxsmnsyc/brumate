@@ -1,0 +1,15 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  const { item } = $props<{ item?: unknown }>();
+  let shown = $signal(false);
+</script>
+
+<button class="open" onClick=(() => (shown = true))>Open</button>
+#if (shown) {
+  #try {
+    <div class="a">{item}</div>
+  } #catch (error) {
+    <p class="caught">{String(error)}</p>
+  }
+}

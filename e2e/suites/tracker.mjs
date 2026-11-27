@@ -217,6 +217,102 @@ export async function run({ browser, url, runner }) {
     await page.locator('.who', { hasText: 'You are signed in as' }).waitFor({ timeout: TIMEOUT });
   });
 
+  await step('/about: the #defer body waits for its stylesheet before it shows', async () => {
+    // A page of its own, so the route and the script end with the step. It has the cookies of `page`.
+    const probe = await page.context().newPage();
+    // The body of the block links a stylesheet that the page does not have, and the sheet is slow.
+    await probe.route('**/e2e-defer.css', async (route) => {
+      await new Promise((done) => setTimeout(done, 400));
+      await route.fulfill({ contentType: 'text/css', body: '.who{color:rgb(1,2,3)}' });
+    });
+    await probe.route('**/about', async (route) => {
+      const response = await route.fetch();
+      // The page is a shell, and the server fills the block in the same response.
+      const body = (await response.text()).replace(
+        /<template b-l="([^"]+)">/g,
+        (template) => `${template}<link rel="stylesheet" href="/e2e-defer.css">`,
+      );
+      await route.fulfill({ response, body });
+    });
+    await probe.addInitScript(() => {
+      window.__e2eDefer = { shown: false, pending: -1 };
+      new MutationObserver(() => {
+        const who = document.querySelector('.who');
+        if (who && /You are/.test(who.textContent) && !window.__e2eDefer.shown) {
+          window.__e2eDefer.shown = true;
+          const link = document.querySelector('link[href="/e2e-defer.css"]');
+          if (!link) {
+            window.__e2eDefer.pending = -1;
+          } else {
+            window.__e2eDefer.pending = link.sheet ? 0 : 1;
+          }
+        }
+      }).observe(document, { childList: true, subtree: true, characterData: true });
+    });
+    try {
+      await probe.goto(`${url}/about`);
+      await probe
+        .locator('.who', { hasText: 'You are signed in as' })
+        .waitFor({ timeout: TIMEOUT });
+      const seen = await probe.evaluate(() => window.__e2eDefer);
+      assert(seen.pending !== -1, 'the body of the block did not link the stylesheet');
+      assert(seen.pending === 0, 'the #defer body showed before its stylesheet applied');
+    } finally {
+      await probe.close();
+    }
+  });
+
+  await step(
+    '/later: the #defer body comes in a request, with its style, after a link',
+    async () => {
+      // A browser is not a crawler, so the page sends the fallback and the body comes later.
+      const raw = await (await page.request.get(`${url}/later`)).text();
+      assert(raw.includes('later-fallback'), '/later has no fallback for a browser');
+      assert(!raw.includes('class="later"'), '/later has the body in place for a browser');
+      await page.goto(`${url}/`);
+      await page.locator('.feed li').first().waitFor({ timeout: TIMEOUT });
+      await page.evaluate(() => {
+        window.__e2eSamePage = true;
+        const link = document.createElement('a');
+        link.href = '/later';
+        link.id = 'e2e-later';
+        link.textContent = 'later';
+        document.body.append(link);
+      });
+      const requested = page.waitForRequest((request) => !!request.headers()['x-brumate-defer'], {
+        timeout: TIMEOUT,
+      });
+      await page.click('#e2e-later');
+      await page.waitForFunction(() => document.title === 'Later', null, { timeout: TIMEOUT });
+      await requested;
+      await page.locator('.later', { hasText: 'Signed in as' }).waitFor({ timeout: TIMEOUT });
+      assert(
+        await page.evaluate(() => window.__e2eSamePage === true),
+        'the link loaded a new page',
+      );
+      // The navigation removed the CSS of the route while the fallback showed, so the body brings it.
+      const color = await page.$eval('.later', (element) => getComputedStyle(element).color);
+      assert(color === 'rgb(200, 0, 0)', `the body shows without its style: ${color}`);
+    },
+  );
+
+  await step(
+    '/later: a crawler gets the #defer body in the page, with no request for it',
+    async () => {
+      const crawler = await browser.newContext({
+        userAgent: 'Mozilla/5.0 HeadlessChrome/150.0 Safari/537.36',
+      });
+      try {
+        const raw = await (await crawler.request.get(`${url}/later`)).text();
+        assert(raw.includes('class="later"'), '/later has no body for a crawler');
+        assert(!raw.includes('later-fallback'), '/later has the fallback for a crawler');
+        assert(!raw.includes('b-defer'), '/later has a #defer block for a crawler');
+      } finally {
+        await crawler.close();
+      }
+    },
+  );
+
   await step(
     '/team: browser code on a page with a #defer block keeps its #defer line for the user',
     async () => {

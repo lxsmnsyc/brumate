@@ -22,7 +22,7 @@ import type {
   SFCFile,
   TemplateDecl,
 } from './ast.ts';
-import { isWithin, lookup, upstreamMemos } from './model.ts';
+import { isPlainType, isWithin, lookup, upstreamMemos } from './model.ts';
 import type { SignalName } from './module-signals.ts';
 import { KEY_NAMES } from './runtime/events.ts';
 import type {
@@ -463,12 +463,25 @@ function isPromiseType(annotation: oxc.Node | undefined): boolean {
   );
 }
 
-/** The names of the members of a props type whose type passes `test`. */
-function memberNames(
-  type: oxc.Node,
-  file: SFCFile,
-  test: (annotation: oxc.Node | undefined) => boolean,
-): string[] {
+/** True for a string, number or boolean literal, such as the start value `0` of a signal. */
+function isPlainLiteral(node: oxc.Node | undefined): boolean {
+  if (node?.type === 'UnaryExpression' && (node.operator === '-' || node.operator === '+')) {
+    return isPlainLiteral(node.argument);
+  }
+  if (node?.type === 'TemplateLiteral') {
+    return node.expressions.length === 0;
+  }
+  return (
+    node?.type === 'Literal' &&
+    (typeof node.value === 'string' ||
+      typeof node.value === 'number' ||
+      typeof node.value === 'boolean' ||
+      typeof node.value === 'bigint')
+  );
+}
+
+/** The members of a props type, by name, with the type that each one is declared with. */
+function memberTypes(type: oxc.Node, file: SFCFile): Map<string, oxc.Node | undefined> {
   let members: oxc.Node[] | undefined;
   if (type.type === 'TSTypeLiteral') {
     members = type.members;
@@ -489,21 +502,35 @@ function memberNames(
       if (statement.type === 'TSInterfaceDeclaration' && statement.id.name === name) {
         members = statement.body.body;
       } else if (statement.type === 'TSTypeAliasDeclaration' && statement.id.name === name) {
-        return memberNames(statement.typeAnnotation, file, test);
+        return memberTypes(statement.typeAnnotation, file);
       }
     }
   }
-  const names: string[] = [];
+  const types = new Map<string, oxc.Node | undefined>();
   for (const member of members ?? []) {
-    const annotation =
-      member.type === 'TSPropertySignature' ? member.typeAnnotation?.typeAnnotation : undefined;
-    if (!test(annotation) || member.type !== 'TSPropertySignature' || member.computed) {
+    if (member.type !== 'TSPropertySignature' || member.computed) {
       continue;
     }
+    const annotation = member.typeAnnotation?.typeAnnotation;
     if (member.key.type === 'Identifier') {
-      names.push(member.key.name);
+      types.set(member.key.name, annotation);
     } else if (member.key.type === 'Literal') {
-      names.push(String(member.key.value));
+      types.set(String(member.key.value), annotation);
+    }
+  }
+  return types;
+}
+
+/** The names of the members of a props type whose type passes `test`. */
+function memberNames(
+  type: oxc.Node,
+  file: SFCFile,
+  test: (annotation: oxc.Node | undefined) => boolean,
+): string[] {
+  const names: string[] = [];
+  for (const [name, annotation] of memberTypes(type, file)) {
+    if (test(annotation)) {
+      names.push(name);
     }
   }
   return names;
@@ -613,6 +640,7 @@ class Analyzer {
     this.resolveStores();
     this.checkBindableProps();
     this.markPromiseProps();
+    this.markPlainValues();
 
     for (const site of this.sites) {
       new Resolver(this, site).run();
@@ -869,6 +897,38 @@ class Analyzer {
       }
     }
     return false;
+  }
+
+  /**
+   * Marks the props whose type is plain, and the signals that start as a plain literal. Nothing
+   * that they hold is a call of a `#template`.
+   */
+  private markPlainValues(): void {
+    const types = new Map<string, oxc.Node | undefined>();
+    for (const type of this.propsTypes) {
+      for (const [name, annotation] of memberTypes(type, this.file)) {
+        types.set(name, annotation);
+      }
+    }
+    for (const declaration of this.declarations) {
+      if (
+        declaration.kind === 'prop' &&
+        declaration.scope === this.component &&
+        declaration.propKey !== undefined &&
+        types.has(declaration.propKey)
+      ) {
+        const annotation = types.get(declaration.propKey);
+        declaration.propType = annotation;
+        declaration.plain = isPlainType(annotation);
+      } else if (declaration.kind === 'signal' && isPlainLiteral(declaration.init)) {
+        declaration.plain = true;
+      } else if (
+        (declaration.kind === 'import' || declaration.kind === 'module') &&
+        this.moduleSignals.has(declaration.name)
+      ) {
+        declaration.moduleSignal = true;
+      }
+    }
   }
 
   /** Marks the props that the type of `$props<T>()` writes as `Promise<...>`. */
