@@ -4,7 +4,7 @@
 import { HAS_CLIENT_HTML, HAS_LATE_MARKUP } from '../features.ts';
 import { parseId } from '../shared.ts';
 import type { ScopeId } from '../shared.ts';
-import { comments, elements, scopes } from './state.ts';
+import { comments, elements, scopes, sharedScopes } from './state.ts';
 import type { Scope } from './state.ts';
 
 /**
@@ -153,8 +153,14 @@ function indexElement(element: Element, ids?: Set<ScopeId>): void {
   if (key === null) {
     return;
   }
+  const id = parseId(key.slice(0, key.indexOf(':')));
+  // The same key twice: the server wrote one render of a template at two inserts.
+  const known = elements.get(key);
+  if (known && known !== element && known.isConnected) {
+    sharedScopes.add(id);
+  }
   elements.set(key, element);
-  ids?.add(parseId(key.slice(0, key.indexOf(':'))));
+  ids?.add(id);
 }
 
 /** Indexes the markers in the nodes that mutation records added. */
