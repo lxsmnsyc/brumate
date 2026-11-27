@@ -6,6 +6,10 @@ type: internals
 
 The compiler decides what ships to the browser from a graph of what reads what, which it builds once, when it compiles. This page first follows one component from its source to a click that updates the page. The sections after it describe each part in detail.
 
+## Overview
+
+The compiler reads a `.brm` file into scripts, styles and markup, and builds a graph of what reads what. It starts at the client roots, such as event handlers, and marks every node that they can reach. The server module renders HTML with markers and records the state of the marked nodes. The client modules hold one part for each root and the update code for the marked nodes. In the browser, a write runs only the code that reads the slot it changes. The browser never builds the graph.
+
 ## Step by step
 
 This section follows one component from its source to a click that updates the page:
@@ -147,6 +151,7 @@ The page shows `1 / 2`. Nothing else ran: the heading, the button and the rest o
 - `h<n>` are event handlers and function props, and `c<n>` are `$client` callbacks.
 - `m<n>` compute memos, `u<n>` update text, attributes and props, `e<n>` run effects, and `b<n>` update blocks.
 - `r<n>` render the body of a block, `a<n>` write a new list item into its scope, and `k<n>` render a `#client` block.
+- `T<n>` render a `#template` call that the page state sends, so the browser can insert it again.
 - Local functions become module functions that take the scope as their first argument. Server functions become stubs that call the server.
 - A value of an outer scope is read through the parent of the scope, `.p`.
 
@@ -185,6 +190,7 @@ When a client root writes a signal, the runtime looks up the nodes that read tha
 | Markup binding, such as `{count}`                        | Its source can change in the browser.                                                                                 |
 | `#if`, `#switch`, `#key`                                 | Its condition can change. Then the bodies of its branches ship.                                                       |
 | `#for`, `#repeat`                                        | Its list or count can change. Then the body of an item ships.                                                         |
+| `#try`                                                   | Its body inserts a value that can hold a `#template` call, such as a prop typed `unknown` or a signal that does not start as a literal. Then the `#catch` body and an error table ship, so a call that throws shows the `#catch` body. |
 | Static text and elements                                 | Never. They are HTML only.                                                                                            |
 
 A signal that no client root writes is a constant after the server renders it, and is not sent.
@@ -216,7 +222,7 @@ A scope holds the state of one instance:
 
 - Each component instance is a scope.
 - Each body of a block with its own `<script>` or with live values is a scope, such as each item of a `#for`.
-- A `#template` call is a scope when its body has live values.
+- A `#template` call is a scope when its body has live values. Each place that shows the call makes a scope of its own, also when a memo, a signal, a `const`, a prop or a context value holds the call.
 
 Each scope that client code needs gets a number at render time, unique in the page. Elements with handlers name their scope in an attribute, so a handler finds its state. [Page format](./page-format.md) describes the numbers and markers.
 

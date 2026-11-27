@@ -6,6 +6,10 @@ type: internals
 
 How the compiler scopes the CSS of a component, turns `${}` values into custom properties, and puts the stylesheet on the page. [Styles](./styles.md) describes what to write.
 
+## Overview
+
+The compiler reads the `<style>` of a file, runs the preprocessor when `lang` names one, and adds an attribute selector to every compound selector. Each `${expression}` becomes a custom property that the top-level elements set. The result is the `css` of the component. The server writes it into the page as a `<style>` element the first time the page renders the component, and the browser keeps it or drops it when client navigation changes the page.
+
 ## Scoping
 
 - Every native element of the component gets an attribute, `b-c-<hash>`, where the hash comes from the file name.
@@ -13,6 +17,7 @@ How the compiler scopes the CSS of a component, turns `${}` values into custom p
 - `:global(…)` leaves its selector as it is.
 - Keyframe steps, such as `from` and `50%`, are not scoped.
 - Elements that other components render do not get the attribute, so a component's styles do not reach into its children. `:global(…)` does.
+- A `<style>` in a block has an attribute and variables of its own: `b-c-<hash>-<n>` and `--s-<hash>-<n>-<index>`, where `n` numbers the block. The elements of the block get the attributes of its own style and of the blocks around it.
 
 ## Variables
 
@@ -35,9 +40,10 @@ With `lang="scss"` or `lang="less"`, the preprocessor runs first, and the result
 
 ## On the page
 
-- The stylesheet is inlined once per page, as `<style b-style="<component ID>">`, before the first instance of the component.
+- The stylesheet is inlined once per page, as `<style b-style="<component ID>">`, before the first instance of the component. A build inlines the CSS of the bundles into the head the same way, and links a stylesheet file for a component that has none inline.
 - A component that the browser renders first adds its stylesheet to `<head>`.
 - A page carries only the CSS of the components that it renders, so its CSS is the critical CSS. There is no CSS file with every component.
+- The body of a `#defer` block is a request of its own. When the block has a `<style>`, the answer carries the stylesheet of the component that holds it, because navigation removes a stylesheet that no element uses while only the fallback shows. The body also waits for the stylesheets that its markup links before it swaps in, so it never shows unstyled. A `#loading` body waits the same way, for 4 seconds at most.
 - When the browser loads another page and keeps its layouts, a stylesheet in a replaced route moves to the head if a component on the page still uses it. The others go with the route.
 
 `compile` also returns the stylesheet as `css`.

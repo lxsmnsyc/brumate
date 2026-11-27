@@ -191,3 +191,10 @@ brumate({ budget: { loader: 3072, route: 20480, component: 4096 } });
 ```text
 The component src/Chart.brm ships 9.4 kB, over the budget of 4.0 kB.
 ```
+
+## Related
+
+- [Client modules](./client-modules.md): the bundles and parts that the build report counts.
+- [Reactive graph](./reactive-graph.md): why a value ships to the browser, which `brumate inspect` shows.
+- [Plugin reference](./reference-plugin.md): the `report`, `budget` and `devtools` options.
+- [Testing](./testing.md): check the same components in a test.

@@ -135,4 +135,9 @@ it('names the button', async () => {
 
 `brumate-tsc` checks test files with the rest of the project. Add `vitest` types if your tests use globals. See [TypeScript](./typescript.md).
 
-To test server functions and routes, see [Testing server functions and routes](./testing-server.md).
+## Related
+
+- [Testing server functions and routes](./testing-server.md): answer server function calls and visit routes in a test.
+- [TypeScript](./typescript.md): type-check test files with the project.
+- [Inspect and devtools](./inspect.md): see what a component ships to the browser.
+- [Client modules](./client-modules.md): what the loader loads when a test mounts a component.

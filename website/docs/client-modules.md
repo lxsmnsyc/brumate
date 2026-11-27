@@ -6,6 +6,10 @@ type: internals
 
 What the browser loads, and when: the loader, the core, the parts of each component, and the modules for navigation and server calls. [Reactive graph](./reactive-graph.md) describes what goes into the parts.
 
+## Overview
+
+The server sends HTML with its state in scripts, and one script tag for the client entry. The entry starts the loader, a small module that listens for events at once and imports the core. The core reads the state, links the scopes, and loads the parts of each component that the page has: an entry, one part for each handler, and one for updates. A build groups these parts into bundles by root component. Navigation and server calls load modules of their own on first use. The plugin builds the modules, and the dev server serves each one on its own.
+
 ## When the page starts
 
 The page arrives as HTML with its state in scripts. The client entry runs the loader, `brumate/loader`:
@@ -14,6 +18,14 @@ The page arrives as HTML with its state in scripts. The client entry runs the lo
 // src/client.ts
 import 'virtual:brumate/start';
 ```
+
+You never write the script tag of the entry. `handle` of `virtual:brumate/routes` adds it when its options have no `scripts`:
+
+- On the dev server, the tags load the Vite client and the client entry of the app, the first input of the client build that is not HTML. An app with no entry gets the start module. The URLs follow `base`.
+- In a build, the tag is `<script type="module" async>` for the entry, from `.vite/manifest.json` of the client build. The server build fails when that manifest is missing, so build the client first. A client built to another folder needs the `clientOutDir` option.
+- The tags carry the `nonce` of the render.
+
+A `scripts` option of your own, even an empty string, replaces the default tags. See [The script tags](./deploying.md#the-script-tags).
 
 The loader:
 
@@ -30,7 +42,7 @@ The core reads the state records that the page's scripts handed over, and links 
 A build groups the client code by root components: the components that no other component imports, such as routes, layouts and pages. The bundle of a root holds the client entries and the parts of every component that it can render, so the code of a page comes in one chunk, with the chunks that it shares with other pages.
 
 - The loader starts the bundles of the components in the page state at once, with the core.
-- A page of `handleRoute` gets `<link rel="modulepreload">` for the loader, the core and the bundles of its route and layouts, so they download with the HTML.
+- A page of `handleRoute` gets `<link rel="modulepreload">` for the loader, the core and the bundles of its route and layouts, so they download with the HTML. A page with no nonce also sends them as early hints, on a server that supports them. Navigation responses get none, since the page has the modules.
 - The dev server loads each component's module on its own, so an edit updates the page in place. This holds for an entry that calls `start({ load })` from `brumate/loader` too: the plugin adds the hot updates and the devtools to it on the dev server, and a build ships none of that.
 
 ## Events and calls
@@ -47,7 +59,7 @@ A function of another component, such as a function prop, a function in a contex
 
 The core holds only the helpers that the build's components call. A build without `#for`, `$produce` or `$optimistic` leaves their code out, and a build with `navigate: false` leaves out the code that reads the pages that navigation adds. That code loads after the first client navigation, as a small module of its own.
 
-The body of an `#if` or a `#for` whose markup is elements, attributes, text and `#if` or `#for` blocks compiles to a `<template>`. The browser parses it once, clones it for each render, and writes the values on the elements that the template marks, with no HTML to build or parse. A text value is a text node, which an update sets, as in Solid. The blocks inside fill before the clone goes into the page. A child component renders in its place in the clone, and the render module of a component whose markup is one string clones a template too. Other markup renders HTML, such as a component whose markup holds blocks.
+The body of an `#if` or a `#for` whose markup is elements, attributes, text and `#if` or `#for` blocks compiles to a `<template>`. The browser parses it once, clones it for each render, and writes the values on the elements that the template marks, with no HTML to build or parse. A text value is a text node, which an update sets, as in Solid. The blocks inside fill before the clone goes into the page. A component whose markup starts with an `a`, `script`, `style` or `title` element takes the namespace of the place where it is inserted, so it stays SVG inside an `<svg>`. A child component renders in its place in the clone, and the render module of a component whose markup is one string clones a template too. Other markup renders HTML, such as a component whose markup holds blocks.
 
 The client build also leaves out the code of the features that no component uses:
 

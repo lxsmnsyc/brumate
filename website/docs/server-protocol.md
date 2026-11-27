@@ -6,6 +6,10 @@ type: internals
 
 How the browser calls a server function, and how the server answers. App code never sees this: a call is a normal `await fn(args)`. It matters for a custom server, a proxy, or a client in another language.
 
+## Overview
+
+A call is a `POST` to `<rpc prefix>/<function ID>`, with the arguments as seroval JSON, or as multipart form data when they hold files. The server runs the function and answers with a stream of seroval frames for a value, or a status and a JSON error. Headers carry a redirect, the memos to load again and the ID of the build. Forms use the same IDs in a post that works without scripts. A page request that loads another page or a `#defer` body adds headers of its own.
+
 ## Function IDs
 
 Each server function has an ID: `<component ID>#<function name>`, such as `Todos_t3g9lr#persist`. A build hashes the name, as in `Todos_t3g9lr#f1k2m3n`, so the browser does not see it.
@@ -81,3 +85,5 @@ A form post checks where it comes from, as a call does. See [Security](./referen
 ## Navigation requests
 
 When the loader loads a page, it sends `x-brumate-base`, the first ID that the new page should use. See [Page format](./page-format.md#navigation).
+
+A request for a `#defer` body adds `x-brumate-defer`, the boundary and the anchor of the block, and `x-brumate-base`. See [`#defer`](./page-format.md#defer).
