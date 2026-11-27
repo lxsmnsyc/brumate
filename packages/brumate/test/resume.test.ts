@@ -2658,6 +2658,62 @@ describe('resume', () => {
     expect(text('.b')).toBe('3');
   });
 
+  it('gives each insert of a memo of a #template call its own scope on the server', async () => {
+    await resume('memoTemplateTwice', {});
+    const [a, b] = document.querySelectorAll('.v');
+    expect(a!.getAttribute('b-b')).not.toBe(b!.getAttribute('b-b'));
+  });
+
+  it('updates both inserts of a signal of a #template call after resume', async () => {
+    await resume('signalTemplateTwice', {});
+    click(document.querySelector('button')!);
+    await waitFor(() => expect(text('.b')).toBe('2'));
+    expect(text('.a')).toBe('2');
+  });
+
+  it('updates three inserts of a signal of a #template call after resume', async () => {
+    await resume('signalTemplateThrice', {});
+    click(document.querySelector('button')!);
+    await waitFor(() => expect(text('.c')).toBe('2'));
+    expect(text('.a')).toBe('2');
+    expect(text('.b')).toBe('2');
+  });
+
+  it('updates both inserts of a prop of a #template call after resume', async () => {
+    await resume('propTemplateTwice', {});
+    click(document.querySelector('button')!);
+    await waitFor(() => expect(text('.b')).toBe('2'));
+    expect(text('.a')).toBe('2');
+    click(document.querySelector('button')!);
+    await waitFor(() => expect(text('.b')).toBe('3'));
+    expect(text('.a')).toBe('3');
+  });
+
+  it('updates three inserts of a prop of a #template call after resume', async () => {
+    await resume('propTemplateThrice', {});
+    click(document.querySelector('button')!);
+    await waitFor(() => expect(text('.c')).toBe('2'));
+    expect(text('.a')).toBe('2');
+    expect(text('.b')).toBe('2');
+  });
+
+  it('shows a const of a #template call at each insert', async () => {
+    await resume('constTemplateThrice', {});
+    expect(text('.a')).toBe('1');
+    expect(text('.b')).toBe('1');
+    expect(text('.c')).toBe('1');
+  });
+
+  it('inserts a #template call that the page state holds in a block that opens', async () => {
+    await resume('signalTemplateLater', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.b')).toBe('1'));
+    expect(text('.a')).toBe('1');
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(text('.b')).toBe('2'));
+    expect(text('.a')).toBe('2');
+  });
+
   it('renders a component in a same-file #template that updates in the browser', async () => {
     await resume('tplImportHost', {});
     click(document.querySelector('.open')!);

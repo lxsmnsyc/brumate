@@ -2013,6 +2013,38 @@ export function lazy(
   return { [LAZY]: renderAt };
 }
 
+/**
+ * A call of a `#template` of the file that has a scope, such as the value of `$memo(row(n))`. Each
+ * insert renders it with a new scope, as the browser does, so two inserts of one value have one
+ * scope each. The page state sends it as a reference to the template, `ref`, with the scope that
+ * holds the template and the arguments, and the browser makes its own call of them.
+ */
+class TemplateCall implements Lazy {
+  readonly [LAZY]: Lazy[typeof LAZY];
+
+  constructor(
+    ref: string,
+    owner: ScopeId,
+    renderCall: (...args: unknown[]) => Promise<unknown>,
+    args: unknown[],
+  ) {
+    functionReferences.set(this, new FunctionReference(ref, owner, args));
+    // The insert links the template's scope to where it is inserted.
+    this[LAZY] = async (ctx, at, tag, anchor, place) =>
+      insert(await renderCall(...args), ctx, at, tag, anchor, place);
+  }
+}
+
+/** Makes a call of a `#template` of the file. See `TemplateCall`. */
+export function templateCall(
+  ref: string,
+  owner: ScopeId,
+  renderCall: (...args: unknown[]) => Promise<unknown>,
+  args: unknown[],
+): Lazy {
+  return new TemplateCall(ref, owner, renderCall, args);
+}
+
 function isLazy(value: unknown): value is Lazy {
   return typeof value === 'object' && value !== null && LAZY in value;
 }

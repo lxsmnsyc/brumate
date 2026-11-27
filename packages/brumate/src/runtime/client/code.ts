@@ -26,6 +26,11 @@ export function isTemplate(ref: string): boolean {
   return /#t\d/.test(ref);
 }
 
+/** True for a reference to a call of a `#template` that the page state holds, such as `Page#T3`. */
+export function isTemplateCall(ref: string): boolean {
+  return /#T\d/.test(ref);
+}
+
 /**
  * The code of the components on the page that is still loading. Handlers, updates and calls of
  * functions of other components wait for it, so the code that they call has loaded.

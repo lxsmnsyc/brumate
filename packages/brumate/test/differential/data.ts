@@ -207,11 +207,6 @@ export const CAUSES: Record<string, Cause> = {
     reason:
       'A #loading body that is pending: the browser render has scopes for the body that the resumed page does not have yet. The visible markup is the same.',
   },
-  'memo-template-twice': {
-    verdict: 'accepted',
-    reason:
-      'A memo of a template call that two inserts show: the server renders it once, so it has one scope and a memo slot that holds markup. The browser renders each insert with its own scope, and the memo holds the call. The visible markup is the same, and a resumed page gives each insert its own scope at its first update.',
-  },
   'error-stack': {
     verdict: 'accepted',
     reason:
@@ -249,4 +244,3 @@ diverge('try-rollback', ['tryRollback']);
 diverge('awaited-slot', ['awaitedStream']);
 diverge('loading-scopes', ['RelayLoading', 'sourcedLoading']);
 diverge('error-stack', ['catchLeak']);
-diverge('memo-template-twice', ['memoTemplateThrice', 'memoTemplateTwice']);

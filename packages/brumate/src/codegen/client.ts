@@ -88,6 +88,16 @@ function effectCall(callback: oxc.Node): 'effect' | 'asyncEffect' {
 }
 
 /** Whether a scope is within any scope of the list. */
+/** True if the site calls a `#template` of the file. */
+function callsTemplate(site: Site): boolean {
+  for (const callee of site.calls) {
+    if (callee.kind === 'template') {
+      return true;
+    }
+  }
+  return false;
+}
+
 function isWithinAny(scope: Scope, list: Scope[]): boolean {
   for (const item of list) {
     if (isWithin(scope, item)) {
@@ -1090,7 +1100,12 @@ class ClientGenerator {
       }
       return `export const ${symbol} = ($$s, ...$$a) => ${fn.name}$(${owner}, ...$$a);`;
     }
-    if (node.type === 'ArrowFunctionExpression' && !this.rewriter.sharedCall(site, '$$s', base)) {
+    // An arrow that calls a template keeps the code around it that defines the template.
+    if (
+      node.type === 'ArrowFunctionExpression' &&
+      !this.rewriter.sharedCall(site, '$$s', base) &&
+      !callsTemplate(site)
+    ) {
       const arrow = this.rewriter.rewrite(site, '$$s', base, {
         edit: (patch) => {
           const first = node.params[0];
@@ -2114,8 +2129,67 @@ class ClientGenerator {
     for (const scope of this.model.scopes) {
       if (scope.template) {
         this.emitArgsExports(`T${scope.id}`, scope);
+        this.emitSentCall(scope);
       }
     }
+  }
+
+  /**
+   * The `T` export of a template whose call can be a value of the page state, such as of
+   * `$memo(row(n))`: it makes the call again from its owner and arguments, which the server sends.
+   * A template that only markup calls, such as `{row(n)}`, needs none.
+   */
+  private emitSentCall(scope: Scope): void {
+    const template = scope.template!;
+    if (!templateArgs(this.plan, this.file.source, scope) || !this.calledAsValue(template.name)) {
+      return;
+    }
+    const templates = this.inside(scope);
+    const base = scope.parent!;
+    const emitter = new Emitter(this.file, this.plan, this.valuePatch, {
+      mode: 'client',
+      outer: { inside: templates, base, baseVar: '$$p' },
+      hoist: (code) => this.shareConstant(code),
+    });
+    for (const line of this.prologue(templates, base)) {
+      emitter.line(line);
+    }
+    for (const item of this.declared(templates)) {
+      emitter.emitTemplate(item.template!);
+    }
+    emitter.flush();
+    this.emit(
+      `export const T${scope.id} = ($$p, ...$$a) => {\n${emitter.lines.join('\n')}\nreturn ${template.name}(...$$a);\n};`,
+    );
+  }
+
+  /**
+   * True if a site calls the template other than as the whole expression of an insert in markup,
+   * so its call can be a value that a slot holds: a memo, a signal, a prop or a `const`.
+   */
+  private calledAsValue(name: string): boolean {
+    for (const site of this.model.sites) {
+      let called = false;
+      for (const callee of site.calls) {
+        called ||= callee.kind === 'template' && callee.name === name;
+      }
+      if (!called) {
+        continue;
+      }
+      let node = site.node;
+      while (node.type === 'ParenthesizedExpression') {
+        node = node.expression;
+      }
+      const direct =
+        site.kind === 'insert' &&
+        node.type === 'CallExpression' &&
+        node.callee.type === 'Identifier' &&
+        node.callee.name === name;
+      if (!direct) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private withTemplates(site: Site, code: string): string {

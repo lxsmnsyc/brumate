@@ -201,6 +201,10 @@ function plain(value: unknown, order: Map<unknown, number>, depth = 0): unknown 
   if (value && typeof value === 'object' && value.constructor.name === 'MemoError') {
     return undefined;
   }
+  // A call of a `#template`, by its arguments. Its scope and render function have identities.
+  if (value && typeof value === 'object' && value.constructor.name === 'TemplateCall') {
+    return { template: plain((value as { args: unknown[] }).args, order, depth + 1) };
+  }
   if (typeof Node !== 'undefined' && value instanceof Node) {
     return '[node]';
   }

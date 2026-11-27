@@ -46,7 +46,6 @@ import {
   configure,
   devtools,
   elements,
-  sharedScopes,
   guesses,
   hooks,
   loading,
@@ -447,7 +446,6 @@ export function leavePage(): void {
   scopes.clear();
   comments.clear();
   elements.clear();
-  sharedScopes.clear();
   unindexed.length = 0;
   rendered.length = 0;
   pendingEffects.clear();

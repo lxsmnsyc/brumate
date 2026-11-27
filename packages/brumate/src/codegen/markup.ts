@@ -2039,9 +2039,10 @@ export class Emitter {
     const params = first && last ? copy(this.file.source, first.start, last.end) : '';
     const type = this.options.mode === 'server' ? ': Promise<$$b.Raw>' : '';
     const scope = this.plan.bodyScopes.get(template.body)!;
-    // In the browser, a call of a template that updates in place makes a call that the insert
-    // renders, or updates, with the arguments. The template's code is `name$`.
-    const call = this.options.mode === 'client' && templateArgs(this.plan, this.file.source, scope);
+    // A call of a template that updates in place makes a call that each insert renders, or
+    // updates, with the arguments, so each insert has its own scope on the server and in the
+    // browser. The template's code is `name$`.
+    const call = templateArgs(this.plan, this.file.source, scope);
     const name = call ? `${template.name}$` : template.name;
     if (call) {
       // Each argument is passed with the default value that the parameter gives it.

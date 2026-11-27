@@ -165,7 +165,11 @@ const BindingPlugin = createPlugin<Binding, ReferenceNode>({
 const FunctionPlugin = createPlugin<object, ReferenceNode>({
   tag: 'brumate/function',
   skipPlainObjects: true,
-  test: (value) => typeof value === 'function' && functionReferences.has(value),
+  // An object is a call of a `#template`, which the browser makes again from its reference.
+  test: (value) =>
+    (typeof value === 'function' || typeof value === 'object') &&
+    value !== null &&
+    functionReferences.has(value),
   parse: parsers((value) => {
     const reference = functionReferences.get(value)!;
     // The arguments of a handler that `$handler` made go with it.
