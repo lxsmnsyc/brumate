@@ -23,6 +23,7 @@ Values cross from the server to the browser in two ways: in the page, for the st
 | `ReadableStream`                                   | Each chunk streams as it is ready.                                                                 |
 | `AbortSignal`                                      | Whether it aborted, and its reason.                                                                |
 | `Event`, `CustomEvent`, `DOMException`             | The type and the options of an event, and the name and the message of an exception.                |
+| `ImageData`                                        | Its pixels, width and height.                                                                      |
 | Typed arrays, `ArrayBuffer`                        |                                                                                                    |
 | `Error` and its subclasses                         | The name and the message only. The stack trace stays on the server.                                |
 | Promises                                           | Sent as pending, and settled when the value is ready.                                              |
@@ -38,7 +39,7 @@ The page state does not hold raw HTML twice. When the page printed a `raw()` val
 
 - The server prints the value between `<!--d…-->` and `<!--/d-->` comments, and the page record writes `$b.d("…")` in place of the HTML. The browser removes the comments as it reads them.
 - Only the page state does this. A `#loading` or `#defer` body, a promise that settles later and a server function answer send the HTML.
-- The value prints between the comments only where the parser keeps it in place: inside a `<div>`, `<article>`, `<section>`, `<main>` or another element that holds any content.
+- The value prints between the comments only where the parser keeps it in place: inside a `<div>`, `<article>`, `<section>`, `<main>`, `<aside>`, `<nav>` or another element that holds any content. No `<a>`, `<form>`, `<p>`, table, list item or `<svg>` can be above it.
 - Raw HTML in an `<a>`, a `<p>`, a `<span>`, a `<button>`, a list item, a table, a `<select>`, a `<template>`, a `#head` body or a `#template` stays in the state.
 - Raw HTML that the parser would change stays in the state too: an element that does not close, a `<pre>` or `<textarea>` that starts with a line break, an `<html>` or `<body>` tag, a `<script>`, or a declarative shadow root.
 - A render in order, which crawlers get, keeps every value in the state.
@@ -103,3 +104,10 @@ declare module 'brumate/serial' {
 - Any other value in the page that cannot be sent fails the render with an error that names the value and its component. A value in a server function call that cannot be sent fails the call.
 
 Only values that client code reads are sent. A value that only the server reads can be anything. See [What runs where](./what-runs-where.md).
+
+## Related
+
+- [Page format](./page-format.md#state): how the page state holds these values.
+- [Server function protocol](./server-protocol.md): how calls send and read them.
+- [Server functions](./server-functions.md): what a call can take and return.
+- [What runs where](./what-runs-where.md): which values client code reads.

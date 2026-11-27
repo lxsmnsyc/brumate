@@ -317,9 +317,8 @@ The server also keeps each public page, in the store of [`cached`](./server-func
 
 - Middleware runs first, so a check of access still runs for each request. A request that read the user before the page, such as in middleware, gets a page rendered for it.
 - A page records the tags of the `cached` functions that it called. `revalidate(tag)` drops the pages that used the tag, with the results.
-- A kept page is served with the nonce of the request on its scripts, so a page with a nonce policy can be kept. A page whose nonce appears anywhere else, such as in a `<meta>` policy, in the text of a script or in a header the route sets, is not kept and renders for each request.
+- A kept page gets the `nonce` of each request on its `nonce` attributes, and none when the request has none. So a page under a nonce policy can be kept. A page that holds its nonce anywhere else is not kept and renders for each request. Examples are a `<meta>` policy, the text of a script and a header that the route sets. See [Content Security Policy](./reference-security.md#content-security-policy).
 - A kept page is used until `max-age` ends. `stale-while-revalidate` is for the CDN or the browser: the server renders again after `max-age`.
-- A kept page gets the `nonce` of each request on its scripts, from brumate 0.9.1, so it works under a nonce policy. A page whose nonce shows anywhere else, such as in the text of a script, renders on each request and is not kept. See [Content Security Policy](./reference-security.md#content-security-policy).
 - `handle(request, { pageCache: false })` turns it off, such as when a CDN keeps the pages.
 
 ## Links
@@ -348,10 +347,20 @@ import { handle } from 'virtual:brumate/routes';
 const response = await handle(request);
 ```
 
-- `vite dev` calls it for you. Under Nitro, or on a server of your own, the server entry calls it.
-- It adds the script tags of the client to each page, so the server writes none.
+- `vite dev` calls it for you, so an app needs no `server.ts` in development. The dev server does not serve the pages with `server.middlewareMode`, with Nitro, or with `appType: 'spa'` or `'mpa'`. The plugin sets `appType: 'custom'` when the config leaves it unset.
+- Under Nitro, or on a server of your own, the server entry calls it.
+- It adds the script tags of the client to each page, with the `nonce` of the options on each, so the server writes none. Pass `scripts` to replace them. See [The script tags](./deploying.md#the-script-tags).
+- `options` is `RouteOptions`. It has the options of a render, such as `nonce`, `inOrder` and `scripts`, and `shell` for a prerendered page, `pageCache` and `origins`. See [Server API](./reference-server.md#documentoptions).
 - It returns `undefined` when no route matches and the app has no entry middleware, and the root has neither `_error.brm` nor `_middleware.ts`, so the server can answer with its own 404.
 
 [Deploying](./deploying.md) shows the server entry under Nitro, and a server of your own for development and production.
 
 [`examples/todos`](https://github.com/lxsmnsyc/brumate/tree/main/examples/todos) has a layout, an `@aside` slot, a dynamic route, an endpoint and a 404 page. [`examples/tracker`](https://github.com/lxsmnsyc/brumate/tree/main/examples/tracker) adds middleware that guards a page, a session, and a page prerendered next to dynamic ones.
+
+## Related
+
+- [Route files](./reference-routes.md): every file under `src/routes`, its props and the matching rules.
+- [Navigation](./navigation.md): how links load pages in the browser and keep layouts.
+- [Page metadata](./page-metadata.md): titles and head tags for each route.
+- [Async data](./async-data.md): `#loading` and `#defer` for routes that wait on data.
+- [Deploying](./deploying.md): the server entry, the script tags and prerendering.

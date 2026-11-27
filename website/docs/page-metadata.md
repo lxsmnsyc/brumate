@@ -74,3 +74,10 @@ When a link loads another page of the site without a full page load, the head fo
 - Tags that are in both pages stay. Tags of the old page that the new page does not have are removed, and new ones are added.
 
 See [Navigation](./navigation.md).
+
+## Related
+
+- [Navigation](./navigation.md): how the head changes when a link loads a page.
+- [Routing](./routing.md): layouts that set a default title.
+- [Async data](./async-data.md): a `#loading` body that sets a title as it streams in.
+- [Markup](./markup.md): the elements and blocks that `#head` takes.

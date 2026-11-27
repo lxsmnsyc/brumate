@@ -74,7 +74,7 @@ export async function saveTodo(todo: Todo) {
 ```
 
 - The browser gets a stub for each export, which calls the server. The code of the file, and everything that it imports, never ships.
-- The file exports only functions. A constant or a class is a build error, because the browser could only get a stub of it.
+- The file exports only functions, and `middleware`, which stays on the server. See [Middleware](./routing.md#middleware). A constant or a class is a build error, because the browser could only get a stub of it.
 - Any code can import the file, including other `.ts` files. On the server, the calls are plain function calls.
 - [`event.refresh(fn)`](./async-data.md#loading-again) works with the functions of a file too. Memos of components that call `fn` from the file load again.
 
@@ -535,3 +535,11 @@ export const getProfile = batched(getProfiles, (found, id: string) => found.get(
 - On the server, each call reads its own key at once. The server renders the rows of a list one after another, so their calls never happen at the same time, and calls of one key in a render still share one result. A page that renders many rows on the server reads faster with one call in the list, such as `$memo(getProfiles(ids))`, whose result it hands to the rows.
 - `refresh(getProfiles)` does not load the memos that call `getProfile` again, since the compiler sees only `getProfile`. Refresh the memo of the list instead, or load the page again.
 - A batched read runs a moment after it is called, outside the code that called it, so it cannot see the writes of a transaction around that code. Read many keys with one query there.
+
+## Related
+
+- [Async data](./async-data.md): memos that call server functions, `$isPending` and `#loading`.
+- [Forms and actions](./forms.md): forms that post to a server function.
+- [Serializable values](./reference-serialization.md): what arguments and results can hold.
+- [Server function protocol](./server-protocol.md): the requests that a call sends.
+- [Security](./reference-security.md): origin checks and untrusted arguments.

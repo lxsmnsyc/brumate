@@ -518,8 +518,17 @@ Use it for markup that the server renders but that the first response does not n
 - The server renders the route again for the request, up to the block. It renders the `#loading` and `#defer` bodies around the block, without sending them, and no other body. Data that the page loads before the block loads again. Data that only the body needs is not loaded for the page: put it in the body, such as in a component inside it.
 - If the page's data changed since it loaded, and the block is not where the browser has it, the fallback stays.
 - Without scripts, the fallback stays. A prerendered page needs a server for the request.
+- A body waits for the stylesheets that its markup links before it swaps in, for at most 4 seconds, in a request and in a prerendered page that fills the body in its own response. The request sends the style of the component that holds the block. So the body keeps the rules of its block `<style>`, also after a client navigation removed a stylesheet that only the fallback used. See [Styles](./styles.md#on-the-page).
 - A `#defer` block can be inside a `#loading` or `#defer` body. It cannot be inside a `#client` body, or in markup that the browser renders, such as a branch of an `#if` that changes. The compiler reports it in the same file.
 - A `#defer` block in the children of a component from another file is reported too (BRM217), when that component can render its children in the browser, such as a Popover or a Modal, which render them when they open. The same goes for a `#template` that the page passes to such a component as a prop, and for a `#template` of the page that is called in its children. The component can pass these on to another one. Use `#loading` with a server function there.
 - A component whose own markup has a `#defer` block keeps the fallback when a parent renders the component in the browser, such as inside its `#client` body. The compiler checks one file for this, and cannot see a parent in another file.
 
 `#client` renders its body in the browser, for markup that needs the browser. `#defer` renders it on the server, for markup that needs the server.
+
+## Related
+
+- [Control flow](./control-flow.md): `#try` and `#catch` for errors of a load, and `#offscreen`.
+- [Server functions](./server-functions.md): the functions that memos call, and `cached`.
+- [Navigation](./navigation.md): what the browser keeps while a page loads.
+- [Effects](./effects.md): `#client` blocks and effects that read a memo.
+- [Errors](./errors.md): BRM182, BRM188 and BRM217.
