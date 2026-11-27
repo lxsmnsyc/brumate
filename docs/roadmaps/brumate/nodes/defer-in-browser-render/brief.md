@@ -1,7 +1,7 @@
 ---
 id: defer-in-browser-render
 title: "A #defer block that the browser renders is not silent"
-status: active
+status: done
 priority: should
 type: fix
 story:
@@ -21,7 +21,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-25
-spent:
+spent: 545673
 owns:
   - docs/roadmaps/brumate/nodes/defer-in-browser-render/**
 shared:
