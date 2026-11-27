@@ -1,7 +1,7 @@
 ---
 id: stop-ends-loads
 title: A stopped page ends the code loads still in flight
-status: active
+status: done
 priority: should
 type: hotfix
 story:
@@ -21,7 +21,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-27
-spent:
+spent: 215528
 owns:
   - docs/roadmaps/brumate/nodes/stop-ends-loads/**
 shared:
