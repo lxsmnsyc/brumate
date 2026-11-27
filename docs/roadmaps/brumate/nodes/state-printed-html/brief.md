@@ -1,7 +1,7 @@
 ---
 id: state-printed-html
 title: The state leaves out raw HTML the markup printed
-status: todo
+status: active
 priority: should
 type: feature
 story:

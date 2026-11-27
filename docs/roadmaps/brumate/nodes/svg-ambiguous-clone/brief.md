@@ -1,7 +1,7 @@
 ---
 id: svg-ambiguous-clone
 title: An a inside svg keeps the SVG namespace when the browser renders it
-status: todo
+status: active
 priority: should
 type: hotfix
 story:

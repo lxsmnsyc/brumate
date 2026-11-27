@@ -1,7 +1,7 @@
 ---
 id: defer-in-browser-render
 title: "A #defer block that the browser renders is not silent"
-status: todo
+status: active
 priority: should
 type: fix
 story:

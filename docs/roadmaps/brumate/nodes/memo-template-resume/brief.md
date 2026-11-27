@@ -1,7 +1,7 @@
 ---
 id: memo-template-resume
 title: A memo of a template call inserted twice stays live after resume
-status: todo
+status: active
 priority: should
 type: hotfix
 story:
