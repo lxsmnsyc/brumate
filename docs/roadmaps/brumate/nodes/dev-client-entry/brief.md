@@ -1,7 +1,7 @@
 ---
 id: dev-client-entry
 title: The app's own client entry runs in development
-status: active
+status: done
 priority: 
 type: fix
 story: client-scripts
@@ -21,7 +21,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-26
-spent:
+spent: 291326
 owns:
   - docs/roadmaps/brumate/nodes/dev-client-entry/**
 shared:

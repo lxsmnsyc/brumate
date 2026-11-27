@@ -1,7 +1,7 @@
 ---
 id: default-scripts
 title: handle defaults scripts in dev and production
-status: active
+status: done
 priority: 
 type: feature
 story: client-scripts
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-23
-spent:
+spent: 332135
 owns:
   - packages/brumate/test/default-scripts/**
 shared:

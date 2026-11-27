@@ -1,7 +1,7 @@
 ---
 id: dev-pages
 title: Plain vite dev serves pages
-status: todo
+status: done
 priority: 
 type: feature
 story: client-scripts
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-23
-spent:
+spent: 209619
 owns:
   - packages/brumate/test/dev-pages/**
 shared:

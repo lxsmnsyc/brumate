@@ -2634,6 +2634,30 @@ describe('resume', () => {
     expect(document.querySelectorAll('.price')).toHaveLength(1);
   });
 
+  it('updates both inserts of a memo of a #template call after resume', async () => {
+    await resume('memoTemplateTwice', {});
+    expect(text('.a')).toBe('1');
+    expect(text('.b')).toBe('1');
+    click(document.querySelector('button')!);
+    await waitFor(() => expect(text('.b')).toBe('2'));
+    expect(text('.a')).toBe('2');
+    click(document.querySelector('button')!);
+    await waitFor(() => expect(text('.b')).toBe('3'));
+    expect(text('.a')).toBe('3');
+  });
+
+  it('updates three inserts of a memo of a #template call after resume', async () => {
+    await resume('memoTemplateThrice', {});
+    click(document.querySelector('button')!);
+    await waitFor(() => expect(text('.c')).toBe('2'));
+    expect(text('.a')).toBe('2');
+    expect(text('.b')).toBe('2');
+    click(document.querySelector('button')!);
+    await waitFor(() => expect(text('.c')).toBe('3'));
+    expect(text('.a')).toBe('3');
+    expect(text('.b')).toBe('3');
+  });
+
   it('renders a component in a same-file #template that updates in the browser', async () => {
     await resume('tplImportHost', {});
     click(document.querySelector('.open')!);
@@ -4768,6 +4792,24 @@ describe('cloned SVG', () => {
     expect(document.querySelector('.in-try')!.namespaceURI).toBe(svg);
     expect(document.querySelector('.in-try circle')!.namespaceURI).toBe(svg);
     expect(document.querySelector('.in-if')!.namespaceURI).toBe(svg);
+  });
+
+  it('keeps SVG for an ambiguous top element of a body, a component and an item', async () => {
+    await resume('clonedForeignAnchor', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.in-for')).not.toBeNull());
+    const svg = 'http://www.w3.org/2000/svg';
+    expect(document.querySelector('.in-if')!.namespaceURI).toBe(svg);
+    expect(document.querySelector('.comp')!.namespaceURI).toBe(svg);
+    expect(document.querySelector('.in-for')!.namespaceURI).toBe(svg);
+    expect(document.querySelector('.nest')!.namespaceURI).toBe(svg);
+    // An element inside an ambiguous `<a>` renders too.
+    expect(document.querySelector('.nest .em')).not.toBeNull();
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(document.querySelectorAll('.in-for')).toHaveLength(2));
+    for (const item of document.querySelectorAll('.in-for')) {
+      expect(item.namespaceURI).toBe(svg);
+    }
   });
 
   it('puts an insert after a void element, not inside it', async () => {

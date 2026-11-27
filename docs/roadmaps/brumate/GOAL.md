@@ -1,5 +1,5 @@
 ---
-milestones: ["0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.5.0", "0.5.1", "0.6.0", "0.6.1", "0.6.2", "0.7.0", "0.7.1", "0.7.2", "0.8.0", "0.8.1", "0.9.0", "0.10.0", backlog]
+milestones: ["0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.5.0", "0.5.1", "0.6.0", "0.6.1", "0.6.2", "0.7.0", "0.7.1", "0.7.2", "0.8.0", "0.8.1", "0.9.0", "0.9.1", "0.10.0", backlog]
 # S, docs and chore nodes self-review; the rest, and gates, contracts, releases and hotfixes, get a fresh
 # reviewer (the maintainer, 2026-10-30; this is what ran since 2026-10-27, when an inline comment hid `fresh`).
 review: auto

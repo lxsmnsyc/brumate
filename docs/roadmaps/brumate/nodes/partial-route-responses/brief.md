@@ -43,6 +43,8 @@ depends_on:
 
 ## Goal
 
+> 2026-11-26: kept parked by the maintainer after state-dedupe-spike's throttled run: Slow 4G swaps take 3.2 to 4.3 s on static pages (the website's deployment) and about 0.9 s from a server; partial responses can't reach static pages. state-printed-html takes the static case.
+
 A link navigation sends the routes it keeps, and the server renders and streams only the routes that change, with their head entries, `<html>` attributes and state records. A form, a reload, an unknown build, a request without the header and any case the server cannot answer in part get the full page, as today.
 
 The model stays the same: the server renders, the client resumes, and a page that needs no code ships none. The client still swaps route regions in `planRoutes` and `replaceRoutes`; it no longer downloads or parses the layouts it keeps.

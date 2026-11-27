@@ -13,7 +13,7 @@ import { spreadEntries } from './handlers.ts';
 import { insertHTML, refreshing } from './insert.ts';
 import { prop, spreadProps } from './props.ts';
 import { afterInsert, destroy, destroyNodes, disposeKinds, inPlace, nextId } from './scopes.ts';
-import { hiding, options, scopes, templateNodes } from './state.ts';
+import { hiding, options, scopes, sharedScopes, templateNodes } from './state.ts';
 import type { Scope } from './state.ts';
 import { give, set, take } from './updates.ts';
 
@@ -244,6 +244,12 @@ function renderedTemplate(
       }
       found = scope;
     }
+  }
+  // The server writes one render of a memo of a template call at every insert that shows it, so
+  // the scope has markup at more than one insert. An update in place reaches one copy only, so
+  // each insert renders its own scope, as the browser does.
+  if (found && sharedScopes.has(found.id)) {
+    return undefined;
   }
   return found && { ref: call.ref, scope: found };
 }

@@ -1,7 +1,7 @@
 ---
 id: client-scripts
 title: Apps never write the client scripts
-status: active
+status: done
 priority: must
 type: story
 story: 
@@ -44,6 +44,9 @@ A brumate app never writes the `/@vite/client` tag or the client entry script, i
 | dev-pages           | M    | Plain `vite dev` serves pages through a post middleware; `appType: 'custom'`; skipped under `middlewareMode` and Nitro                    |
 | nitro-scripts       | S    | The Nitro entry drops `?assets=client` and the DEV ternary; e2e in dev and build                                                          |
 | examples-glue       | M    | Delete the hand-written tags and example glue, repoint the e2e, guard test                                                                |
+| script-nonce        | S    | The default script tags carry the nonce of the render; `handle` options typed as `RouteOptions` (found by examples-glue)                  |
+| nitro-prerender     | M    | Prerendering works in a Nitro build (found by examples-glue)                                                                              |
+| dev-client-entry    | S    | The app's own client entry runs in development (found by client-scripts-docs)                                                             |
 | client-scripts-docs | S    | getting-started, deploying, reference-plugin and the skill                                                                                |
 
 default-scripts goes first. dev-pages and nitro-scripts follow it (both edit `vite.ts` or rely on its default). examples-glue waits for the first three, and the docs wait for examples-glue.
@@ -59,7 +62,7 @@ The settled structure, budget, rejected alternatives and prior art are in the de
 ## Acceptance
 
 - [ ] `grep -rn '@vite/client' examples website/docs benchmarks website/scripts` finds only `benchmarks/brumate-0.3` (pinned to 0.3.0) and the doc of the `scripts` override; a test enforces it.
-- [ ] `pnpm dev` in todos, hackernews, tracker, ui, kit-app and browser-async runs `vite` and serves pages, and their e2e suites pass.
+- [ ] `pnpm dev` in hackernews, tracker, ui, kit-app and browser-async runs `vite` and serves pages, and their e2e suites pass. todos keeps its own `middlewareMode` server as the own-server case (debate step 5).
 - [ ] examples/nitro passes its e2e in dev and build with no script tag in its entry.
 - [ ] Root `pnpm test` and the e2e suites pass.
 

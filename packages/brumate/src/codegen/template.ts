@@ -96,6 +96,8 @@ export type Write =
 export interface ClonedTemplate {
   /** `svg` or `math` when the markup starts with an element of SVG or MathML outside one. */
   foreign?: string;
+  /** An element at the top has a name that HTML and SVG share, such as `a`. */
+  ambiguous?: boolean;
   /**
    * The static HTML of the template. Each element that the render writes has `b-x` with its
    * index, which the browser reads, and removes, when it parses the template. A text insert is
@@ -174,6 +176,8 @@ const SVG_ONLY = new Set(
     ' ',
   ),
 );
+/** Elements that HTML and SVG both have, which the parser puts in the namespace of the place. */
+const AMBIGUOUS = new Set(['a', 'script', 'style', 'title']);
 const MATH_ONLY = new Set(
   'annotation maction menclose merror mfenced mfrac mi mmultiscripts mn mo mover mpadded mphantom mroot mrow ms mspace msqrt mstyle msub msubsup msup mtable mtd mtext mtr munder munderover semantics'.split(
     ' ',
@@ -214,6 +218,8 @@ class Reader {
   private readonly names = new Map<number, string>();
   /** `svg` or `math` when the first element at the top is of SVG or MathML only. */
   foreign: string | undefined;
+  /** An element at the top has a name that HTML and SVG share, so its namespace is its place's. */
+  ambiguous = false;
   private top = true;
 
   /** `svg` or `math` when the open elements put what comes next in SVG or MathML. */
@@ -311,6 +317,9 @@ class Reader {
   private named(): void {
     const name = this.name.toLowerCase();
     this.names.set(this.element, name);
+    if (this.open.length === 0 && AMBIGUOUS.has(name)) {
+      this.ambiguous = true;
+    }
     if (this.top && this.open.length === 0) {
       this.top = false;
       if (SVG_ONLY.has(name)) {
@@ -753,7 +762,13 @@ export function clonedTemplate(
       around = reader.parents.get(around);
     }
   }
-  return { html: reader.html, writes, foreign: reader.foreign, indexed };
+  return {
+    html: reader.html,
+    writes,
+    foreign: reader.foreign,
+    indexed,
+    ambiguous: reader.ambiguous || undefined,
+  };
 }
 
 /**
@@ -902,6 +917,11 @@ export function cloneLines(
     emitter.foreignAround(owner),
   );
   if (!found) {
+    return false;
+  }
+  // With no owner, the place of the markup is not known: HTML that the insert parses takes the
+  // namespace of its place, a clone has the one that its template was parsed in.
+  if (found.ambiguous && owner === undefined) {
     return false;
   }
   const flush = tops[0];
