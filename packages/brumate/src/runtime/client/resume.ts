@@ -33,7 +33,7 @@ import {
   stopObserving,
   unindexed,
 } from './blocks.ts';
-import { loadComponent, loadModule, pageComponents } from './code.ts';
+import { endLoads, loadComponent, loadModule, pageComponents } from './code.ts';
 import { linkMadeStores, resumeStoreReads } from './context.ts';
 import { leaveGuesses, settled } from './guesses.ts';
 import { failBoundary, replaceTry } from './errors.ts';
@@ -305,6 +305,13 @@ function addScopes(state: PageState, root: string): Scope[] {
 
 /** Stops reading state records and markers that arrive later. Later records wait for `init`. */
 export function dispose(): void {
+  pause();
+  // A page that stopped keeps no link from code that loads later.
+  endLoads();
+}
+
+/** Stops reading records, as `dispose` does, and leaves the code loads in flight alone. */
+function pause(): void {
   const queue = stateQueue();
   if (queue.push === pushRecords) {
     // The array's own `push` again, so records wait in it.
@@ -319,7 +326,8 @@ export function dispose(): void {
  * that come after count for the records that stream in later.
  */
 export function leaveRoutes(): void {
-  dispose();
+  // The code of a kept layout can still load, and it links its stores when it has.
+  pause();
   resetWrites();
 }
 

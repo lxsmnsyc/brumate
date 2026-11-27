@@ -2,7 +2,7 @@
 
 import { blockStart, rangeEnd } from './blocks.ts';
 import type { Render } from './branches.ts';
-import { loadModule } from './code.ts';
+import { loadModule, stops } from './code.ts';
 import { insertHTML } from './insert.ts';
 import { inPlace, removeBlock, findRoot } from './scopes.ts';
 import { HAS_TRIES } from '../features.ts';
@@ -27,6 +27,7 @@ export function fail(scope: Scope | undefined, error: unknown, uncaught?: boolea
     unhandled(error, scope);
     return;
   }
+  const at = stops;
   void (async () => {
     for (let current = scope; current; current = current.l ?? current.p ?? current.o) {
       const id = findRoot(current).m;
@@ -37,6 +38,9 @@ export function fail(scope: Scope | undefined, error: unknown, uncaught?: boolea
       // `#catch`, so a `#try` further out catches the error.
       // oxlint-disable-next-line no-await-in-loop -- Each scope can belong to another component.
       const module = await loadModule(id).catch(() => undefined);
+      if (at !== stops) {
+        return;
+      }
       const entry = module?.t?.[current.k];
       if (!entry) {
         continue;
