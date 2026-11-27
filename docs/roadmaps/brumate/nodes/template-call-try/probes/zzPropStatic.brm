@@ -1,0 +1,9 @@
+<script>
+  import ZzLaterKid from './ZzLaterKid.brm';
+</script>
+
+#template box(value: number) {
+  <span class="v">{value}</span>
+}
+
+<ZzLaterKid shown=(box(5)) />

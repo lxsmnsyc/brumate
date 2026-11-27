@@ -1,0 +1,13 @@
+<script>
+  import { $getContext, $signal } from 'brumate/signals';
+  import { CallCtx } from './zzCallCtx.ts';
+
+  const got = $getContext(CallCtx);
+  let open = $signal(false);
+</script>
+
+<button class="open" onClick=(() => (open = true))>Open</button>
+<div class="a">{got!.shown}</div>
+#if (open) {
+  <div class="b">{got!.shown}</div>
+}

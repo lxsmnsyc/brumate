@@ -1,0 +1,19 @@
+<script>
+  function check(v: number): number {
+    if (v === 1) {
+      throw new Error('bad');
+    }
+    return v;
+  }
+  const c = boom(1);
+</script>
+
+#template boom(value: number) {
+  <span class="v">{check(value)}</span>
+}
+
+#try {
+  <div class="a">{c}</div>
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

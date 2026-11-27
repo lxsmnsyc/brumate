@@ -1,0 +1,9 @@
+<script>
+  import { $getContext } from 'brumate/signals';
+  import { CallCtx } from './zzCallCtx.ts';
+
+  const got = $getContext(CallCtx);
+</script>
+
+<div class="a">{got!.shown}</div>
+<div class="b">{got!.shown}</div>

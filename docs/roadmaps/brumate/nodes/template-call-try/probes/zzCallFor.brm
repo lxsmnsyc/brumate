@@ -1,0 +1,22 @@
+<script>
+  import { $signal, $memo } from 'brumate/signals';
+
+  let n = $signal(1);
+  let ids = $signal([1, 2]);
+  const shown = $memo(box(n));
+</script>
+
+#template box(value: number) {
+  <span class="v">{value}</span>
+}
+
+<button class="add" onClick=(() => n++)>Add</button>
+<button class="more" onClick=(() => (ids = [...ids, ids.length + 1]))>More</button>
+<ul>
+  #for (id of ids by id) {
+    <li>{id} {shown}</li>
+  }
+</ul>
+#key (n) {
+  <p class="k">{shown}</p>
+}

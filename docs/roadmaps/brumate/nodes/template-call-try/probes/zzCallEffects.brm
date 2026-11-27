@@ -1,0 +1,16 @@
+<script>
+  const seen: number[] = [];
+  function note(v: number): number {
+    seen.push(v);
+    return v;
+  }
+  const c = box(2);
+</script>
+
+#template box(value: number) {
+  <span class="v">{note(value)}</span>
+}
+
+<div class="a">{c}</div>
+<div class="b">{c}</div>
+<p class="n">{seen.join(',')}</p>

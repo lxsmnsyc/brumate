@@ -1,0 +1,13 @@
+<script>
+  import { $setContext } from 'brumate/signals';
+  import ZzCallKid from './ZzCallKid.brm';
+  import { CallCtx } from './zzCallCtx.ts';
+
+  $setContext(CallCtx, { shown: box(3) });
+</script>
+
+#template box(value: number) {
+  <span class="v">{value}</span>
+}
+
+<ZzCallKid />
