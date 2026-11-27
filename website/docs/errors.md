@@ -2362,3 +2362,15 @@ A `<script>` in markup has `trigger` and `data-rerun`. A script with a trigger n
 ```brm
 <script src="https://example.com/chat.js" trigger="idle"></script>
 ```
+
+## BRM217
+
+`#defer cannot be in the content of <{name}>, which can render it in the browser. Use #loading with a server function`
+
+A `#defer` is in the children of a component from another file, or in a `#template` that the page passes to it as a prop. The component can render them in the browser, such as an overlay that opens. The server cannot render the block again, so its body may never load.
+
+```brm
+#loading {
+  <Comments />
+}
+```

@@ -1,6 +1,10 @@
-// Where focus goes when an overlay opens on content that is not there yet: a `#defer` body, or a
-// `#loading` body that waits for a value in the browser. An overlay takes focus once, when it has
-// opened, so the guide "Content that loads late" (website/ui/async-content.md) follows these tests.
+// Where focus goes when an overlay opens on content that is not there yet: a `#loading` body that
+// waits for a value in the browser. A `#defer` body cannot be there, and the project check reports
+// it. An overlay takes focus once, when it has opened, so the guide "Content that loads late"
+// (website/ui/async-content.md) follows these tests.
+import { readFileSync, readdirSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { analyzeProjectDefers } from 'brumate';
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Overlays from './fixtures/async-overlays.brm?brumate-server';
@@ -26,34 +30,37 @@ async function overlays() {
 }
 
 const find = (selector: string) => document.querySelector<HTMLElement>(selector);
-// Longer than the 30 ms of the late value, and than the triggers of `#defer` in a test.
-const settle = () => new Promise((resolve) => setTimeout(resolve, 100));
 
-it('focuses the Dialog of a Popover that opens on a #defer body', async () => {
-  const page = await overlays();
-  pressWith(page.get('.defer-trigger'));
-  await page.waitFor(() => expect(document.activeElement).toBe(find('.defer-dialog')));
-  expect(find('.defer-fallback')).not.toBeNull();
-  await settle();
-  expect(document.activeElement).toBe(find('.defer-dialog'));
+// The browser renders the content of an overlay when it opens, and a `#defer` block that the
+// browser renders keeps its fallback (website/docs/async-data.md, "#defer"). The server cannot
+// render it again, so the project check reports the block in the children of the overlay.
+
+// The parts of the package and one fixture, keyed by path as the plugin keys them.
+function projectWith(fixture: string): { sources: Map<string, string>; path: string } {
+  const sources = new Map<string, string>();
+  const src = resolve('src');
+  for (const name of readdirSync(src)) {
+    if (name.endsWith('.brm')) {
+      sources.set(`${src}/${name}`, readFileSync(`${src}/${name}`, 'utf8'));
+    }
+  }
+  const path = resolve('test/fixtures', fixture);
+  sources.set(path, readFileSync(path, 'utf8'));
+  return { sources, path };
+}
+
+it('reports a #defer in the Dialog of a Popover and of a Modal', () => {
+  const { sources, path } = projectWith('defer-overlays.brm');
+  const found = analyzeProjectDefers(sources).get(path) ?? [];
+  expect(found.map((block) => block.component)).toEqual(['Popover', 'Modal']);
+  for (const block of found) {
+    expect(sources.get(path)!.slice(block.start, block.end)).toBe('#defer');
+  }
 });
 
-it('focuses the Dialog of a Modal that opens on a #defer body', async () => {
-  const page = await overlays();
-  pressWith(page.get('.modal-defer-trigger'));
-  await page.waitFor(() => expect(document.activeElement).toBe(find('.modal-defer-dialog')));
-  expect(find('.modal-defer-fallback')).not.toBeNull();
-});
-
-// The gap: the browser renders the content of an overlay when it opens, and a `#defer` block that
-// the browser renders keeps its fallback (website/docs/async-data.md, "#defer"). Reported as a
-// node of the roadmap; this test passes once the body arrives.
-it.fails('renders the #defer body of an overlay that the browser opens', async () => {
-  const page = await overlays();
-  pressWith(page.get('.defer-trigger'));
-  await page.waitFor(() => expect(document.activeElement).toBe(find('.defer-dialog')));
-  await settle();
-  expect(find('.defer-field')).not.toBeNull();
+it('reports no #defer for a #loading body in an overlay', () => {
+  const { sources, path } = projectWith('async-overlays.brm');
+  expect(analyzeProjectDefers(sources).get(path)).toBeUndefined();
 });
 
 it('keeps focus on the Dialog when a #loading body arrives after it opened', async () => {

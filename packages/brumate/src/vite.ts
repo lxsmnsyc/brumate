@@ -60,7 +60,13 @@ import {
 import type { CompileOptions, CompileResult } from './compile.ts';
 import { getLocation, withCode } from './error.ts';
 import { functionId, getComponentName, hash } from './plan.ts';
-import { analyzeProject, importedComponents, resolveRelative } from './project.ts';
+import {
+  analyzeProjectDefers,
+  analyzeProjectProps,
+  importedComponents,
+  resolveRelative,
+} from './project.ts';
+import type { BrowserDefer } from './project.ts';
 import {
   allFeatures,
   getFeatures,
@@ -697,6 +703,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   const shapes = new Map<string, Shape>();
   /** The props that parents can change, by absolute file path. */
   let liveProps = new Map<string, Set<string>>();
+  /** The `#defer` blocks that a component of another file renders in the browser, by file. */
+  let browserDefers = new Map<string, BrowserDefer[]>();
   /** The names of the server functions that the app refreshes, or undefined before the first scan. */
   let refreshed: Set<string> | undefined;
 
@@ -899,7 +907,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     for (const [index, file] of list.entries()) {
       sources.set(file, contents[index]!);
     }
-    liveProps = analyzeProject(sources, resolveComponent);
+    const props = analyzeProjectProps(sources, resolveComponent);
+    liveProps = new Map();
+    for (const [file, names] of props) {
+      liveProps.set(file, new Set(names.keys()));
+    }
+    browserDefers = analyzeProjectDefers(sources, resolveComponent, props);
     // The server functions that the app refreshes, from its components and its scripts.
     const scripts = await findScripts(root, exclude);
     const scriptSources = await inBatches(
@@ -1006,6 +1019,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     return {
       filename: getFileName(file),
       liveProps: liveProps.get(file),
+      browserDefers: browserDefers.get(file),
       refreshed,
       path: file,
       merge: options.merge ?? DEFAULT_MERGE,

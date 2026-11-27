@@ -1,0 +1,9 @@
+# Log: defer-in-browser-render
+
+- Base 6fa90cdc (batch/brumate-release-0.10). Changed `it.fails` to `it` in `packages/ui/test/async-overlay.test.ts` and ran `pnpm --filter @brumate/ui exec vitest run test/async-overlay.test.ts`. Result: 1 failed, 4 passed. `expect(find('.defer-field')).not.toBeNull()` fails, and the dev warning "AsyncOverlays renders a #defer block in the browser, so it shows its fallback only" prints. The problem reproduces.
+- Choice: fix 2. The server finds a `#defer` block only in its own render up to the block, and a block the browser renders has no place there. A browser fetch needs a new request that names a component, props and scope. That is a protocol of its own, so the design is left to the maintainer (see outcome).
+- How the compiler sees a browser render: `graph.created` holds the scopes the client creates, templates included when a call to them changes. A component renders its children in the browser when a read of its `children` prop is in such a scope, in the children of a component that does, or in a template called from such a place. `analyzeProjectDefers` in `project.ts` runs this to a fixed point over the project.
+- Wiring: `CompileOptions.browserDefers` (compile.ts) turns each block into error BRM217. The Vite plugin and `brumate check` pass it.
+- The two `#defer` focus tests and their fixture blocks moved: the fixture cannot compile any more. They are now `test/fixtures/defer-overlays.brm`, which the new tests read and never compile.
+- First run of the ui test after the move failed on cold start (2 s `waitFor` in the first mount). A second run passed 4 of 4.
+- Mistake early on: the first `pnpm install` and `pnpm build` ran in the main checkout, not the worktree (cwd resets). Main stayed clean in `git status` (only ignored `dist` and `node_modules` changed).

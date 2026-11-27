@@ -1279,6 +1279,12 @@ const MODULES: ErrorEntry[] = [
     'A `<script>` in markup has `trigger` and `data-rerun`. A script with a trigger never runs again after a navigation.',
     '<script src="https://example.com/chat.js" trigger="idle"></script>',
   ),
+  entry(
+    'BRM217',
+    '#defer cannot be in the content of <{name}>, which can render it in the browser. Use #loading with a server function',
+    'A `#defer` is in the children of a component from another file, or in a `#template` that the page passes to it as a prop. The component can render them in the browser, such as an overlay that opens. The server cannot render the block again, so its body may never load.',
+    '#loading {\n  <Comments />\n}',
+  ),
 ];
 
 export const ERRORS: readonly ErrorEntry[] = [...SYNTAX, ...SCRIPT, ...OUTPUT, ...MODULES];

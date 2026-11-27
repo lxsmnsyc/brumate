@@ -1,0 +1,38 @@
+<!--
+  A #defer in the Dialog of an overlay. The browser renders the content of an overlay when it
+  opens, so the block would keep its #else. The compiler reports it (BRM217), so no test compiles
+  this file: async-overlay.test.ts reads it.
+-->
+<script>
+  import Button from '../../src/Button.brm';
+  import Dialog from '../../src/Dialog.brm';
+  import DialogTrigger from '../../src/DialogTrigger.brm';
+  import Modal from '../../src/Modal.brm';
+  import Popover from '../../src/Popover.brm';
+</script>
+
+<DialogTrigger>
+  <Button class="defer-trigger">Open deferred</Button>
+  <Popover>
+    <Dialog class="defer-dialog" aria-label="Deferred">
+      #defer {
+        <button class="defer-field" autofocus>From the server</button>
+      } #else {
+        <p class="defer-fallback">Loading…</p>
+      }
+    </Dialog>
+  </Popover>
+</DialogTrigger>
+
+<DialogTrigger>
+  <Button class="modal-defer-trigger">Open deferred modal</Button>
+  <Modal>
+    <Dialog class="modal-defer-dialog" aria-label="Deferred modal">
+      #defer {
+        <button class="modal-defer-field" autofocus>From the server</button>
+      } #else {
+        <p class="modal-defer-fallback">Loading…</p>
+      }
+    </Dialog>
+  </Modal>
+</DialogTrigger>

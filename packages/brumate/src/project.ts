@@ -1,9 +1,10 @@
 import { analyze } from './analyze.ts';
-import type { Attribute, Markup, SFCFile } from './ast.ts';
+import type { Attribute, ComponentNode, Markup, Range, SFCFile } from './ast.ts';
 import { forEachNode } from './ast.ts';
 import { buildGraph } from './graph.ts';
 import type { Graph } from './graph.ts';
-import type { SemanticModel, Site } from './model.ts';
+import { lookup } from './model.ts';
+import type { Declaration, Scope, SemanticModel, Site } from './model.ts';
 import type { oxc } from './oxc.ts';
 import { parse } from './parser.ts';
 
@@ -428,6 +429,217 @@ export function analyzeProject(
   const result = new Map<string, Set<string>>();
   for (const [filename, props] of analyzeProjectProps(files, resolve)) {
     result.set(filename, new Set(props.keys()));
+  }
+  return result;
+}
+
+/** A `#defer` that a component of another file can render in the browser. */
+export interface BrowserDefer {
+  /** The range of the `#defer` keyword. */
+  start: number;
+  end: number;
+  /** The component that can render the block in the browser. */
+  component: string;
+}
+
+/** Stands for a scope that the client creates, which the check of one file already covers. */
+const CREATED = '*';
+
+/**
+ * Finds the `#defer` blocks that the browser can render because of a component in another file.
+ * A component renders a prop in the browser when it reads the prop where the client creates
+ * markup, such as the children of an overlay that opens, or when it passes the prop on to a
+ * component that does. The props that hold markup are the children and the `#template` that a
+ * page passes as a prop. The server cannot render again a block that only the browser rendered,
+ * so the block keeps its `#else`. The check of one file sees the blocks in its own markup only.
+ * Files with errors are skipped.
+ */
+export function analyzeProjectDefers(
+  files: Map<string, string>,
+  resolve: Resolve = resolveRelative,
+  props: ProjectProps = analyzeProjectProps(files, resolve),
+): Map<string, BrowserDefer[]> {
+  const parsed = new Map<string, SFCFile>();
+  const graphs = new Map<string, Graph>();
+  // The components that each file renders with children, and the files of those components.
+  const rendered = new Map<string, { node: ComponentNode; target: string }[]>();
+  for (const [filename, source] of files) {
+    try {
+      const file = parse(source, { filename });
+      const liveProps = new Set(props.get(filename)?.keys());
+      graphs.set(filename, buildGraph(analyze(file), { liveProps }));
+      parsed.set(filename, file);
+    } catch {
+      // The compile of this file reports the error.
+      continue;
+    }
+    const list: { node: ComponentNode; target: string }[] = [];
+    function visit(node: Markup): void {
+      if (node.kind !== 'component') {
+        return;
+      }
+      const specifier = importSource(parsed.get(filename)!, node.name.split('.')[0]!);
+      const target = specifier === undefined ? undefined : resolve(specifier, filename);
+      if (target !== undefined && files.has(target)) {
+        list.push({ node, target });
+      }
+    }
+    forEachNode(parsed.get(filename)!.children, visit);
+    for (const template of parsed.get(filename)!.templates) {
+      forEachNode(template.body.children, visit);
+    }
+    rendered.set(filename, list);
+  }
+
+  /** The props that each file renders where the browser creates markup. */
+  type BrowserProps = Map<string, Set<string>>;
+
+  /**
+   * Names what renders code at a place in a file in the browser: `CREATED` for a scope that the
+   * client creates, the component whose browser-rendered prop holds the place (its children or an
+   * attribute value), or the place where a template that holds it is called.
+   */
+  function browserPlace(
+    filename: string,
+    at: Range,
+    scope: Scope,
+    browser: BrowserProps,
+    seen: Set<Declaration> = new Set(),
+  ): string | undefined {
+    const graph = graphs.get(filename)!;
+    if (graph.created.has(scope)) {
+      return CREATED;
+    }
+    for (const { node, target } of rendered.get(filename)!) {
+      const names = browser.get(target);
+      if (!names || names.size === 0) {
+        continue;
+      }
+      if (names.has('children') && node.children.length > 0) {
+        const first = node.children[0]!;
+        const last = node.children[node.children.length - 1]!;
+        if (at.start >= first.start && at.end <= last.end) {
+          return node.name;
+        }
+      }
+      for (const attribute of node.attributes) {
+        if (
+          attribute.kind === 'value' &&
+          names.has(attribute.name) &&
+          at.start >= attribute.start &&
+          at.end <= attribute.end
+        ) {
+          return node.name;
+        }
+      }
+    }
+    // A template runs where it is called.
+    for (let outer: Scope | undefined = scope; outer; outer = outer.parent) {
+      const template = outer.template && outer.parent && lookup(outer.parent, outer.template.name);
+      if (!template || seen.has(template)) {
+        continue;
+      }
+      seen.add(template);
+      for (const site of graph.model.sites) {
+        if (site.calls.has(template)) {
+          const place = browserPlace(filename, site.range, site.scope, browser, seen);
+          if (place) {
+            return place;
+          }
+        }
+      }
+    }
+    return undefined;
+  }
+
+  /** The props of a file that it reads where the browser creates markup, or passes on to such a place. */
+  function browserPropsOf(filename: string, browser: BrowserProps): string[] {
+    const names: string[] = [];
+    for (const declaration of graphs.get(filename)!.model.declarations) {
+      if (declaration.kind !== 'prop' || declaration.propKey === undefined) {
+        continue;
+      }
+      for (const read of declaration.reads) {
+        if (browserPlace(filename, read.range, read.site.scope, browser)) {
+          names.push(declaration.propKey);
+          break;
+        }
+      }
+    }
+    return names;
+  }
+
+  // Each round can only add props, so this ends.
+  const browser: BrowserProps = new Map();
+  for (const filename of parsed.keys()) {
+    browser.set(filename, new Set());
+  }
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const [filename, names] of browser) {
+      for (const name of browserPropsOf(filename, browser)) {
+        if (!names.has(name)) {
+          names.add(name);
+          changed = true;
+        }
+      }
+    }
+  }
+
+  const result = new Map<string, BrowserDefer[]>();
+  for (const [filename, list] of rendered) {
+    const found = new Map<number, BrowserDefer>();
+    function report(nodes: Markup[], component: string): void {
+      forEachNode(nodes, (inner) => {
+        if (inner.kind === 'defer' && !found.has(inner.start)) {
+          found.set(inner.start, {
+            start: inner.start,
+            end: inner.start + '#defer'.length,
+            component,
+          });
+        }
+      });
+    }
+    const file = parsed.get(filename)!;
+    const graph = graphs.get(filename)!;
+    // The children of a component that renders them in the browser.
+    for (const { node, target } of list) {
+      const names = browser.get(target)!;
+      if (names.has('children')) {
+        report(node.children, node.name);
+      }
+      // A template that the page passes as a prop that the component renders in the browser.
+      for (const attribute of node.attributes) {
+        if (attribute.kind !== 'value' || !names.has(attribute.name)) {
+          continue;
+        }
+        for (const name of valueNames(attribute.value.ast)) {
+          const template = file.templates.find((declared) => declared.name === name);
+          if (template) {
+            report(template.body.children, node.name);
+          }
+        }
+      }
+    }
+    // A template of the page that is called in the children of such a component.
+    for (const template of file.templates) {
+      const declaration = lookup(graph.model.component, template.name);
+      if (!declaration) {
+        continue;
+      }
+      for (const site of graph.model.sites) {
+        if (!site.calls.has(declaration)) {
+          continue;
+        }
+        const place = browserPlace(filename, site.range, site.scope, browser);
+        if (place && place !== CREATED) {
+          report(template.body.children, place);
+        }
+      }
+    }
+    if (found.size > 0) {
+      result.set(filename, [...found.values()]);
+    }
   }
   return result;
 }

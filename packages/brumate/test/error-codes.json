@@ -210,5 +210,6 @@
   "BRM213": "A <script> with src has no code inside. Write the code in <script inline>",
   "BRM214": "The trigger of a <script> is a plain string: idle, visible, interaction or load",
   "BRM215": "A script in #head cannot wait to be visible, since no element follows it. Use idle or interaction",
-  "BRM216": "A script with a trigger runs once per page, so data-rerun does not apply. Remove one of them"
+  "BRM216": "A script with a trigger runs once per page, so data-rerun does not apply. Remove one of them",
+  "BRM217": "#defer cannot be in the content of <{name}>, which can render it in the browser. Use #loading with a server function"
 }
