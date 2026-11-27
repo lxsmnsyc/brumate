@@ -13,7 +13,7 @@ import {
   rendered,
   unindexed,
 } from './blocks.ts';
-import { codeReady, loadModule } from './code.ts';
+import { codeReady, loadModule, stops } from './code.ts';
 import { afterInsert, findRoot } from './scopes.ts';
 import { hiding, options, scopes, updating, written } from './state.ts';
 import type { ClientModule, Scope } from './state.ts';
@@ -47,8 +47,12 @@ export function refresh(added: Scope[], onlyWritten = false, memos = true): void
       byModule.set(id, [scope]);
     }
   }
+  const at = stops;
   for (const [id, list] of byModule) {
     void loadModule(id).then(async (module) => {
+      if (at !== stops) {
+        return;
+      }
       // The names of the updates of each kind of scope, memos first, so the other updates read
       // their new values.
       const byKind = new Map<number, string[]>();
