@@ -64,7 +64,9 @@ try {
       if (who && /You are/.test(who.textContent) && !window.__e2eDefer.shown) {
         window.__e2eDefer.shown = true;
         const link = document.querySelector('link[href="/e2e-defer.css"]');
-        window.__e2eDefer.pending = link ? (link.sheet ? 0 : 1) : -1;
+        if (link) {
+          window.__e2eDefer.pending = link.sheet ? 0 : 1;
+        }
       }
     }).observe(document, { childList: true, subtree: true, characterData: true });
   });
