@@ -1,5 +1,15 @@
 # brumate
 
+## 0.9.1
+
+### Patch Changes
+
+- d990078: - A page kept by `cache` gets the `nonce` of the request it is served to on every `nonce` attribute. It gets none when the request has none.
+  - A page that holds its nonce in a meta policy, in script text or in a header is rendered again for each request.
+- da1a895: A memo of a `#template` call that a page shows in two places now updates both places after the page resumes. Before, only one changed.
+- ab0cd93: A page that stopped no longer links its scopes to module stores, renders a block or shows an error from code that finishes loading later. Before, a late load could subscribe the old scopes to the stores of the next page.
+- b72db2a: A component that starts with an `a`, `script`, `style` or `title` element keeps the SVG namespace when the browser renders it inside an `<svg>`.
+
 ## 0.9.0
 
 ### Minor Changes

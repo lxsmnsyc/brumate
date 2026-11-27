@@ -1,5 +1,11 @@
 # @brumate/typescript-plugin
 
+## 0.1.21
+
+### Patch Changes
+
+- @brumate/language-core@0.3.3
+
 ## 0.1.20
 
 ### Patch Changes
