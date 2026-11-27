@@ -251,15 +251,15 @@ g: [[2, 0, 33, 1, 0, 0, 1, 1, 1]]
 
 Values with plugins of their own, and the call of `$b` that makes each one in a record:
 
-| Tag                 | In a record              | Value                                                                                                          |
-| ------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| `brumate/element`   | `$b.e(scope, anchor)`    | `ElementReference`: a `ref` signal whose element the server rendered. It holds the element's scope and anchor. |
-| `brumate/function`  | `$b.f(reference, scope)` | `FunctionReference`: a client function passed as a prop, or a `#template` call, whose reference is `T<n>` and which also holds its arguments. It holds its reference and the scope it reads. |
-| `brumate/children`  | `$b.n(reference, scope, at, anchor)` | `children` that the browser renders again, as the export that renders them, with their scope and the place of their insert. |
-| `brumate/raw`       | `$b.r(html)`             | HTML that the client may insert again, such as `children`.                                                     |
-|                     | `$b.d(token, component)` | The same, when the page printed the HTML between markers. See [Raw HTML that the page printed](#raw-html-that-the-page-printed). |
-| `brumate/component` | `$b.c(id)`               | A component, as its component ID, for dynamic tags.                                                            |
-| `brumate/upload`    | Not in the page          | A file in the arguments of a server function call. See [Server function protocol](./server-protocol.md).       |
+| Tag                 | In a record                          | Value                                                                                                                                                                                        |
+| ------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `brumate/element`   | `$b.e(scope, anchor)`                | `ElementReference`: a `ref` signal whose element the server rendered. It holds the element's scope and anchor.                                                                               |
+| `brumate/function`  | `$b.f(reference, scope)`             | `FunctionReference`: a client function passed as a prop, or a `#template` call, whose reference is `T<n>` and which also holds its arguments. It holds its reference and the scope it reads. |
+| `brumate/children`  | `$b.n(reference, scope, at, anchor)` | `children` that the browser renders again, as the export that renders them, with their scope and the place of their insert.                                                                  |
+| `brumate/raw`       | `$b.r(html)`                         | HTML that the client may insert again, such as `children`.                                                                                                                                   |
+|                     | `$b.d(token, component)`             | The same, when the page printed the HTML between markers. See [Raw HTML that the page printed](#raw-html-that-the-page-printed).                                                             |
+| `brumate/component` | `$b.c(id)`                           | A component, as its component ID, for dynamic tags.                                                                                                                                          |
+| `brumate/upload`    | Not in the page                      | A file in the arguments of a server function call. See [Server function protocol](./server-protocol.md).                                                                                     |
 
 Web values, such as `URL`, `Headers` and `ReadableStream`, use the plugins of `seroval-plugins/web`, which write code that makes them, such as `new URL(href)`.
 
@@ -282,21 +282,21 @@ See [Serialization](./reference-serialization.md) for what each kind of value do
 
 ### Attributes of records
 
-| Attribute  | On                                             | Meaning                                                                                                |
-| ---------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `nonce`    | Every record, with the `nonce` option          | The Content Security Policy nonce of the render.                                                       |
-| `b-state`  | Every record                                   | The script is a state record.                                                                          |
-| `b-scopes` | Records with scopes                            | The record adds scopes.                                                                                |
-| `b-next`   | Every record with scopes                       | A number above every scope and boundary ID of the render.                                              |
-| `b-route`  | The first record of a page from routes         | The key of the root route.                                                                             |
+| Attribute  | On                                             | Meaning                                                                                                        |
+| ---------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `nonce`    | Every record, with the `nonce` option          | The Content Security Policy nonce of the render.                                                               |
+| `b-state`  | Every record                                   | The script is a state record.                                                                                  |
+| `b-scopes` | Records with scopes                            | The record adds scopes.                                                                                        |
+| `b-next`   | Every record with scopes                       | A number above every scope and boundary ID of the render.                                                      |
+| `b-route`  | The first record of a page from routes         | The key of the root route.                                                                                     |
 | `b-load`   | Records of a page that has bundles             | The URLs of the bundles that the components of the record need, separated by spaces. The browser imports them. |
-| `b-fail`   | The record of a `#loading` body that failed    | The boundary ID. The record is the error, and the fallback stays.                                      |
-| `b-catch`  | The record after a `<template b-c="<key>">`    | The key of a `#try` whose `#catch` body replaced its body while the page streamed.                     |
-| `b-root`   | Every record of a render with a `base` above 0 | The base, or `d<boundary>` for a `#defer` body. The core keeps a `refs` map for each root.             |
-| `b-offset` | Records that the client moved                  | The number the client added to the IDs in the markup. The core adds it to the scope IDs in the record. |
-| `b-drop`   | Set by the client on navigation                | The route scopes that the new page replaces. The core drops them and the scopes inside them.           |
-| `b-roots`  | Set by the client on navigation                | The route scopes of the new page. The core adds only them and the scopes inside them.                  |
-| `b-alias`  | Set by the client on navigation                | Pairs `<new>:<kept>`: layout scopes of the new page that stand for layouts the client keeps.           |
+| `b-fail`   | The record of a `#loading` body that failed    | The boundary ID. The record is the error, and the fallback stays.                                              |
+| `b-catch`  | The record after a `<template b-c="<key>">`    | The key of a `#try` whose `#catch` body replaced its body while the page streamed.                             |
+| `b-root`   | Every record of a render with a `base` above 0 | The base, or `d<boundary>` for a `#defer` body. The core keeps a `refs` map for each root.                     |
+| `b-offset` | Records that the client moved                  | The number the client added to the IDs in the markup. The core adds it to the scope IDs in the record.         |
+| `b-drop`   | Set by the client on navigation                | The route scopes that the new page replaces. The core drops them and the scopes inside them.                   |
+| `b-roots`  | Set by the client on navigation                | The route scopes of the new page. The core adds only them and the scopes inside them.                          |
+| `b-alias`  | Set by the client on navigation                | Pairs `<new>:<kept>`: layout scopes of the new page that stand for layouts the client keeps.                   |
 
 ## Props
 

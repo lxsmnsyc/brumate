@@ -268,7 +268,7 @@ const stop = start({ load, rpc: '/_brumate', navigate: true });
 
 `navigate.transition` swaps the page inside a view transition, where the browser has them. `navigate.focus` moves the focus to the first `<h1>` of the routes that changed, or to `<main>`, after a navigation, and defaults to `true`. `load` may return `undefined` for a component that has no client code.
 
-`start` returns a function that stops the loader and removes its listeners.
+`start` returns a function that stops the loader and removes its listeners. After it stops, code that finishes loading later does not link the page's scopes to module stores, render a block or show an error.
 
 `brumate/static-loader` exports `startWithoutNavigation`, which takes the same options and never loads pages in place. A bundle that imports only it has none of the code of client navigation. The plugin uses it with `navigate: false`. `brumate/loader` exports it too, but a bundle that imports `brumate/loader` keeps the parts of the core that navigation reads.
 

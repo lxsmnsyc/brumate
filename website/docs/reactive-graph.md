@@ -181,17 +181,17 @@ When a client root writes a signal, the runtime looks up the nodes that read tha
 
 ## What ships for each node
 
-| Node                                                     | Ships when                                                                                                            |
-| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `$signal`                                                | A client root writes it. Its value is in the page state.                                                              |
-| `$memo`                                                  | Something upstream can change in the browser. Its value is in the page state, so it does not compute again on resume. |
-| `$memo` of a promise                                     | Something upstream can change. It runs again in the browser, and keeps its old value until the promise settles.       |
-| A memo that calls a server function that `refresh` names | Always, so it can load again after a call.                                                                            |
-| Markup binding, such as `{count}`                        | Its source can change in the browser.                                                                                 |
-| `#if`, `#switch`, `#key`                                 | Its condition can change. Then the bodies of its branches ship.                                                       |
-| `#for`, `#repeat`                                        | Its list or count can change. Then the body of an item ships.                                                         |
+| Node                                                     | Ships when                                                                                                                                                                                                                             |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `$signal`                                                | A client root writes it. Its value is in the page state.                                                                                                                                                                               |
+| `$memo`                                                  | Something upstream can change in the browser. Its value is in the page state, so it does not compute again on resume.                                                                                                                  |
+| `$memo` of a promise                                     | Something upstream can change. It runs again in the browser, and keeps its old value until the promise settles.                                                                                                                        |
+| A memo that calls a server function that `refresh` names | Always, so it can load again after a call.                                                                                                                                                                                             |
+| Markup binding, such as `{count}`                        | Its source can change in the browser.                                                                                                                                                                                                  |
+| `#if`, `#switch`, `#key`                                 | Its condition can change. Then the bodies of its branches ship.                                                                                                                                                                        |
+| `#for`, `#repeat`                                        | Its list or count can change. Then the body of an item ships.                                                                                                                                                                          |
 | `#try`                                                   | Its body inserts a value that can hold a `#template` call, such as a prop typed `unknown` or a signal that does not start as a literal. Then the `#catch` body and an error table ship, so a call that throws shows the `#catch` body. |
-| Static text and elements                                 | Never. They are HTML only.                                                                                            |
+| Static text and elements                                 | Never. They are HTML only.                                                                                                                                                                                                             |
 
 A signal that no client root writes is a constant after the server renders it, and is not sent.
 
