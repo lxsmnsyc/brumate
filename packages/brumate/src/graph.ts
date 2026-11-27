@@ -343,6 +343,19 @@ export function tryCatchesClient(model: SemanticModel, block: Block & { kind: 't
       return true;
     }
   }
+  // An insert of a signal or a prop can show a call of a `#template` that throws when the value
+  // changes, so the update of the template's scope fails into this `#try`. The call is made in the
+  // file of the template, or in the file of the parent that passes it as a prop.
+  const hasTemplates = model.scopes.some((scope) => scope.kind === 'template');
+  for (const site of model.sites) {
+    if (site.kind !== 'insert' || !isWithinAny(site.scope, inside)) {
+      continue;
+    }
+    const kind = insertedIdentifier(site)?.kind;
+    if (kind === 'prop' || ((kind === 'signal' || kind === 'let') && hasTemplates)) {
+      return true;
+    }
+  }
   // A memo that threw holds its error, so each read of it throws.
   for (const declaration of model.declarations) {
     if (isMemoKind(declaration.kind) || declaration.moduleMemo) {
@@ -354,6 +367,15 @@ export function tryCatchesClient(model: SemanticModel, block: Block & { kind: 't
     }
   }
   return false;
+}
+
+/** The declaration that an insert shows, when its expression is a plain name. */
+function insertedIdentifier(site: Site): Declaration | undefined {
+  let node: oxc.Node = site.node;
+  while (node.type === 'ParenthesizedExpression') {
+    node = node.expression;
+  }
+  return node.type === 'Identifier' ? lookup(site.scope, node.name) : undefined;
 }
 
 /** True if the expression of a site is a prop that is typed as a promise, such as `$memo(user)`. */

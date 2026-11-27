@@ -11569,3 +11569,42 @@ describe('a context without a provider in markup that the browser renders', () =
     });
   });
 });
+
+describe('a #template call that throws, inserted in a #try', () => {
+  for (const name of [
+    'constTemplateTryLater',
+    'signalTemplateTryLater',
+    'memoTemplateTryLater',
+    'propTemplateTryLater',
+  ]) {
+    it(`catches the error of ${name} in the #try of its insert`, async () => {
+      await resume(name, {});
+      expect(texts('.caught')).toEqual([]);
+      click(document.querySelector('.open')!);
+      await waitFor(() => expect(texts('.caught')).toEqual(['Error: bad']));
+      expect(texts('.a')).toEqual([]);
+    });
+  }
+
+  it('catches a call that a signal holds when a click makes it throw', async () => {
+    await resume('signalTemplateTryBad', {});
+    expect(texts('.a')).toEqual(['2']);
+    click(document.querySelector('.bad')!);
+    await waitFor(() => expect(texts('.caught')).toEqual(['Error: bad']));
+  });
+
+  it('catches a call that a memo holds when a click makes it throw', async () => {
+    await resume('memoTemplateTryBad', {});
+    expect(texts('.a')).toEqual(['2']);
+    click(document.querySelector('.bad')!);
+    await waitFor(() => expect(texts('.caught')).toEqual(['Error: bad']));
+  });
+
+  it('catches a call that a parent passes as a prop when a click makes it throw', async () => {
+    await resume('propTemplateTryBad', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(texts('.a')).toEqual(['2']));
+    click(document.querySelector('.bad')!);
+    await waitFor(() => expect(texts('.caught')).toEqual(['Error: bad']));
+  });
+});
