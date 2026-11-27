@@ -1,7 +1,7 @@
 ---
 id: template-call-try
 title: "A template call that throws is caught by the #try of its insert in the browser too"
-status: todo
+status: active
 priority: should
 type: fix
 story:

@@ -1,7 +1,7 @@
 ---
 id: defer-stylesheets
 title: "#defer bodies keep their stylesheets, and e2e sees streaming"
-status: todo
+status: active
 priority: should
 type: fix
 story:
