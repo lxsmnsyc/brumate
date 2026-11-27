@@ -4,9 +4,9 @@
 
 > A component language and compiler for resumable web apps.
 
-`brumate` compiles single-file components into server-rendered HTML and small client chunks. The client does not hydrate. It reads the state that the server wrote into the page and loads the code for an event handler only when that event fires.
+`brumate` compiles single-file components into server-rendered HTML and small client chunks. The client does not hydrate. It reads the state that the server wrote into the page, and loads the code of the page when it starts. It never runs the components again to rebuild their state.
 
-The compiler generates a server module that renders HTML with the state, and client modules that resume it. A Vite plugin compiles `.brm` files in an app.
+The compiler generates a server module that renders HTML with the state, and client modules that resume it. A Vite plugin compiles `.brm` files in an app. `vite dev` serves its pages, and production runs on [Nitro](https://nitro.build) or on a server of your own.
 
 This repository holds the compiler and its runtime, the type checker and editor support, the website, examples, benchmarks and smoke tests. brumate is at 0.x: the page format can change between versions, so the server and the client must come from the same version.
 
@@ -59,7 +59,7 @@ pnpm build
 pnpm --filter example-todos dev
 ```
 
-[`examples/todos`](./examples/todos) renders a todo list and a counter on the server. In the browser, only the loader runs until the page loads.
+[`examples/todos`](./examples/todos) renders a todo list and a counter on the server. In the browser, the loader starts first, then the code of the page.
 
 [`examples/tracker`](./examples/tracker) is a small issue tracker with sign-in, middleware, form validation, optimistic updates, streaming and a prerendered page. Run it with `pnpm --filter example-tracker dev`.
 
@@ -80,10 +80,12 @@ The documentation is in [`website/docs`](./website/docs), and the website shows 
 Design notes for contributors are in [`docs`](./docs):
 
 - [Grammar](./docs/grammar.md) defines the file format in EBNF.
+- [Architecture](./docs/architecture.md) is the guide to the repository: how brumate works, where each part lives, and how to make a first change.
 - [Intermediate representation](./docs/ir.md) defines the data that each compiler stage produces.
 - [Compiler](./docs/compiler.md) describes the pipeline, the output and the runtime.
 - [Decisions](./docs/decisions.md) lists what is decided and what is still open.
 - [Proposals](./docs/proposals.md) lists features that would be good to add, with a sketch of each.
+- [Performance](./docs/performance.md) holds the measurements and the sizes behind the design.
 - [Prior art](./docs/prior-art.md) compares other resumable and partially hydrated frameworks.
 
 ## Development
@@ -106,11 +108,11 @@ The tests in [`packages/brumate/test/fixtures`](./packages/brumate/test/fixtures
 
 ## Branches
 
-Minor work (features, minor fixes, docs of unreleased work) goes to pull requests against `next`. Hotfixes go to pull requests against `main`. Releases are published from `main` only, and `next` publishes nothing. After each release from `main`, merge `main` into `next`. A minor release promotes `next` into `main` in one pull request. See [Decisions](./docs/decisions.md).
+Minor work (features, minor fixes, docs of unreleased work) goes to pull requests against the branch of the next minor release, `release/<major>.<minor>`, cut from `main`. Hotfixes go to pull requests against `main`. Releases are published from `main` only, and a release branch publishes nothing. After each patch release from `main`, merge `main` into the release branch. A minor release merges its branch into `main` in one pull request. See [Decisions](./docs/decisions.md).
 
 ## Benchmarks
 
-[`benchmarks`](./benchmarks) builds the same three pages with brumate, Qwik 1, Qwik 2 and Marko 6: a small counter and todo app, a dashboard with 50 rarely used widgets, and a table of rows from js-framework-benchmark. It compares the client code each page loads, the size of the server-rendered HTML, how fast the server renders, and the work of the browser after a click. It needs a local Chrome for the browser metrics.
+[`benchmarks`](./benchmarks) builds the same three pages with brumate, brumate 0.3.0, Qwik 1, Qwik 2 and Marko 6: a small counter and todo app, a dashboard with 50 rarely used widgets, and a table of rows from js-framework-benchmark. It compares the client code each page loads, the size of the server-rendered HTML, how fast the server renders, and the work of the browser after a click. It needs a local Chrome for the browser metrics.
 
 ```bash
 pnpm bench
@@ -124,7 +126,7 @@ pnpm bench
 
 ## Name
 
-Brumation is the dormant state of reptiles in cold weather. A reptile in brumation stays inactive but wakes up briefly to drink when it needs to, then goes back to rest. A `brumate` page does the same with its code. It loads a handler only when an event needs it.
+Brumation is the dormant state of reptiles in cold weather. A reptile in brumation stays inactive but wakes up briefly to drink when it needs to, then goes back to rest. A `brumate` page does the same. The server renders it once, and the browser runs code only when an event needs it.
 
 ## License
 

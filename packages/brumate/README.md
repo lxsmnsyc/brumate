@@ -52,10 +52,11 @@ The server renders the button and the text. The browser loads the code of the cl
 ## What it includes
 
 - `brumate/signals`: the compile-time functions, such as `$signal`, `$memo`, `$effect`, `$props`, `$action` and `$optimistic`.
-- `brumate/vite`: the Vite plugin. It compiles `.brm` files, splits client code per handler, serves pages and server function calls in development, and can prerender pages.
+- `brumate/vite`: the Vite plugin. It compiles `.brm` files and splits client code into parts, which it bundles per route and layout. It serves pages and server function calls in development, and can prerender pages.
 - `brumate/server`: rendering, streaming, routes, server functions, sessions, cookies, and validation with Standard Schema.
 - `brumate/loader` and `brumate/client`: the loader and the core that run in the browser.
 - `brumate/testing`: mounting components in a DOM test, with the real server functions.
+- The `brumate` command. `brumate check` compiles every `.brm` file and type-checks the project. `brumate inspect` shows what each component ships to the client. `brumate skill` copies the skills for coding agents to `.claude/skills`.
 
 ## Documentation
 
