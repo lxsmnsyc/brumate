@@ -343,17 +343,22 @@ export function tryCatchesClient(model: SemanticModel, block: Block & { kind: 't
       return true;
     }
   }
-  // An insert of a signal or a prop can show a call of a `#template` that throws when the value
-  // changes, so the update of the template's scope fails into this `#try`. The call is made in the
-  // file of the template, or in the file of the parent that passes it as a prop.
-  const hasTemplates = model.scopes.some((scope) => scope.kind === 'template');
-  for (const site of model.sites) {
-    if (site.kind !== 'insert' || !isWithinAny(site.scope, inside)) {
+  // An insert that reads a value which can hold a call of a `#template` can show a call that
+  // throws when the value changes: the update of the template's scope then fails into this `#try`.
+  // The call is made in this file or in the file of a parent that passes it, so a value that only
+  // holds strings, numbers or booleans does not count.
+  for (const declaration of model.declarations) {
+    if (!canHoldTemplateCall(declaration)) {
       continue;
     }
-    const kind = insertedIdentifier(site)?.kind;
-    if (kind === 'prop' || ((kind === 'signal' || kind === 'let') && hasTemplates)) {
-      return true;
+    for (const read of declaration.reads) {
+      if (
+        read.site.kind === 'insert' &&
+        isWithinAny(read.site.scope, inside) &&
+        showsRead(read.site.node, read.range.start)
+      ) {
+        return true;
+      }
     }
   }
   // A memo that threw holds its error, so each read of it throws.
@@ -369,13 +374,63 @@ export function tryCatchesClient(model: SemanticModel, block: Block & { kind: 't
   return false;
 }
 
-/** The declaration that an insert shows, when its expression is a plain name. */
-function insertedIdentifier(site: Site): Declaration | undefined {
-  let node: oxc.Node = site.node;
-  while (node.type === 'ParenthesizedExpression') {
-    node = node.expression;
+/**
+ * True for a value that changes and can hold a call of a `#template`: a prop, a signal, a store
+ * or a context value, and a parameter of a template. See `Declaration.plain`.
+ */
+function canHoldTemplateCall(declaration: Declaration): boolean {
+  // The children of a component are markup of its parent, which holds their calls.
+  if (declaration.plain || (declaration.kind === 'prop' && declaration.propKey === 'children')) {
+    return false;
   }
-  return node.type === 'Identifier' ? lookup(site.scope, node.name) : undefined;
+  return (
+    declaration.kind === 'prop' ||
+    declaration.kind === 'props-rest' ||
+    declaration.kind === 'signal' ||
+    declaration.kind === 'let' ||
+    declaration.kind === 'template-param' ||
+    declaration.moduleSignal === true ||
+    declaration.kind === 'context' ||
+    declaration.store !== undefined
+  );
+}
+
+/**
+ * True if the value that an insert shows can be the value read at `start`: the name itself, a
+ * member of it, or a branch of a condition, as in `{box.row}` or `{c ? c : 0}`. A read that only
+ * goes into a call, an operator or a template string is used up there, and shows nothing.
+ */
+function showsRead(node: oxc.Node, start: number): boolean {
+  switch (node.type) {
+    case 'Identifier':
+      return node.start === start;
+    case 'MemberExpression':
+      return showsRead(node.object, start);
+    case 'ConditionalExpression':
+      return showsRead(node.consequent, start) || showsRead(node.alternate, start);
+    case 'LogicalExpression':
+      return showsRead(node.left, start) || showsRead(node.right, start);
+    case 'ParenthesizedExpression':
+    case 'ChainExpression':
+    case 'TSNonNullExpression':
+    case 'TSAsExpression':
+    case 'TSSatisfiesExpression':
+      return showsRead(node.expression, start);
+    case 'AwaitExpression':
+      return showsRead(node.argument, start);
+    case 'ArrayExpression':
+      for (const element of node.elements) {
+        if (
+          element &&
+          showsRead(element.type === 'SpreadElement' ? element.argument : element, start)
+        ) {
+          return true;
+        }
+      }
+      return false;
+    default:
+      return false;
+  }
 }
 
 /** True if the expression of a site is a prop that is typed as a promise, such as `$memo(user)`. */

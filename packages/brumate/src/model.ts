@@ -67,6 +67,13 @@ export interface Declaration {
   propKey?: string;
   /** True for a prop whose `$props<T>` type is written as `Promise<...>`, or a union with one. */
   promise?: boolean;
+  /**
+   * True for a value that cannot hold a call of a `#template`: a prop typed as strings, numbers,
+   * booleans or literals only, and a signal that starts as such a literal.
+   */
+  plain?: boolean;
+  /** True for an import or a module variable that is a signal or a memo of a module. */
+  moduleSignal?: boolean;
   /** True for the props object (`const props = $props()`) and the rest of `$props()`. */
   whole?: boolean;
   /** For `const result = $action(fn)`, the name of the server function. */

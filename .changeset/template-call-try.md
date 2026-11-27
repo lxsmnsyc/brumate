@@ -2,5 +2,5 @@
 'brumate': patch
 ---
 
-- A `#template` call that you keep in a signal or pass as a prop now throws into the `#try` around its insert in the browser when a change makes its markup throw, as it does on the server. The page shows the `#catch` body and no longer logs an uncaught error.
-- A `#try` whose body inserts a signal or a prop now ships its `#catch` body, so the browser can render it for such an error.
+- A `#template` call that a signal, a store, a module signal or a prop holds now throws into the `#try` around its insert in the browser when a change makes its markup throw, as it does on the server. This holds for any insert expression that reads the value, such as `{box.row}` or `{c ? c : 0}`. The page shows the `#catch` body and no longer logs an uncaught error.
+- A `#try` whose body inserts such a value now ships its `#catch` body and an error table, about 0.9 kB of raw code for each such component. A prop typed as strings, numbers or booleans only, a signal that starts as a literal and `children` add nothing.

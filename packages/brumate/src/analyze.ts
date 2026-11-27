@@ -463,6 +463,47 @@ function isPromiseType(annotation: oxc.Node | undefined): boolean {
   );
 }
 
+/** True for a type of strings, numbers, booleans and literals only, or a union of them. */
+function isPlainType(annotation: oxc.Node | undefined): boolean {
+  if (annotation?.type === 'TSUnionType') {
+    for (const type of annotation.types) {
+      if (!isPlainType(type)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  if (annotation?.type === 'TSParenthesizedType') {
+    return isPlainType(annotation.typeAnnotation);
+  }
+  return (
+    annotation?.type === 'TSStringKeyword' ||
+    annotation?.type === 'TSNumberKeyword' ||
+    annotation?.type === 'TSBooleanKeyword' ||
+    annotation?.type === 'TSBigIntKeyword' ||
+    annotation?.type === 'TSNullKeyword' ||
+    annotation?.type === 'TSUndefinedKeyword' ||
+    annotation?.type === 'TSLiteralType'
+  );
+}
+
+/** True for a string, number or boolean literal, such as the start value `0` of a signal. */
+function isPlainLiteral(node: oxc.Node | undefined): boolean {
+  if (node?.type === 'UnaryExpression' && (node.operator === '-' || node.operator === '+')) {
+    return isPlainLiteral(node.argument);
+  }
+  if (node?.type === 'TemplateLiteral') {
+    return node.expressions.length === 0;
+  }
+  return (
+    node?.type === 'Literal' &&
+    (typeof node.value === 'string' ||
+      typeof node.value === 'number' ||
+      typeof node.value === 'boolean' ||
+      typeof node.value === 'bigint')
+  );
+}
+
 /** The names of the members of a props type whose type passes `test`. */
 function memberNames(
   type: oxc.Node,
@@ -613,6 +654,7 @@ class Analyzer {
     this.resolveStores();
     this.checkBindableProps();
     this.markPromiseProps();
+    this.markPlainValues();
 
     for (const site of this.sites) {
       new Resolver(this, site).run();
@@ -869,6 +911,36 @@ class Analyzer {
       }
     }
     return false;
+  }
+
+  /**
+   * Marks the props whose type is plain, and the signals that start as a plain literal. Nothing
+   * that they hold is a call of a `#template`.
+   */
+  private markPlainValues(): void {
+    const names = new Set<string>();
+    for (const type of this.propsTypes) {
+      for (const name of memberNames(type, this.file, isPlainType)) {
+        names.add(name);
+      }
+    }
+    for (const declaration of this.declarations) {
+      if (
+        declaration.kind === 'prop' &&
+        declaration.scope === this.component &&
+        declaration.propKey !== undefined &&
+        names.has(declaration.propKey)
+      ) {
+        declaration.plain = true;
+      } else if (declaration.kind === 'signal' && isPlainLiteral(declaration.init)) {
+        declaration.plain = true;
+      } else if (
+        (declaration.kind === 'import' || declaration.kind === 'module') &&
+        this.moduleSignals.has(declaration.name)
+      ) {
+        declaration.moduleSignal = true;
+      }
+    }
   }
 
   /** Marks the props that the type of `$props<T>()` writes as `Promise<...>`. */

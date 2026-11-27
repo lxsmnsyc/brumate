@@ -11607,4 +11607,18 @@ describe('a #template call that throws, inserted in a #try', () => {
     click(document.querySelector('.bad')!);
     await waitFor(() => expect(texts('.caught')).toEqual(['Error: bad']));
   });
+
+  for (const [form, page] of [
+    ['a member of a signal', 'memberTemplateTryBad'],
+    ['a ternary of a signal', 'ternaryTemplateTryBad'],
+    ['a store from a context', 'contextTemplateTryBad'],
+    ['the rest of the props', 'restTemplateTryBad'],
+  ] as const) {
+    it(`catches a call in ${form} when a click makes it throw`, async () => {
+      await resume(page, {});
+      await waitFor(() => expect(texts('.a')).toEqual(['2']));
+      click(document.querySelector('.bad')!);
+      await waitFor(() => expect(texts('.caught')).toEqual(['Error: bad']));
+    });
+  }
 });

@@ -64,6 +64,7 @@ skip(
   [
     'ContextAs',
     'ContextTemplateLater',
+    'ContextTemplateTryKid',
     'CounterButtons',
     'CtxWriterLoopMid',
     'FnReadContextMid',
