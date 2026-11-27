@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Server functions
 
 A function with `'use server'` runs only on the server. Client code calls it like any other async function: the arguments go to the server, and the result comes back.
@@ -100,7 +104,7 @@ const user = $memo(getUser(id));
 
 Capturing an instance variable is a compile error that names the variable:
 
-```
+```text
 Server function "save" captures "user" (Todos.brm:6:3). Pass it as an argument.
 ```
 

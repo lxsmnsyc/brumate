@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # State
 
 State is the data of a component that can change in the browser. `$signal` declares a value that you write, and `$memo` declares a value that is computed from other values.
@@ -67,7 +71,7 @@ Code that runs while the component renders cannot write a signal. Its value at r
 </script>
 ```
 
-```
+```text
 Signal "count" can only be written in event handlers, effects, $client callbacks and functions (App.brm:5:3)
 ```
 

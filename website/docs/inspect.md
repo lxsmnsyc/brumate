@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Inspect and devtools
 
 Three tools show what brumate ships to the browser and why: `brumate inspect` for a component, the devtools panel for a running page, and the build report for a whole app.
@@ -12,7 +16,7 @@ brumate inspect --json src     # the reports as JSON
 
 Without paths, it inspects every `.brm` file under the current directory. It finds which props parents can change across all those files, as the Vite plugin does.
 
-```
+```text
 Badge (Badge.brm) Badge_1rjt0v5
 
 Client code
@@ -155,7 +159,7 @@ A component in the workbench has no layout around it, so the styles of a layout,
 
 `report: true` in the plugin options prints what the client build ships, after gzip:
 
-```
+```text
 brumate client report (gzip)
   The loader, on every page: 2.7 kB
   The core, when the page starts: 13.4 kB
@@ -184,6 +188,6 @@ brumate({ budget: { loader: 3072, route: 20480, component: 4096 } });
 - `component` limits the client code of one component. A component in the bundle of a page counts its share of the bundle, by the size of its modules.
 - The error lists every size over the budget:
 
-```
+```text
 The component src/Chart.brm ships 9.4 kB, over the budget of 4.0 kB.
 ```

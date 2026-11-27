@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Forms and actions
 
 A form can post to a server function. It works before any script loads, and with scripts turned off. Once the loader runs, the same form posts without a full page load.

@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Environment variables
 
 Secrets and settings come from the environment: a database URL, a session secret, the name of the site. brumate checks them with a schema when the server starts, types them, and keeps the server's values out of the browser.
@@ -31,7 +35,7 @@ export default defineEnv({
 
 The server checks every variable when the file loads, which the plugin makes the first thing the server loads. A server that starts without a secret, or with a wrong one, fails at once, and the error names every variable that is missing or wrong:
 
-```
+```text
 Error: Environment variables: DATABASE_URL is missing. SESSION_SECRET is invalid
 ```
 
@@ -98,7 +102,7 @@ The compiler sees the reads in a component only. A helper in another module can 
 
 The server checks the page state too. `defineEnv` keeps the values of the server variables when the server starts, and the server refuses to send a page whose state holds one of them as a string. The render fails, and the error names the slot and its component, as it does for a value that cannot be sent:
 
-```
+```text
 The value of "url" in Page_1x2y3z is the value of a server environment variable, and code that runs in the browser reads it.
 ```
 

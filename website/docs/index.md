@@ -1,3 +1,7 @@
+---
+type: index
+---
+
 # Introduction
 
 brumate is a component language and a compiler for web apps that resume instead of hydrating. Pages arrive as HTML with their state in them, and the browser loads the code of the page without running the components again.

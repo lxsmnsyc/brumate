@@ -1,3 +1,7 @@
+---
+type: reference
+---
+
 # Compile-time functions
 
 The functions of `brumate/signals` describe state and behavior to the compiler. The compiler replaces every call and removes the import, so none of them ship. The one exception is `flush`, a function of the runtime, which keeps its import.

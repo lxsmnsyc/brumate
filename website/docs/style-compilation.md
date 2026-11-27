@@ -1,3 +1,7 @@
+---
+type: internals
+---
+
 # Style compilation
 
 How the compiler scopes the CSS of a component, turns `${}` values into custom properties, and puts the stylesheet on the page. [Styles](./styles.md) describes what to write.

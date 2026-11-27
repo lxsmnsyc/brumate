@@ -1,3 +1,7 @@
+---
+type: reference
+---
+
 # Blocks and markup
 
 The syntax of markup in a `.brm` file: control flow blocks, attributes, events and special elements. [Control flow](./control-flow.md) and [Markup](./markup.md) explain each one with examples.

@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Control flow
 
 Blocks start with `#`, such as `#if` and `#for`, and wrap their body in braces. A block's code ships to the browser only if what it depends on can change there. Otherwise the block is HTML only.

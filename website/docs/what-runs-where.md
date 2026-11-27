@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # What runs where
 
 A component runs once, on the server. The browser gets the HTML and the values that its code needs, and runs only the code of what the user does. This page explains which code that is, and what that means for the values you use.
@@ -78,19 +82,19 @@ Browser code can read values of the script, such as a constant that a handler us
 
 `brumate-tsc` checks the signals and memos that are sent, and reports a value that cannot be:
 
-```
+```text
 Argument of type '(value: number) => string' is not assignable to parameter of type '… & { 'A function cannot be sent to the client. Keep it out of the signal or memo': never; }'.
 ```
 
 The compiler reports a value made with `new` that browser code reads, unless it is a type that can be sent, such as a `Map`:
 
-```
+```text
 "db" holds a new Database, which cannot be sent to the browser, and code that runs in the browser reads it (function save). Use it in a server function, or create it in the browser, such as in $client (Saver.brm:6:14)
 ```
 
 A value that neither check sees, such as one that a function returns, fails the render with its name:
 
-```
+```text
 The value of "db" in Saver_1x2y3z holds a Database, which cannot be sent to the browser, and code that runs in the browser reads it.
 ```
 

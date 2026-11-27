@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Components
 
 A component is a `.brm` file. It has scripts for its state and logic, an optional style, and markup. Other components import it and render it with props.

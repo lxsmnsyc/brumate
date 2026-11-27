@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Markup
 
 The markup of a component is HTML with `{…}` expressions, attribute values without quotes, event handlers, and `#` blocks for control flow. Markup that never changes ships as HTML only.

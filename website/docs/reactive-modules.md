@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Reactive logic in modules
 
 A `.brm.ts` module holds state and logic that several components share. Its functions use `$signal`, `$memo` and the other compile-time functions, and a component calls one at the top level of its script.

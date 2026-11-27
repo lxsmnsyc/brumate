@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Page metadata
 
 `#head` adds tags to the `<head>` of the page, such as its `<title>`.

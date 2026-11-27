@@ -1,3 +1,7 @@
+---
+type: reference
+---
+
 # Serializable values
 
 Values cross from the server to the browser in two ways: in the page, for the state that client code reads, and through server function calls. Both use [seroval](https://github.com/lxsmnsyc/seroval), with the web plugins of `seroval-plugins`, so they accept the same values.

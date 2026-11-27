@@ -1,3 +1,7 @@
+---
+type: internals
+---
+
 # Page format
 
 The server writes markers into the HTML and the state into scripts. The core reads both to resume the page. This page describes that contract, for contributors and for tools that read brumate pages.
@@ -126,7 +130,7 @@ A `#loading` body that sets the head after the first render also sends `<templat
 
 When the trigger fires, the browser asks for the URL of the page with two headers:
 
-```
+```text
 x-brumate-defer: 2 0:1
 x-brumate-base: 0
 ```

@@ -1,3 +1,7 @@
+---
+type: reference
+---
+
 # Security checks
 
 What brumate checks for you, and what stays your job: calls from other sites, errors, untrusted input in markup, and inline scripts.
@@ -116,7 +120,7 @@ A prerendered page is the exception. Its scripts are known at build time, and th
 
 A policy with `require-trusted-types-for 'script'` refuses a string in `innerHTML` and in the text of a script. The core inserts the markup that it renders, such as a body that an `#if` opens, and copies the scripts of a `#defer` body or of a page that the client router loads, so it needs a Trusted Types policy. It makes one named `brumate`, once, when it first inserts markup, and only where the browser has Trusted Types. Allow it next to the nonce:
 
-```
+```text
 script-src 'nonce-…' 'strict-dynamic'; require-trusted-types-for 'script'; trusted-types brumate
 ```
 

@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Effects and browser code
 
 A component renders on the server, so its script never runs in the browser. To run code in the browser, use a handler, `$effect`, `$client` or a `#client` block. Each one starts at a different time.

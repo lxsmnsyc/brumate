@@ -1,3 +1,7 @@
+---
+type: reference
+---
+
 # Runtime API
 
 The modules that app code imports, other than `brumate/signals`. Most apps use only the request helpers of `brumate/server`, `href` and `createContext`. The rendering functions are for a custom server.

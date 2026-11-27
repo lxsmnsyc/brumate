@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Observability
 
 `onTrace(span)` receives each span of the server and of the browser when it ends, with its name, its times and its trace. Use it to see where the time of a request or a click goes, or to send the spans to OpenTelemetry. Nothing runs, and no code ships for it, until you set it.
@@ -77,7 +81,7 @@ When the browser has an `onTrace`, a server function call and a navigation send 
 <button onClick=press>Save {length}</button>
 ```
 
-```
+```text
 brumate.event    click App#press            browser
   brumate.load   App                        only when the code had to load
   brumate.run    App#press

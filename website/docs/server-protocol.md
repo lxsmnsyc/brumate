@@ -1,3 +1,7 @@
+---
+type: internals
+---
+
 # Server function protocol
 
 How the browser calls a server function, and how the server answers. App code never sees this: a call is a normal `await fn(args)`. It matters for a custom server, a proxy, or a client in another language.
@@ -45,7 +49,7 @@ A call is a `POST` to `<rpc prefix>/<encoded ID>`. The prefix is `/_brumate` by 
 
 A value answer is a byte stream of [`@seroval/transport`](https://github.com/lxsmnsyc/seroval) frames. The server writes it with `createJSONWriter` and `toWebStream`, and the client reads it with `createJSONReader` and `fromWebStream`. Each frame is a 12-byte header and the data:
 
-```
+```text
 ;0x00000021;[0,"answer",{"t":10,"i":0,"p":{…}}]
 ```
 

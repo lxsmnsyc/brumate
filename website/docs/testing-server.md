@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Testing server functions and routes
 
 A component test with `mount` has no server, and a route test with `visit` needs none. This page shows how to answer server function calls in a test and how to test a route. Set up Vitest and write a first test with [Testing](./testing.md).

@@ -1,3 +1,7 @@
+---
+type: tutorial
+---
+
 # Your first app
 
 This tutorial builds a todo list in six steps: a list, a form that adds items, toggling items, a count of what is left, saving on the server, and a route. Each step shows the whole component, and every sample before the last runs in the page, so you can change it and see what happens.

@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Navigation
 
 Links are plain `<a>` elements, so every page works with scripts turned off. Once the loader runs, it loads pages of your site itself, without a full page load, and keeps the parts of the page that stay the same.

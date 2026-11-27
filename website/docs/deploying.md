@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Deploying
 
 A brumate app builds into client files and a server bundle. The server renders pages and answers server function calls. Pages without data can also be prerendered to static files.

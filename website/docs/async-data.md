@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Async data
 
 A `$memo` can hold a promise, such as the result of a server function. The memo gives the value that the promise settles to, so markup and other memos never see the promise.

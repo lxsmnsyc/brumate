@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # TypeScript
 
 `brumate-tsc` type-checks a project with its `.brm` files, and the TypeScript plugin gives editors the same types. A `.ts` file that imports a component gets the type of its props.

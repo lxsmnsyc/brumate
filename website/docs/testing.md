@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Testing
 
 `brumate/testing` renders a component on the server and resumes it in the DOM of a test, the same way a page does. A test clicks and types like a user, and checks what the user would see, with the code that ships. `visit` does the same for a route of the app, with its layouts, middleware and client navigation. See [Testing server functions and routes](./testing-server.md).

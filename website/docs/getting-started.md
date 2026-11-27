@@ -1,3 +1,7 @@
+---
+type: tutorial
+---
+
 # Getting started
 
 A brumate app is a Vite app with the brumate plugin and route files under `src/routes`. `vite dev` serves its pages. This page sets one up from scratch.
@@ -13,7 +17,7 @@ The project needs Node 22.18 or newer, which runs `.ts` files directly.
 
 ## Project layout
 
-```
+```text
 my-app/
 ├── package.json
 ├── tsconfig.json

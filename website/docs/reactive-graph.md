@@ -1,3 +1,7 @@
+---
+type: internals
+---
+
 # Reactive graph
 
 The compiler decides what ships to the browser from a graph of what reads what, which it builds once, when it compiles. This page first follows one component from its source to a click that updates the page. The sections after it describe each part in detail.

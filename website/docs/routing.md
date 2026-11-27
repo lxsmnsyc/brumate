@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Routing
 
 Routes are `.brm` files under `src/routes`. The path of a file is the URL that it renders, and a `_layout.brm` wraps the routes of its folder.
@@ -6,7 +10,7 @@ Routes are `.brm` files under `src/routes`. The path of a file is the URL that i
 
 A small blog could have these files:
 
-```
+```text
 src/routes/
 ├── _layout.brm            the document around every page
 ├── index.brm              /

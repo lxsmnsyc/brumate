@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Publishing components
 
 A package can ship `.brm` components for other apps to use. It ships them as source, and the Vite plugin of the app compiles them with the app's own files.
@@ -170,7 +174,7 @@ The app compiles the package with its own version of brumate. The compiled code 
 
 ## A complete package
 
-```
+```text
 acme-ui/
   package.json
   tsconfig.json

@@ -1,3 +1,7 @@
+---
+type: internals
+---
+
 # Client modules
 
 What the browser loads, and when: the loader, the core, the parts of each component, and the modules for navigation and server calls. [Reactive graph](./reactive-graph.md) describes what goes into the parts.

@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Context
 
 A context passes a value from a component to every component inside it, without props. It suits values that many components read, such as a theme, the current user or a language.

@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Editors
 
 The VS Code extension gives `.brm` files highlighting, types, style support and the diagnostics of the compiler. Other editors can use the same language server and TypeScript plugin.

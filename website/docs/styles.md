@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Styles
 
 A `<style>` block holds CSS for its component. Its selectors match only the elements of that component, so class names never clash between components.

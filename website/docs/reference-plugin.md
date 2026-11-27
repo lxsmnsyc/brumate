@@ -1,3 +1,7 @@
+---
+type: reference
+---
+
 # Plugin options and modules
 
 The options of the Vite plugin, the modules that it provides, the `brumate` command, and the compiler API.

@@ -1,3 +1,7 @@
+---
+type: concept
+---
+
 # Protecting server functions
 
 A server function answers any caller. This page shows how to limit how often a caller can call it, and which sites can call it. [Security checks](./reference-security.md) lists what brumate checks for you.
