@@ -39,7 +39,7 @@
 - `$bS` in dev (`SWAP_DEV`) shares the wait; not run in a browser here.
 - `#reveal` and `$bF`/`$bH` calls that share a script with a waiting `$bS` run before the body is in place. A fallback shown early by `#reveal (collapsed)` can flash. Not seen in a test; a node could move them after the wait.
 - The answer of a request for a `#defer` body brings the whole CSS of the component that holds the block, even when the page has it. A smaller answer would carry only the rules with the block scope; the compiler knows them.
-- The head of the page keeps a `style[b-style]` of the component for a direct load, and the answer repeats it. It is deduped by nothing on the client; harmless, but the body style stays in the page after a later navigation (`pruneSheets` reads only the head).
+- The head of the page keeps a `style[b-style]` of the component for a direct load, and the answer repeats it. It is deduped by nothing on the client; harmless. The body style leaves with the body: after a later link navigation only the head styles remain (checked in the review).
 
 ## Gotchas
 
