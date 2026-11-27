@@ -1,0 +1,172 @@
+diff --git a/.github/workflows/debug-mmx.yml b/.github/workflows/debug-mmx.yml
+new file mode 100644
+index 00000000..05235089
+--- /dev/null
++++ b/.github/workflows/debug-mmx.yml
+@@ -0,0 +1,49 @@
++# [RC-mmx] Temporary: loops module-signals.test.ts on Node 24 for the diagnose node
++# module-memo-extra-load. Lives only on the branch debug/module-memo-extra-load.
++name: Debug module-memo-extra-load
++
++on:
++  push:
++    branches:
++      - debug/module-memo-extra-load
++
++permissions:
++  contents: read
++
++jobs:
++  loop:
++    name: Loop ${{ matrix.shard }} (burn ${{ matrix.burn }})
++    runs-on: ubuntu-latest
++    strategy:
++      fail-fast: false
++      matrix:
++        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
++        burn: [0, 3]
++    steps:
++      - uses: actions/checkout@v7
++        with:
++          persist-credentials: false
++      - uses: pnpm/action-setup@v6
++      - uses: actions/setup-node@v7
++        with:
++          node-version: 24
++          package-manager-cache: false
++      - run: pnpm install --frozen-lockfile
++      - run: pnpm build
++      - name: Loop the test file
++        working-directory: packages/brumate
++        run: |
++          node --version
++          for i in $(seq 1 "${{ matrix.burn }}"); do (yes > /dev/null &) ; done
++          fails=0
++          for run in $(seq 1 30); do
++            if ! npx vitest run test/module-signals.test.ts --silent=passed-only > out.txt 2>&1; then
++              fails=$((fails + 1))
++              echo "::group::[RC-mmx] run $run failed"
++              cat out.txt
++              echo "::endgroup::"
++              grep -n "FAIL\|AssertionError\|RC-mmx\] browser" out.txt || true
++            fi
++          done
++          pkill yes || true
++          echo "[RC-mmx] shard ${{ matrix.shard }} burn ${{ matrix.burn }}: $fails of 30 runs failed"
+diff --git a/packages/brumate/src/runtime/store.ts b/packages/brumate/src/runtime/store.ts
+index 86eddfeb..4583167e 100644
+--- a/packages/brumate/src/runtime/store.ts
++++ b/packages/brumate/src/runtime/store.ts
+@@ -1183,6 +1183,8 @@ export function memoStore<S extends Stores, T>(
+     h: () => readers?.size ?? 0,
+     i: {
+       get(): unknown {
++        // oxlint-disable-next-line no-console -- [RC-mmx] debug
++        console.log(`[RC-mmx] i.get n=${JSON.stringify(options?.n)} count=${count} has=${has} wait=${!!wait} loaded=${loaded} a=${memo.a()} t=${performance.now().toFixed(1)}`);
+         // The browser subscribes the slot before it reads it. The server only reads.
+         if (count > 0) {
+           return show();
+@@ -1210,6 +1212,8 @@ export function memoStore<S extends Stores, T>(
+         return listen(face, listener);
+       },
+       s(value: unknown): void {
++        // oxlint-disable-next-line no-console -- [RC-mmx] debug
++        console.log(`[RC-mmx] s n=${JSON.stringify(options?.n)} has=${has} held=${!!held} wait=${!!wait} seen=${!!seen} count=${count} value=${value === undefined ? 'undef' : isLoadedFace(value) ? 'loaded' : 'plain:' + JSON.stringify(value)} t=${performance.now().toFixed(1)}`);
+         // Only a memo that has not run takes the value of the server.
+         if (has || held || wait || seen || value === undefined) {
+           return;
+diff --git a/packages/brumate/test/module-signals.test.ts b/packages/brumate/test/module-signals.test.ts
+index dbb625db..c5186532 100644
+--- a/packages/brumate/test/module-signals.test.ts
++++ b/packages/brumate/test/module-signals.test.ts
+@@ -38,9 +38,13 @@ let stop: (() => void) | undefined;
+ beforeEach(() => {
+   // Each test starts with new instances of the modules, as a new server does.
+   vi.resetModules();
++  // [RC-mmx] debug
++  (globalThis as { __rcTest?: string }).__rcTest = expect.getState().currentTestName;
+ });
+ 
+ afterEach(() => {
++  // oxlint-disable-next-line no-console -- [RC-mmx] debug
++  console.log(`[RC-mmx] afterEach t=${performance.now().toFixed(1)}`);
+   stop?.();
+   stop = undefined;
+   document.body.innerHTML = '';
+@@ -100,12 +104,27 @@ function appendChunk(html: string): void {
+  */
+ async function resume(name: string): Promise<string> {
+   const server = await import(file(`${name}.ts`));
++  // [RC-mmx] debug
++  const rcUser = name.startsWith('Async') ? ((await import(file('user.brm.ts'))) as { inst?: string; calls?: unknown }) : undefined;
++  // oxlint-disable-next-line no-console -- [RC-mmx] debug
++  console.log(`[RC-mmx] resume ${name} server user inst=${rcUser?.inst} calls=${JSON.stringify(rcUser?.calls)} t=${performance.now().toFixed(1)}`);
+   const { html, state, pending } = await renderParts(server.default, {});
++  // oxlint-disable-next-line no-console -- [RC-mmx] debug
++  console.log(`[RC-mmx] rendered ${name} server user calls=${JSON.stringify(rcUser?.calls)} t=${performance.now().toFixed(1)}\n${state}`);
+   document.body.innerHTML = html + state;
+   document.body.querySelectorAll('script[b-state]').forEach(run);
+   vi.resetModules();
+   const { start } = await import('../src/runtime/loader.ts');
+-  stop = start({ load: async (id) => import(modules.get(id)!) });
++  stop = start({
++    load: async (id) => {
++      // oxlint-disable-next-line no-console -- [RC-mmx] debug
++      console.log(`[RC-mmx] load ${id} for ${name} t=${performance.now().toFixed(1)}`);
++      const loaded = await import(modules.get(id)!);
++      // oxlint-disable-next-line no-console -- [RC-mmx] debug
++      console.log(`[RC-mmx] loaded ${id} for ${name} t=${performance.now().toFixed(1)} now=${(globalThis as { __rcTest?: string }).__rcTest}`);
++      return loaded;
++    },
++  });
+   for await (const chunk of pending) {
+     appendChunk(chunk);
+   }
+@@ -633,11 +652,15 @@ describe('an async memo of a module', () => {
+   it('loads again when a source changes in another component, and writes only the latest run', async () => {
+     await resume('AsyncPage.brm');
+     const browser = (await import(file('user.brm.ts'))) as UserModule;
++    // oxlint-disable-next-line no-console -- [RC-mmx] debug
++    console.log(`[RC-mmx] resumed, click two t=${performance.now().toFixed(1)}`);
+     // The load of 2 is slow, and 3 replaces it.
+     click('.w-two');
+     await vi.waitFor(() => expect(text('.r-pending')).toBe('loading'), { timeout: 2000 });
+     // The old value stays while the new one loads.
+     expect(text('.r-user')).toBe('user 1');
++    // oxlint-disable-next-line no-console -- [RC-mmx] debug
++    console.log(`[RC-mmx] click three t=${performance.now().toFixed(1)}`);
+     click('.w-three');
+     await vi.waitFor(() => expect(text('.r-user')).toBe('user 3'), { timeout: 2000 });
+     expect(text('.r-pending')).toBe('idle');
+@@ -650,7 +673,7 @@ describe('an async memo of a module', () => {
+     await sleep(150);
+     expect(text('.r-user')).toBe('user 3');
+     expect(text('.r-label')).toBe('label 3');
+-    expect(browser.calls.user).toBe(2);
++    expect(browser.calls.user, `[RC-mmx] browser inst=${(browser as { inst?: string }).inst}`).toBe(2);
+   });
+ 
+   it('waits with $resolve in a handler of the reader', async () => {
+diff --git a/packages/brumate/test/module-signals/user.brm.ts b/packages/brumate/test/module-signals/user.brm.ts
+index 0a5f7ebe..4ed1a69f 100644
+--- a/packages/brumate/test/module-signals/user.brm.ts
++++ b/packages/brumate/test/module-signals/user.brm.ts
+@@ -14,8 +14,18 @@ function delay(n: number): Promise<void> {
+   return new Promise((done) => setTimeout(done, n === 2 ? 120 : 10));
+ }
+ 
++/** [RC-mmx] The instance of this module, for the debug log. */
++export const inst: string = Math.random().toString(36).slice(2, 8);
++// oxlint-disable-next-line no-console -- [RC-mmx] debug
++console.log(`[RC-mmx] module inst=${inst} t=${performance.now().toFixed(1)} test=${(globalThis as { __rcTest?: string }).__rcTest}`);
++
+ async function fetchUser(n: number): Promise<{ id: number; name: string }> {
+   calls.user++;
++  Error.stackTraceLimit = 60;
++  // oxlint-disable-next-line no-console -- [RC-mmx] debug
++  console.log(
++    `[RC-mmx] fetchUser inst=${inst} n=${n} call=${calls.user} t=${performance.now().toFixed(1)} test=${(globalThis as { __rcTest?: string }).__rcTest}\n${new Error('[RC-mmx] stack').stack}`,
++  );
+   await delay(n);
+   if (n === 13) {
+     throw new Error('thirteen');

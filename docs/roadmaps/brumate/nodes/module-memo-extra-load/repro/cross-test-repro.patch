@@ -1,0 +1,39 @@
+diff --git a/packages/brumate/test/module-signals.test.ts b/packages/brumate/test/module-signals.test.ts
+index dbb625db..29b8671c 100644
+--- a/packages/brumate/test/module-signals.test.ts
++++ b/packages/brumate/test/module-signals.test.ts
+@@ -34,10 +34,14 @@ function toRender(code: string): string {
+ }
+ 
+ let stop: (() => void) | undefined;
++// [RC-mmx] repro: resolves when the next test starts.
++let nextTest: (() => void) | undefined;
+ 
+ beforeEach(() => {
+   // Each test starts with new instances of the modules, as a new server does.
+   vi.resetModules();
++  // [RC-mmx] repro: the code that the last test started loads now, after the reset.
++  nextTest?.();
+ });
+ 
+ afterEach(() => {
+@@ -105,7 +109,18 @@ async function resume(name: string): Promise<string> {
+   document.body.querySelectorAll('script[b-state]').forEach(run);
+   vi.resetModules();
+   const { start } = await import('../src/runtime/loader.ts');
+-  stop = start({ load: async (id) => import(modules.get(id)!) });
++  // [RC-mmx] repro: the code of the test that RC_SLOW names loads once the next test started, as
++  // on a loaded machine where an import outlasts the test.
++  const slow = process.env.RC_SLOW !== undefined && expect.getState().currentTestName!.includes(process.env.RC_SLOW);
++  const started = slow ? new Promise<void>((done) => (nextTest = done)) : undefined;
++  stop = start({
++    load: async (id) => {
++      if (started && id.startsWith('AsyncReader')) {
++        await started;
++      }
++      return import(modules.get(id)!);
++    },
++  });
+   for await (const chunk of pending) {
+     appendChunk(chunk);
+   }
