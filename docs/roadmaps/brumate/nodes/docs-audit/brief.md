@@ -1,7 +1,7 @@
 ---
 id: docs-audit
 title: The docs match the code of 0.10.0
-status: todo
+status: active
 priority: should
 type: docs
 story:
