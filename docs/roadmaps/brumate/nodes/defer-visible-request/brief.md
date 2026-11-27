@@ -1,7 +1,7 @@
 ---
 id: defer-visible-request
 title: "Diagnose: a visible #defer body shows without a body request"
-status: active
+status: done
 priority: should
 type: diagnose
 story:
@@ -21,7 +21,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-26
-spent:
+spent: 131537
 owns:
   - docs/roadmaps/brumate/nodes/defer-visible-request/**
 shared: []
