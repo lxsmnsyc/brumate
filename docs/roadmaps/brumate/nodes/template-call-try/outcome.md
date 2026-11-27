@@ -22,7 +22,7 @@ A call renders at its insert, but its arguments run where the call is written. A
 
 - `pnpm lint` (warnings only), `pnpm format:check`, `pnpm typecheck`: pass.
 - Root `pnpm test`: pass (brumate 3813, ui 846 + 1 expected fail).
-- `node e2e/run.mjs`: see the report of the worker.
+- `node e2e/run.mjs`: every suite passes.
 
 ## Size
 
